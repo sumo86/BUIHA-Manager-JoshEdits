@@ -15,7 +15,8 @@ const PlayerProfile = () => {
         return <div className="text-center p-10">Player not found.</div>;
     }
 
-    const isSkater = 'skating' in player.attributes;
+    // Correctly determine if the player is a skater by checking for a skater-specific attribute
+    const isSkater = 'acceleration' in player.attributes;
     const skaterAttrs = player.attributes as SkaterAttributes;
     const goalieAttrs = player.attributes as GoalieAttributes;
 
