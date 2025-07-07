@@ -1,33 +1,97 @@
 export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
 
 export interface SkaterAttributes {
-  skating: number;
-  shooting: number;
-  passing: number;
-  puckControl: number;
-  defensiveAwareness: number;
-  stickChecking: number;
-  bodyChecking: number;
+  // Physical
+  acceleration: number;
+  agility: number;
+  balance: number;
+  fighting: number;
+  speed: number;
+  stamina: number;
   strength: number;
-  aggressiveness: number;
-  hockeyIQ: number;
+  hitting: number;
+  // Mental
+  aggression: number;
+  bravery: number;
+  determination: number;
+  leadership: number;
+  professionalism: number;
+  teamPlayer: number;
+  temperament: number;
+  // Offensive
+  gettingOpen: number;
+  offensiveRead: number;
+  passing: number;
+  puckhandling: number;
+  screening: number;
+  shootingAccuracy: number;
+  shootingRange: number;
+  // Defensive
+  checking: number;
+  defensiveRead: number;
+  faceoffs: number;
+  positioning: number;
+  shotBlocking: number;
+  stickchecking: number;
+  // Hidden
+  aging: number;
+  ambition: number;
+  bigGames: number;
+  coachability: number;
+  controversy: number;
+  developmentRate: number;
+  greed: number;
+  handleFailure: number;
+  handleSuccess: number;
+  handleCritics: number;
+  injuryProneness: number;
+  intelligence: number;
+  loyalty: number;
+  mood: number;
+  passShootTendency: number;
+  sportsmanship: number;
 }
 
 export interface GoalieAttributes {
-  gloveHigh: number;
-  gloveLow: number;
-  stickHigh: number;
-  stickLow: number;
-  fiveHole: number;
+  // Goaltender
+  blocker: number;
+  glove: number;
+  lowShots: number;
   positioning: number;
-  reboundControl: number;
-  puckHandling: number;
+  rebound: number;
+  recovery: number;
+  reflexes: number;
+  passing: number;
+  pokeCheck: number;
+  puckhandling: number;
+  skating: number;
+  mentalToughness: number;
+  goaltenderStamina: number;
+  // Hidden
+  aging: number;
+  ambition: number;
+  bigGames: number;
+  coachability: number;
+  controversy: number;
+  developmentRate: number;
+  greed: number;
+  handleFailure: number;
+  handleSuccess: number;
+  handleCritics: number;
+  injuryProneness: number;
+  intelligence: number;
+  leadership: number;
+  loyalty: number;
+  mood: number;
+  professionalism: number;
+  sportsmanship: number;
+  determination: number;
 }
 
 export interface PlayerArchetype {
   position: 'Defenceman' | 'Centre' | 'Winger' | 'Goaltender';
   type: string;
-  physicality?: 'Physical' | 'Non-Physical' | 'Puckhandler' | ''; // Added 'Puckhandler'
+  physicality?: 'Physical' | 'Non-Physical' | 'Puckhandler' | '';
   description: string;
 }
 

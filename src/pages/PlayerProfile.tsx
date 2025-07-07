@@ -3,7 +3,7 @@ import { teams } from '@/data/teams';
 import { Player, SkaterAttributes, GoalieAttributes } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Star, User, MapPin, Calendar, Shield, HeartPulse, GraduationCap, BarChart2 } from 'lucide-react';
+import { Star, User, MapPin, Shield, HeartPulse, GraduationCap } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 const PlayerProfile = () => {
@@ -16,6 +16,8 @@ const PlayerProfile = () => {
     }
 
     const isSkater = 'skating' in player.attributes;
+    const skaterAttrs = player.attributes as SkaterAttributes;
+    const goalieAttrs = player.attributes as GoalieAttributes;
 
     const renderStars = (rating: number) => (
       <div className="flex">
@@ -26,9 +28,18 @@ const PlayerProfile = () => {
     );
 
     const AttributeItem = ({ label, value }: { label: string, value: number }) => (
-        <div className="flex justify-between items-center py-2">
+        <div className="flex justify-between items-center py-1">
             <span className="text-sm font-medium text-muted-foreground">{label}</span>
             <span className="text-sm font-bold">{value}</span>
+        </div>
+    );
+    
+    const AttributeCategory = ({ title, children }: { title: string, children: React.ReactNode }) => (
+        <div>
+            <h3 className="font-semibold mb-2 text-lg text-primary">{title}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                {children}
+            </div>
         </div>
     );
 
@@ -50,15 +61,6 @@ const PlayerProfile = () => {
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><GraduationCap size={16} /> Eligibility</span> <span>{player.eligibility}</span></div>
                     </CardContent>
                 </Card>
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><BarChart2 size={20} /> Archetype</CardTitle>
-                        <CardDescription>{player.archetype.type} {player.archetype.position}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">{player.archetype.description}</p>
-                    </CardContent>
-                </Card>
             </div>
             <div className="lg:col-span-2">
                 <Card>
@@ -67,32 +69,63 @@ const PlayerProfile = () => {
                     </CardHeader>
                     <CardContent>
                         {isSkater ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                                <AttributeItem label="Skating" value={(player.attributes as SkaterAttributes).skating} />
-                                <AttributeItem label="Shooting" value={(player.attributes as SkaterAttributes).shooting} />
-                                <AttributeItem label="Passing" value={(player.attributes as SkaterAttributes).passing} />
-                                <AttributeItem label="Puck Control" value={(player.attributes as SkaterAttributes).puckControl} />
-                                <Separator className="my-2 md:col-span-2" />
-                                <AttributeItem label="Defensive Awareness" value={(player.attributes as SkaterAttributes).defensiveAwareness} />
-                                <AttributeItem label="Stick Checking" value={(player.attributes as SkaterAttributes).stickChecking} />
-                                <Separator className="my-2 md:col-span-2" />
-                                <AttributeItem label="Body Checking" value={(player.attributes as SkaterAttributes).bodyChecking} />
-                                <AttributeItem label="Strength" value={(player.attributes as SkaterAttributes).strength} />
-                                <AttributeItem label="Aggressiveness" value={(player.attributes as SkaterAttributes).aggressiveness} />
-                                <Separator className="my-2 md:col-span-2" />
-                                <AttributeItem label="Hockey IQ" value={(player.attributes as SkaterAttributes).hockeyIQ} />
+                            <div className="space-y-6">
+                                <AttributeCategory title="Physical">
+                                    <AttributeItem label="Acceleration" value={skaterAttrs.acceleration} />
+                                    <AttributeItem label="Agility" value={skaterAttrs.agility} />
+                                    <AttributeItem label="Balance" value={skaterAttrs.balance} />
+                                    <AttributeItem label="Fighting" value={skaterAttrs.fighting} />
+                                    <AttributeItem label="Speed" value={skaterAttrs.speed} />
+                                    <AttributeItem label="Stamina" value={skaterAttrs.stamina} />
+                                    <AttributeItem label="Strength" value={skaterAttrs.strength} />
+                                    <AttributeItem label="Hitting" value={skaterAttrs.hitting} />
+                                </AttributeCategory>
+                                <Separator />
+                                <AttributeCategory title="Mental">
+                                    <AttributeItem label="Aggression" value={skaterAttrs.aggression} />
+                                    <AttributeItem label="Bravery" value={skaterAttrs.bravery} />
+                                    <AttributeItem label="Determination" value={skaterAttrs.determination} />
+                                    <AttributeItem label="Leadership" value={skaterAttrs.leadership} />
+                                    <AttributeItem label="Professionalism" value={skaterAttrs.professionalism} />
+                                    <AttributeItem label="Team Player" value={skaterAttrs.teamPlayer} />
+                                    <AttributeItem label="Temperament" value={skaterAttrs.temperament} />
+                                </AttributeCategory>
+                                <Separator />
+                                <AttributeCategory title="Offensive">
+                                    <AttributeItem label="Getting Open" value={skaterAttrs.gettingOpen} />
+                                    <AttributeItem label="Offensive Read" value={skaterAttrs.offensiveRead} />
+                                    <AttributeItem label="Passing" value={skaterAttrs.passing} />
+                                    <AttributeItem label="Puckhandling" value={skaterAttrs.puckhandling} />
+                                    <AttributeItem label="Screening" value={skaterAttrs.screening} />
+                                    <AttributeItem label="Shooting Accuracy" value={skaterAttrs.shootingAccuracy} />
+                                    <AttributeItem label="Shooting Range" value={skaterAttrs.shootingRange} />
+                                </AttributeCategory>
+                                <Separator />
+                                <AttributeCategory title="Defensive">
+                                    <AttributeItem label="Checking" value={skaterAttrs.checking} />
+                                    <AttributeItem label="Defensive Read" value={skaterAttrs.defensiveRead} />
+                                    <AttributeItem label="Faceoffs" value={skaterAttrs.faceoffs} />
+                                    <AttributeItem label="Positioning" value={skaterAttrs.positioning} />
+                                    <AttributeItem label="Shot Blocking" value={skaterAttrs.shotBlocking} />
+                                    <AttributeItem label="Stickchecking" value={skaterAttrs.stickchecking} />
+                                </AttributeCategory>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                                <AttributeItem label="Glove High" value={(player.attributes as GoalieAttributes).gloveHigh} />
-                                <AttributeItem label="Glove Low" value={(player.attributes as GoalieAttributes).gloveLow} />
-                                <AttributeItem label="Stick High" value={(player.attributes as GoalieAttributes).stickHigh} />
-                                <AttributeItem label="Stick Low" value={(player.attributes as GoalieAttributes).stickLow} />
-                                <AttributeItem label="Five Hole" value={(player.attributes as GoalieAttributes).fiveHole} />
-                                <AttributeItem label="Positioning" value={(player.attributes as GoalieAttributes).positioning} />
-                                <AttributeItem label="Rebound Control" value={(player.attributes as GoalieAttributes).reboundControl} />
-                                <AttributeItem label="Puck Handling" value={(player.attributes as GoalieAttributes).puckHandling} />
-                            </div>
+                            <AttributeCategory title="Goaltending">
+                                <AttributeItem label="Blocker" value={goalieAttrs.blocker} />
+                                <AttributeItem label="Glove" value={goalieAttrs.glove} />
+                                <AttributeItem label="Low Shots" value={goalieAttrs.lowShots} />
+                                <AttributeItem label="Positioning" value={goalieAttrs.positioning} />
+                                <AttributeItem label="Rebound Control" value={goalieAttrs.rebound} />
+                                <AttributeItem label="Recovery" value={goalieAttrs.recovery} />
+                                <AttributeItem label="Reflexes" value={goalieAttrs.reflexes} />
+                                <AttributeItem label="Passing" value={goalieAttrs.passing} />
+                                <AttributeItem label="Poke Check" value={goalieAttrs.pokeCheck} />
+                                <AttributeItem label="Puckhandling" value={goalieAttrs.puckhandling} />
+                                <AttributeItem label="Skating" value={goalieAttrs.skating} />
+                                <AttributeItem label="Mental Toughness" value={goalieAttrs.mentalToughness} />
+                                <AttributeItem label="Stamina" value={goalieAttrs.goaltenderStamina} />
+                            </AttributeCategory>
                         )}
                     </CardContent>
                 </Card>
