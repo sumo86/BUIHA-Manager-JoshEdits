@@ -4,11 +4,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { teams } from "@/data/teams";
 import { Player } from "@/types";
 import { Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Roster = () => {
+  const navigate = useNavigate();
   // For now, let's just display the first team's roster.
-  // We can add a team selector later.
   const team = teams[0];
+
+  const handlePlayerClick = (playerId: string) => {
+    navigate(`/player/${playerId}`);
+  };
 
   const renderStars = (rating: number) => {
     return (
@@ -51,7 +56,11 @@ const Roster = () => {
             </TableHeader>
             <TableBody>
               {team.roster.map((player: Player) => (
-                <TableRow key={player.id}>
+                <TableRow 
+                  key={player.id} 
+                  onClick={() => handlePlayerClick(player.id)}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
                   <TableCell className="font-bold">{player.jerseyNumber}</TableCell>
                   <TableCell>{player.name}</TableCell>
                   <TableCell>{player.positions.join(", ")}</TableCell>
