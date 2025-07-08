@@ -256,6 +256,28 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const archetype = getArchetypeForPosition(position);
   const attributes = generateAttributes(archetype, leagueDivision);
   
+  if (isSkater && leagueDivision.includes('Checking 1')) {
+    const roll = Math.random();
+    // 5% chance for a 5-star potential boost
+    if (roll < 0.05) {
+        Object.keys(attributes).forEach(key => {
+            const attrKey = key as keyof SkaterAttributes;
+            if (typeof attributes[attrKey] === 'number' && !['aging', 'injuryProneness', 'controversy'].includes(attrKey)) {
+                (attributes[attrKey] as number) = Math.min(20, (attributes[attrKey] as number) + 2);
+            }
+        });
+    } 
+    // 10% chance for a 4.5-star potential boost
+    else if (roll < 0.15) {
+        Object.keys(attributes).forEach(key => {
+            const attrKey = key as keyof SkaterAttributes;
+            if (typeof attributes[attrKey] === 'number' && !['aging', 'injuryProneness', 'controversy'].includes(attrKey)) {
+                (attributes[attrKey] as number) = Math.min(20, (attributes[attrKey] as number) + 1);
+            }
+        });
+    }
+  }
+
   const eligibilitiesToUse = allowedEligibilities || eligibilities;
   const eligibility = getRandomItem(eligibilitiesToUse);
   const ageRange = eligibilityAgeRanges[eligibility];
@@ -364,6 +386,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     captaincy: null,
     yearsLeftInProgram,
     history,
+    trainingFocus: null,
   };
 };
 

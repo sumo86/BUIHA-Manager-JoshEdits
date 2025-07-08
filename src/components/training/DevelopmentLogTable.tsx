@@ -39,11 +39,11 @@ export const DevelopmentLogTable = ({ logs }: DevelopmentLogTableProps) => {
               <TableCell className="text-center">
                 {log.change > 0 ? (
                   <Badge variant="outline" className="text-green-600 border-green-600">
-                    <ArrowUp className="mr-1 h-3 w-3" /> +{log.change}
+                    <ArrowUp className="mr-1 h-3 w-3" /> +{log.change.toFixed(2)}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="text-red-600 border-red-600">
-                    <ArrowDown className="mr-1 h-3 w-3" /> {log.change}
+                    <ArrowDown className="mr-1 h-3 w-3" /> {log.change.toFixed(2)}
                   </Badge>
                 )}
               </TableCell>

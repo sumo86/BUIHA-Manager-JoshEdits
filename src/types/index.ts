@@ -1,4 +1,5 @@
 export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
+export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
 
 export interface SkaterAttributes {
   // Physical
@@ -136,6 +137,7 @@ export interface Player {
   source?: 'Local' | 'Transfer' | 'International';
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced';
   recruitmentCost?: number;
+  trainingFocus?: TrainingFocus;
 }
 
 export interface Tactic {

@@ -1,9 +1,10 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus } from '@/types';
 import { teams as initialTeams } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
+import { trainingFocusesMap } from '@/data/trainingFocuses';
 
 interface GameDate {
     month: string;
@@ -30,6 +31,7 @@ interface TeamContextType {
     currentDate: GameDate;
     advanceWeek: () => void;
     developmentHistory: DevelopmentLog[];
+    updatePlayerTrainingFocus: (playerId: string, focus: TrainingFocus) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -122,6 +124,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const improvedPlayers: string[] = [];
         const declinedPlayers: string[] = [];
 
+        let improvementAmount: number = 0; // Declared at a higher scope
+
         const newRoster = userTeam.roster.map(player => {
             let updatedPlayer = { ...player };
             const isSkater = player.positions[0] !== 'G';
@@ -140,7 +144,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const currentValue = attributes[attrToDecline as keyof typeof attributes] as number;
 
                     if (currentValue > 1) {
-                        (attributes[attrToDecline as keyof typeof attributes] as number) -= 1;
+                        const declineAmount = 0.2;
+                        (attributes[attrToDecline as keyof typeof attributes] as number) = Math.max(1, currentValue - declineAmount);
                         declinedPlayers.push(player.name);
                         
                         const newCurrentAbility = calculateCurrentAbility(attributes, isSkater);
@@ -150,13 +155,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             playerId: player.id,
                             playerName: player.name,
                             attribute: (attrToDecline as string).replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
-                            change: -1,
+                            change: -declineAmount,
                             newRating: newStarRating,
                             date: currentDate,
                         });
 
                         updatedPlayer = { ...updatedPlayer, attributes, currentAbility: newCurrentAbility, starRating: newStarRating };
-                        // A player can decline and still have an improvement check in the same week, though it's rare.
                     }
                 }
             }
@@ -166,15 +170,40 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const devChance = ((attributes.professionalism + attributes.determination) / 40) * (1 - (player.age / 45));
 
                 if (Math.random() < devChance) {
-                    const keys = Object.keys(attributes) as (keyof typeof attributes)[];
-                    const improvableAttributes = keys.filter(key => {
-                        const attrValue = attributes[key] as number;
-                        return typeof attrValue === 'number' && attrValue < 20 && !['aging', 'injuryProneness'].includes(key as string);
-                    });
+                    const workEthicFactor = (attributes.professionalism + attributes.determination) / 80; // Range ~0.025 to 0.5
+                    const ageFactor = Math.max(0, (25 - player.age) / 50); // Range 0 to ~0.14 for young players
+                    improvementAmount = 0.1 + workEthicFactor + ageFactor + (Math.random() * 0.1); // Assigned here
+                    improvementAmount = Math.max(0.2, Math.min(0.5, improvementAmount));
 
-                    if (improvableAttributes.length > 0) {
-                        const attrToImprove = getRandomItem(improvableAttributes);
-                        (attributes[attrToImprove as keyof typeof attributes] as number) += 1;
+                    let possibleAttrsToImprove: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
+                    
+                    if (player.trainingFocus && Math.random() < 0.75) {
+                        const focusedAttributes = trainingFocusesMap[player.trainingFocus];
+                        possibleAttrsToImprove = focusedAttributes.filter(attr => {
+                            if (isSkater) {
+                                return (attributes as SkaterAttributes)[attr as keyof SkaterAttributes] !== undefined && (attributes as SkaterAttributes)[attr as keyof SkaterAttributes] < 20;
+                            } else {
+                                return (attributes as GoalieAttributes)[attr as keyof GoalieAttributes] !== undefined && (attributes as GoalieAttributes)[attr as keyof GoalieAttributes] < 20;
+                            }
+                        });
+                    }
+
+                    // If no focus, no focus attributes available, or the 25% chance hits, pick from all improvable attributes
+                    if (possibleAttrsToImprove.length === 0) {
+                        const allAttrKeys = Object.keys(attributes) as (keyof typeof attributes)[];
+                        possibleAttrsToImprove = allAttrKeys.filter(key => {
+                            const attrValue = attributes[key] as number;
+                            return typeof attrValue === 'number' && attrValue < 20 && !['aging', 'injuryProneness', 'controversy'].includes(key as string);
+                        });
+                    }
+
+                    if (possibleAttrsToImprove.length > 0) {
+                        const attrToImprove = getRandomItem(possibleAttrsToImprove);
+                        const oldValue = attributes[attrToImprove as keyof typeof attributes] as number;
+                        const newValue = Math.min(20, oldValue + improvementAmount);
+                        const actualChange = newValue - oldValue;
+
+                        (attributes[attrToImprove as keyof typeof attributes] as number) = newValue;
                         
                         const newCurrentAbility = calculateCurrentAbility(attributes, isSkater);
                         const newStarRating = calculateStarRating(newCurrentAbility, isSkater, userTeam.leagueDivision);
@@ -187,7 +216,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             playerId: player.id,
                             playerName: player.name,
                             attribute: (attrToImprove as string).replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
-                            change: 1,
+                            change: actualChange,
                             newRating: newStarRating,
                             date: currentDate,
                         });
@@ -242,6 +271,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
             return { month, week, year };
         });
+    };
+
+    const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
+        const newRoster = userTeam.roster.map(p => 
+            p.id === playerId ? { ...p, trainingFocus: focus } : p
+        );
+        updateTeam({ ...userTeam, roster: newRoster });
     };
 
     const generateScoutingPool = () => {
@@ -394,7 +430,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             startFacilityProject,
             currentDate,
             advanceWeek,
-            developmentHistory
+            developmentHistory,
+            updatePlayerTrainingFocus
         }}>
             {children}
         </TeamContext.Provider>

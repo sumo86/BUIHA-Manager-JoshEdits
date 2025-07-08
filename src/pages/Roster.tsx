@@ -82,6 +82,7 @@ const Roster = () => {
   };
 
   const getAttributeColorClass = (value: number) => {
+    if (!value) return "";
     if (value >= 17) return "text-green-700";
     if (value >= 13) return "text-green-500";
     if (value >= 9) return "text-yellow-500";
@@ -220,6 +221,8 @@ const Roster = () => {
             <TableBody>
               {filteredRoster.map((player: Player) => {
                 const applicableRoles = getApplicableRoles(player);
+                const currentRoleSuitability = player.role ? player.roleSuitability[player.role] : 0;
+                const roleColorClass = getAttributeColorClass(currentRoleSuitability);
                 return (
                   <TableRow 
                     key={player.id} 
@@ -243,7 +246,7 @@ const Roster = () => {
                           value={player.role}
                           onValueChange={(newRole) => handleRoleChange(player.id, newRole)}
                         >
-                          <SelectTrigger className="w-[220px]">
+                          <SelectTrigger className={`w-[220px] font-bold ${roleColorClass}`}>
                             <SelectValue placeholder="Select a role" />
                           </SelectTrigger>
                           <SelectContent>
