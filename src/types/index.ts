@@ -232,3 +232,16 @@ export interface GameState {
   isGameOver: boolean;
   isPaused: boolean;
 }
+
+export interface DevelopmentLog {
+  playerId: string;
+  playerName: string;
+  attribute: string;
+  change: number;
+  newRating: number;
+  date: {
+    month: string;
+    week: number;
+    year: number;
+  };
+}

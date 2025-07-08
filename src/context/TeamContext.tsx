@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog } from '@/types';
 import { teams as initialTeams } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
@@ -29,6 +29,7 @@ interface TeamContextType {
     startFacilityProject: (projectId: string) => void;
     currentDate: GameDate;
     advanceWeek: () => void;
+    developmentHistory: DevelopmentLog[];
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -76,6 +77,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
     });
 
+    const [developmentHistory, setDevelopmentHistory] = useState<DevelopmentLog[]>(() => {
+        try {
+            const saved = localStorage.getItem('developmentHistory');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error("Failed to parse developmentHistory from localStorage", error);
+            return [];
+        }
+    });
+
+    const [isInitialMount, setIsInitialMount] = useState(true);
+
     useEffect(() => {
         localStorage.setItem('scoutingPool', JSON.stringify(scoutingPool));
     }, [scoutingPool]);
@@ -92,6 +105,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         localStorage.setItem('currentDate', JSON.stringify(currentDate));
     }, [currentDate]);
 
+    useEffect(() => {
+        localStorage.setItem('developmentHistory', JSON.stringify(developmentHistory));
+    }, [developmentHistory]);
+
     const updateTeam = (updatedTeam: Team) => {
         setTeams(currentTeams =>
             currentTeams.map(t => (t.name === updatedTeam.name ? updatedTeam : t))
@@ -101,44 +118,86 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const userTeam = teams[0];
 
     const handlePlayerDevelopment = () => {
+        const newLogs: DevelopmentLog[] = [];
         const improvedPlayers: string[] = [];
+        const declinedPlayers: string[] = [];
+
         const newRoster = userTeam.roster.map(player => {
-            if (player.currentAbility >= player.potentialAbility) {
-                return player; // No more room to grow
-            }
+            let updatedPlayer = { ...player };
+            const isSkater = player.positions[0] !== 'G';
+            const attributes = { ...player.attributes };
 
-            // Development chance influenced by age, professionalism, and determination
-            const devChance = (
-                (player.attributes.professionalism + player.attributes.determination) / 40
-            ) * (1 - (player.age / 45)); // Diminishing returns with age
-
-            if (Math.random() < devChance) {
-                const isSkater = player.positions[0] !== 'G';
-                const attributes = { ...player.attributes };
-                const keys = Object.keys(attributes) as (keyof typeof attributes)[];
-                
-                // Find attributes that can be improved
-                const improvableAttributes = keys.filter(key => {
-                    const attrValue = attributes[key] as number;
-                    return typeof attrValue === 'number' && attrValue < 20;
-                });
-
-                if (improvableAttributes.length > 0) {
-                    // Improve a random attribute
-                    const attrToImprove = getRandomItem(improvableAttributes);
-                    (attributes[attrToImprove] as number) += 1;
+            // Decline Logic
+            const ageThreshold = isSkater ? 28 : 30;
+            if (player.age > ageThreshold && player.currentAbility >= player.potentialAbility) {
+                const declineChance = ((player.age - ageThreshold) / 100) * (attributes.aging / 10);
+                if (Math.random() < declineChance) {
+                    const physicalSkaterAttrs: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'speed', 'stamina', 'strength'];
+                    const physicalGoalieAttrs: (keyof GoalieAttributes)[] = ['rebound', 'recovery', 'reflexes', 'skating', 'goaltenderStamina'];
+                    const attrsToDecline = isSkater ? physicalSkaterAttrs : physicalGoalieAttrs;
                     
-                    const newCurrentAbility = calculateCurrentAbility(attributes, isSkater);
-                    const newStarRating = calculateStarRating(newCurrentAbility, isSkater, userTeam.leagueDivision);
+                    const attrToDecline = getRandomItem(attrsToDecline);
+                    const currentValue = attributes[attrToDecline as keyof typeof attributes] as number;
 
-                    if (newStarRating > player.starRating) {
-                        improvedPlayers.push(`${player.name} (${newStarRating.toFixed(1)} stars)`);
+                    if (currentValue > 1) {
+                        (attributes[attrToDecline as keyof typeof attributes] as number) -= 1;
+                        declinedPlayers.push(player.name);
+                        
+                        const newCurrentAbility = calculateCurrentAbility(attributes, isSkater);
+                        const newStarRating = calculateStarRating(newCurrentAbility, isSkater, userTeam.leagueDivision);
+
+                        newLogs.push({
+                            playerId: player.id,
+                            playerName: player.name,
+                            attribute: (attrToDecline as string).replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+                            change: -1,
+                            newRating: newStarRating,
+                            date: currentDate,
+                        });
+
+                        updatedPlayer = { ...updatedPlayer, attributes, currentAbility: newCurrentAbility, starRating: newStarRating };
+                        // A player can decline and still have an improvement check in the same week, though it's rare.
                     }
-
-                    return { ...player, attributes, currentAbility: newCurrentAbility, starRating: newStarRating };
                 }
             }
-            return player;
+
+            // Improvement Logic
+            if (player.currentAbility < player.potentialAbility) {
+                const devChance = ((attributes.professionalism + attributes.determination) / 40) * (1 - (player.age / 45));
+
+                if (Math.random() < devChance) {
+                    const keys = Object.keys(attributes) as (keyof typeof attributes)[];
+                    const improvableAttributes = keys.filter(key => {
+                        const attrValue = attributes[key] as number;
+                        return typeof attrValue === 'number' && attrValue < 20 && !['aging', 'injuryProneness'].includes(key as string);
+                    });
+
+                    if (improvableAttributes.length > 0) {
+                        const attrToImprove = getRandomItem(improvableAttributes);
+                        (attributes[attrToImprove as keyof typeof attributes] as number) += 1;
+                        
+                        const newCurrentAbility = calculateCurrentAbility(attributes, isSkater);
+                        const newStarRating = calculateStarRating(newCurrentAbility, isSkater, userTeam.leagueDivision);
+
+                        if (newStarRating > player.starRating) {
+                            improvedPlayers.push(`${player.name} (${newStarRating.toFixed(1)} stars)`);
+                        }
+
+                        newLogs.push({
+                            playerId: player.id,
+                            playerName: player.name,
+                            attribute: (attrToImprove as string).replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+                            change: 1,
+                            newRating: newStarRating,
+                            date: currentDate,
+                        });
+
+                        updatedPlayer = { ...updatedPlayer, attributes, currentAbility: newCurrentAbility, starRating: newStarRating };
+                    }
+                }
+            }
+            
+            return updatedPlayer;
         });
 
         if (improvedPlayers.length > 0) {
@@ -146,9 +205,26 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 description: `Improvements seen in: ${improvedPlayers.join(', ')}.`,
             });
         }
+        if (declinedPlayers.length > 0) {
+            toast.warning("Player Decline", {
+                description: `Declines seen in: ${declinedPlayers.join(', ')}.`,
+            });
+        }
+
+        if (newLogs.length > 0) {
+            setDevelopmentHistory(prev => [...newLogs, ...prev].slice(0, 100));
+        }
 
         updateTeam({ ...userTeam, roster: newRoster });
     };
+
+    useEffect(() => {
+        if (isInitialMount) {
+            setIsInitialMount(false);
+        } else {
+            handlePlayerDevelopment();
+        }
+    }, [currentDate]);
 
     const advanceWeek = () => {
         setCurrentDate(prevDate => {
@@ -166,7 +242,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
             return { month, week, year };
         });
-        handlePlayerDevelopment();
     };
 
     const generateScoutingPool = () => {
@@ -318,7 +393,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             runStudentLifeInitiative,
             startFacilityProject,
             currentDate,
-            advanceWeek
+            advanceWeek,
+            developmentHistory
         }}>
             {children}
         </TeamContext.Provider>
