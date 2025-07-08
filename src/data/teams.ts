@@ -1,4 +1,4 @@
-import { Team, Lineup, TacticsSelection } from "@/types";
+import { Team, Lineup, TacticsSelection, Player, Position } from "@/types";
 import { generateRoster } from "@/lib/playerGenerator";
 
 const teamData = [
@@ -79,22 +79,6 @@ const getNationalsDivision = (leagueDivision: string): string => {
     return "Unknown";
 }
 
-const defaultLineup: Lineup = {
-    forwards: {
-        lw: [null, null, null],
-        c: [null, null, null],
-        rw: [null, null, null],
-    },
-    defence: {
-        ld: [null, null, null],
-        rd: [null, null, null],
-    },
-    goalies: {
-        starter: null,
-        backup: null,
-    },
-};
-
 const defaultTactics: TacticsSelection = {
     "Breakout": "Flexible Reaction",
     "Neutral Zone Offence": "Balanced Attack",
@@ -104,10 +88,73 @@ const defaultTactics: TacticsSelection = {
     "Defensive Zone Coverage": "Strict Zonal",
 };
 
-export const teams: Team[] = teamData.map(team => ({
-    ...team,
-    nationalsDivision: getNationalsDivision(team.leagueDivision),
-    roster: generateRoster(team.leagueDivision),
-    lineup: defaultLineup,
-    tactics: defaultTactics,
-}));
+// Helper to get players by position
+const getPlayersByPosition = (roster: Player[], position: Position) =>
+    roster.filter(p => p.positions.includes(position));
+
+// Function to populate a lineup with players from a roster
+const populateLineup = (roster: Player[]): Lineup => {
+    const populated: Lineup = {
+        forwards: { lw: [], c: [], rw: [] },
+        defence: { ld: [], rd: [] },
+        goalies: { starter: null, backup: null },
+    };
+
+    const assignedPlayerIds = new Set<string>();
+
+    const assignToSlots = (slots: (string | null)[], players: Player[], count: number) => {
+        let assigned = 0;
+        for (let i = 0; i < players.length && assigned < count; i++) {
+            if (!assignedPlayerIds.has(players[i].id)) {
+                slots.push(players[i].id);
+                assignedPlayerIds.add(players[i].id);
+                assigned++;
+            }
+        }
+        // Fill remaining slots with null if not enough players
+        while (slots.length < count) {
+            slots.push(null);
+        }
+    };
+
+    // Forwards
+    const lwPlayers = getPlayersByPosition(roster, 'LW');
+    const cPlayers = getPlayersByPosition(roster, 'C');
+    const rwPlayers = getPlayersByPosition(roster, 'RW');
+
+    assignToSlots(populated.forwards.lw, lwPlayers, 3);
+    assignToSlots(populated.forwards.c, cPlayers, 3);
+    assignToSlots(populated.forwards.rw, rwPlayers, 3);
+
+    // Defense
+    const ldPlayers = getPlayersByPosition(roster, 'LD');
+    const rdPlayers = getPlayersByPosition(roster, 'RD');
+
+    assignToSlots(populated.defence.ld, ldPlayers, 3);
+    assignToSlots(populated.defence.rd, rdPlayers, 3);
+
+    // Goalies
+    const gPlayers = getPlayersByPosition(roster, 'G');
+    if (gPlayers[0] && !assignedPlayerIds.has(gPlayers[0].id)) {
+        populated.goalies.starter = gPlayers[0].id;
+        assignedPlayerIds.add(gPlayers[0].id);
+    }
+    if (gPlayers[1] && !assignedPlayerIds.has(gPlayers[1].id)) {
+        populated.goalies.backup = gPlayers[1].id;
+        assignedPlayerIds.add(gPlayers[1].id);
+    }
+
+    return populated;
+};
+
+export const teams: Team[] = teamData.map(team => {
+    const roster = generateRoster(team.leagueDivision);
+    const lineup = populateLineup(roster); // Populate lineup based on generated roster
+    return {
+        ...team,
+        nationalsDivision: getNationalsDivision(team.leagueDivision),
+        roster: roster,
+        lineup: lineup, // Use the populated lineup
+        tactics: defaultTactics,
+    };
+});

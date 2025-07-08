@@ -43,7 +43,7 @@ const Game = () => {
       intervalRef.current = setInterval(() => {
         if (!opponentTeam) return;
         setGameState(prev => simulateTick(prev, userTeam, opponentTeam));
-      }, 83); // 1 game second every 83ms -> ~1 game minute every 5 seconds
+      }, 37.5); // 1 game second every 37.5ms -> ~1 game minute every 2.25 seconds, period ~45 seconds
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
