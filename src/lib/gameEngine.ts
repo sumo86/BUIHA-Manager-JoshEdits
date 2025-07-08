@@ -1,5 +1,5 @@
 import { Team, GameEvent, GameState, CoachingDecision } from '@/types';
-import { coachingDecisions, CoachingDecisionTrigger } from '@/data/coachingDecisions';
+import { coachingDecisionsMap, CoachingDecisionTrigger, CoachingDecisionTemplate } from '@/data/coachingDecisions';
 
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -67,15 +67,32 @@ const generateCoachingDecision = (gameState: GameState, userTeam: Team, opponent
         return null;
     }
 
-    // Low chance to trigger a decision on any given tick
-    if (Math.random() > 0.9985) return null; // Adjusted for ~5-6 decisions per game
+    // Low chance to trigger a decision on any given tick (aiming for 1-3 per game)
+    if (Math.random() > 0.9995) return null;
 
     const contexts = getContexts(gameState, userTeam, opponentTeam);
-    const possibleDecisions = coachingDecisions.filter(d => contexts.has(d.trigger));
+    
+    let relevantDecisions: CoachingDecisionTemplate[] = [];
 
-    if (possibleDecisions.length === 0) return null;
+    // Prioritize specific contexts over 'ANY'
+    const specificContexts = Array.from(contexts).filter(c => c !== 'ANY');
 
-    const decisionTemplate = possibleDecisions[Math.floor(Math.random() * possibleDecisions.length)];
+    if (specificContexts.length > 0) {
+        for (const context of specificContexts) {
+            if (coachingDecisionsMap[context]) {
+                relevantDecisions = relevantDecisions.concat(coachingDecisionsMap[context]);
+            }
+        }
+    }
+
+    // If no specific decisions are found, fall back to 'ANY' decisions
+    if (relevantDecisions.length === 0 && coachingDecisionsMap['ANY']) {
+        relevantDecisions = coachingDecisionsMap['ANY'];
+    }
+
+    if (relevantDecisions.length === 0) return null;
+
+    const decisionTemplate = relevantDecisions[Math.floor(Math.random() * relevantDecisions.length)];
 
     return {
         id: crypto.randomUUID(),
@@ -109,6 +126,7 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
     if (newDecision) {
         newGameState.currentDecision = newDecision;
         newGameState.isPaused = true;
+        newGameState.lastDecisionTime = newGameState.time; // Ensure this is updated when a decision is triggered
     }
 
     if (newGameState.time >= 1200) { // End of period (20 mins * 60 secs)
