@@ -11,6 +11,7 @@ import Roster from "./pages/Roster";
 import Recruitment from "./pages/Recruitment";
 import Finances from "./pages/Finances";
 import PlayerProfile from "./pages/PlayerProfile";
+import Lineup from "./pages/Lineup";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/player/:playerId" element={<PlayerProfile />} />
             <Route path="/recruitment" element={<Recruitment />} />
             <Route path="/finances" element={<Finances />} />
+            <Route path="/lineup" element={<Lineup />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

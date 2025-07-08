@@ -114,9 +114,41 @@ export interface Player {
   roleSuitability: { [key: string]: number };
 }
 
+export interface Tactic {
+  phase: string;
+  category: string;
+  tactic: string;
+  description: string;
+  bestUsedWith: string;
+  strongVs: string;
+  weakVs:string;
+}
+
+export interface Lineup {
+  forwards: {
+    lw: (string | null)[];
+    c: (string | null)[];
+    rw: (string | null)[];
+  };
+  defence: {
+    ld: (string | null)[];
+    rd: (string | null)[];
+  };
+  goalies: {
+    starter: string | null;
+    backup: string | null;
+  };
+}
+
+export type TacticsSelection = {
+  [category: string]: string;
+};
+
 export interface Team {
   name: string;
   leagueDivision: string;
   nationalsDivision: string;
   roster: Player[];
+  lineup: Lineup;
+  tactics: TacticsSelection;
 }

@@ -1,4 +1,4 @@
-import { Team } from "@/types";
+import { Team, Lineup, TacticsSelection } from "@/types";
 import { generateRoster } from "@/lib/playerGenerator";
 
 const teamData = [
@@ -79,8 +79,35 @@ const getNationalsDivision = (leagueDivision: string): string => {
     return "Unknown";
 }
 
+const defaultLineup: Lineup = {
+    forwards: {
+        lw: [null, null, null],
+        c: [null, null, null],
+        rw: [null, null, null],
+    },
+    defence: {
+        ld: [null, null, null],
+        rd: [null, null, null],
+    },
+    goalies: {
+        starter: null,
+        backup: null,
+    },
+};
+
+const defaultTactics: TacticsSelection = {
+    "Breakout": "Flexible Reaction",
+    "Neutral Zone Offence": "Balanced Attack",
+    "Attacking Zone Offence": "Lane Positioning",
+    "Forechecking": "1-2-2",
+    "Neutral Zone Coverage": "1-2-2 Retreat",
+    "Defensive Zone Coverage": "Strict Zonal",
+};
+
 export const teams: Team[] = teamData.map(team => ({
     ...team,
     nationalsDivision: getNationalsDivision(team.leagueDivision),
     roster: generateRoster(team.leagueDivision),
+    lineup: defaultLineup,
+    tactics: defaultTactics,
 }));

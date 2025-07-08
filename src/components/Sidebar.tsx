@@ -1,17 +1,26 @@
 import { NavLink } from "react-router-dom";
-import { BarChart3, Landmark, LayoutDashboard, UserPlus, Users } from "lucide-react";
+import {
+  BarChart3,
+  Landmark,
+  LayoutDashboard,
+  Users,
+  Calendar,
+  UserPlus,
+  ClipboardList,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MadeWithDyad } from "./made-with-dyad";
 
-const Sidebar = () => {
-  const navItems = [
-    { to: "/", icon: <LayoutDashboard className="h-5 w-5" />, label: "Dashboard" },
-    { to: "/standings", icon: <BarChart3 className="h-5 w-5" />, label: "Standings" },
-    { to: "/roster", icon: <Users className="h-5 w-5" />, label: "Roster" },
-    { to: "/recruitment", icon: <UserPlus className="h-5 w-5" />, label: "Recruitment" },
-    { to: "/finances", icon: <Landmark className="h-5 w-5" />, label: "Finances" },
-  ];
+const navItems = [
+  { href: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/standings", icon: Calendar, label: "Standings" },
+  { href: "/roster", icon: Users, label: "Roster" },
+  { href: "/lineup", icon: ClipboardList, label: "Lineup" },
+  { href: "/recruitment", icon: UserPlus, label: "Recruitment" },
+  { href: "/finances", icon: Landmark, label: "Finances" },
+];
 
+const Sidebar = () => {
   return (
     <aside className="w-64 flex-shrink-0 border-r bg-sidebar text-sidebar-foreground p-4 flex flex-col justify-between">
       <div>
@@ -21,9 +30,9 @@ const Sidebar = () => {
         <nav className="mt-8">
           <ul>
             {navItems.map((item) => (
-              <li key={item.to}>
+              <li key={item.href}>
                 <NavLink
-                  to={item.to}
+                  to={item.href}
                   end
                   className={({ isActive }) =>
                     cn(
@@ -32,7 +41,7 @@ const Sidebar = () => {
                     )
                   }
                 >
-                  {item.icon}
+                  <item.icon />
                   {item.label}
                 </NavLink>
               </li>
