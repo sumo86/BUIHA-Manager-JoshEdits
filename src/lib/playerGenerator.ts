@@ -9,7 +9,7 @@ import { divisionTiers } from "./leagueUtils";
 const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
 const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
 
-const getRandomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const getArchetypeForPosition = (position: Position): PlayerArchetype => {
@@ -39,7 +39,7 @@ const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string):
 
     // Base generation for visible attributes, tied to division average
     const generateVisibleAttribute = () => {
-        return targetAvgPerAttr + (Math.random() * 10 - 5); // Range of 10 points around target average
+        return targetAvgPerAttr + (Math.random() * 16 - 8); // Increased range from 10 to 16 for more variance
     };
 
     // Generation for hidden/highly variable attributes, wider and independent
