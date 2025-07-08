@@ -50,7 +50,7 @@ const calculateStarRatingForAbility = (ability: number, isSkater: boolean, targe
 const generateReport = (player: Player, team: Team) => {
   const firstName = player.name.split(' ')[0];
   const isSkater = player.positions[0] !== 'G';
-  const { attributes, starRating, potentialAbility } = player;
+  const { attributes, starRating, potentialAbility, currentAbility } = player;
   const { leagueDivision } = team;
 
   const summaryPhrases = [
@@ -140,30 +140,32 @@ const generateReport = (player: Player, team: Team) => {
     .slice(0, 3)
     .map(hint => `${firstName} ${hint.text}`);
 
-  // Potential Assessment
+  // Potential Assessment - only if significant potential
   let potentialAssessment = '';
-  const potentialDivisions = Object.keys(divisionTiers);
-  let bestFitDivision = leagueDivision; // Start with current division
+  if (potentialAbility - currentAbility > 100) { // Only show if potential is significantly higher
+    const potentialDivisions = Object.keys(divisionTiers);
+    let bestFitDivision = leagueDivision; // Start with current division
 
-  // Find the highest division where potentialAbility is at least "average" (3 stars)
-  for (let i = potentialDivisions.length - 1; i >= 0; i--) {
-    const div = potentialDivisions[i];
-    const potentialStar = calculateStarRatingForAbility(potentialAbility, isSkater, div);
-    if (potentialStar >= 3) {
-      bestFitDivision = div;
-      break;
+    // Find the highest division where potentialAbility is at least "average" (3 stars)
+    for (let i = potentialDivisions.length - 1; i >= 0; i--) {
+      const div = potentialDivisions[i];
+      const potentialStar = calculateStarRatingForAbility(potentialAbility, isSkater, div);
+      if (potentialStar >= 3) {
+        bestFitDivision = div;
+        break;
+      }
     }
+
+    const potentialStarRating = calculateStarRatingForAbility(potentialAbility, isSkater, bestFitDivision);
+    const potentialSkillDescription = getSkillTierDescription(potentialStarRating);
+
+    const potentialPhrases = [
+      `${firstName} may have the potential to become ${potentialSkillDescription} in ${bestFitDivision}.`,
+      `With proper development, ${firstName} could grow into ${potentialSkillDescription} at the ${bestFitDivision} level.`,
+      `Scouts project ${firstName} to potentially develop into ${potentialSkillDescription} in ${bestFitDivision}.`
+    ];
+    potentialAssessment = potentialPhrases[Math.floor(Math.random() * potentialPhrases.length)];
   }
-
-  const potentialStarRating = calculateStarRatingForAbility(potentialAbility, isSkater, bestFitDivision);
-  const potentialSkillDescription = getSkillTierDescription(potentialStarRating);
-
-  const potentialPhrases = [
-    `${firstName} may have the potential to become ${potentialSkillDescription} in ${bestFitDivision}.`,
-    `With proper development, ${firstName} could grow into ${potentialSkillDescription} at the ${bestFitDivision} level.`,
-    `Scouts project ${firstName} to potentially develop into ${potentialSkillDescription} in ${bestFitDivision}.`
-  ];
-  potentialAssessment = potentialPhrases[Math.floor(Math.random() * potentialPhrases.length)];
 
 
   return [summary, pros, cons, ...selectedHiddenHints, potentialAssessment].filter(Boolean).join(' ');
