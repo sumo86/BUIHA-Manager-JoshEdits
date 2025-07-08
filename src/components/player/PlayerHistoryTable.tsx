@@ -34,6 +34,7 @@ export const PlayerHistoryTable = ({ history }: PlayerHistoryTableProps) => {
           <TableHead className="text-right">A</TableHead>
           <TableHead className="text-right">P</TableHead>
           <TableHead className="text-right">PIM</TableHead>
+          <TableHead>Captaincy</TableHead> {/* New column for captaincy */}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -47,6 +48,10 @@ export const PlayerHistoryTable = ({ history }: PlayerHistoryTableProps) => {
             <TableCell className="text-right">{season.assists}</TableCell>
             <TableCell className="text-right">{season.points}</TableCell>
             <TableCell className="text-right">{season.penaltyMinutes}</TableCell>
+            <TableCell>
+              {season.captaincy === 'C' && <span className="font-bold text-yellow-700">C</span>}
+              {season.captaincy === 'A' && <span className="font-medium text-yellow-500">A</span>}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -58,6 +63,7 @@ export const PlayerHistoryTable = ({ history }: PlayerHistoryTableProps) => {
           <TableCell className="text-right">{careerTotals.assists}</TableCell>
           <TableCell className="text-right">{careerTotals.points}</TableCell>
           <TableCell className="text-right">{careerTotals.penaltyMinutes}</TableCell>
+          <TableCell></TableCell> {/* Empty cell for captaincy in footer */}
         </TableRow>
       </TableFooter>
     </Table>
