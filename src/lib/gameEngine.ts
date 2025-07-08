@@ -29,13 +29,19 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
 };
 
 const getContexts = (gameState: GameState, userTeam: Team, opponentTeam: Team): Set<CoachingDecisionTrigger> => {
-    const { userScore, opponentScore, gameLog } = gameState;
+    const { userScore, opponentScore, gameLog, period, time } = gameState;
     const contexts: Set<CoachingDecisionTrigger> = new Set(['ANY']);
 
     // Score context
     if (userScore > opponentScore) contexts.add('USER_LEADING');
     else if (userScore < opponentScore) contexts.add('USER_TRAILING');
     else contexts.add('TIED_GAME');
+
+    // Time-sensitive contexts
+    const isLateGame = period === 3 && time >= 1080; // Last 2 minutes of the 3rd period
+    if (isLateGame && userScore === opponentScore) {
+        contexts.add('LATE_GAME_TIED');
+    }
 
     // Recent event context
     const lastEvent = gameLog[0];

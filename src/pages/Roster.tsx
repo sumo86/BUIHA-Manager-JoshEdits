@@ -8,10 +8,15 @@ import { Player, Position } from "@/types";
 import { Star, StarHalf } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 
 const Roster = () => {
   const navigate = useNavigate();
   const [team, setTeam] = useState(() => teams[0]);
+  const [positionFilter, setPositionFilter] = useState('All');
+  const [eligibilityFilter, setEligibilityFilter] = useState('All');
+  const [starRatingFilter, setStarRatingFilter] = useState([0.5]);
 
   const handlePlayerClick = (playerId: string) => {
     navigate(`/player/${playerId}`);
@@ -80,12 +85,84 @@ const Roster = () => {
     return player.eligibility;
   };
 
+  const uniqueEligibilities = ['All', ...Array.from(new Set(team.roster.map(p => p.eligibility)))];
+  const positionCategories = ['All', 'Forward', 'Defence', 'Goaltender'];
+  const forwardPositions: Position[] = ['C', 'LW', 'RW'];
+  const defencePositions: Position[] = ['LD', 'RD'];
+
+  const filteredRoster = team.roster.filter(player => {
+    if (positionFilter !== 'All') {
+      const isForward = forwardPositions.some(p => player.positions.includes(p));
+      const isDefence = defencePositions.some(p => player.positions.includes(p));
+      const isGoaltender = player.positions.includes('G');
+
+      if (positionFilter === 'Forward' && !isForward) return false;
+      if (positionFilter === 'Defence' && !isDefence) return false;
+      if (positionFilter === 'Goaltender' && !isGoaltender) return false;
+    }
+
+    if (eligibilityFilter !== 'All' && player.eligibility !== eligibilityFilter) {
+      return false;
+    }
+
+    if (player.starRating < starRatingFilter[0]) {
+      return false;
+    }
+
+    return true;
+  });
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">{team.name} Roster</h1>
       <p className="text-lg text-muted-foreground mb-6">
         Manage your players, lines, and training schedules here.
       </p>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="grid sm:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="position-filter">Position</Label>
+            <Select value={positionFilter} onValueChange={setPositionFilter}>
+              <SelectTrigger id="position-filter">
+                <SelectValue placeholder="Filter by position" />
+              </SelectTrigger>
+              <SelectContent>
+                {positionCategories.map(pos => (
+                  <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="eligibility-filter">Degree</Label>
+            <Select value={eligibilityFilter} onValueChange={setEligibilityFilter}>
+              <SelectTrigger id="eligibility-filter">
+                <SelectValue placeholder="Filter by degree" />
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueEligibilities.map(eligibility => (
+                  <SelectItem key={eligibility} value={eligibility}>{eligibility}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="star-filter">Minimum Star Rating: {starRatingFilter[0].toFixed(1)}</Label>
+            <Slider
+              id="star-filter"
+              min={0.5}
+              max={5}
+              step={0.5}
+              value={starRatingFilter}
+              onValueChange={setStarRatingFilter}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -108,7 +185,7 @@ const Roster = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {team.roster.map((player: Player) => {
+              {filteredRoster.map((player: Player) => {
                 const applicableRoles = getApplicableRoles(player);
                 return (
                   <TableRow 
