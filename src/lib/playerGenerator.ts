@@ -5,7 +5,7 @@ import { roles } from "@/data/roles";
 const firstNames = ["James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Charles", "Christopher", "Daniel", "Matthew", "Anthony", "Mark", "Donald", "Steven", "Paul", "Andrew", "Joshua", "Emily", "Hannah", "Megan", "Lauren", "Jessica", "Sophie", "Olivia", "Charlotte", "Chloe", "Amy"];
 const lastNames = ["Smith", "Jones", "Williams", "Brown", "Taylor", "Davies", "Wilson", "Evans", "Thomas", "Johnson", "Roberts", "Walker", "Wright", "Thompson", "White", "Green", "Hall", "Wood", "Harris", "Martin"];
 const nationalities = ["British", "Canadian", "American", "Swedish", "Finnish", "Czech", "Slovak", "German", "Swiss", "Latvian"];
-const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Alumni", "Staff"];
+const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
 const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
 
 const getRandomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -168,7 +168,6 @@ const eligibilityAgeRanges: Record<Player['eligibility'], { min: number, max: nu
     "UG Year 4": { min: 21, max: 22 },
     "Masters": { min: 22, max: 24 },
     "PhD": { min: 23, max: 28 },
-    "Alumni": { min: 22, max: 35 },
     "Staff": { min: 25, max: 40 },
 };
 
