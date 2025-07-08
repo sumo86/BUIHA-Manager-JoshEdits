@@ -44,15 +44,7 @@ export const ScoutingTable = () => {
         header: 'Est. Quality',
         cell: ({ row }) => <Badge variant="outline">{row.original.estimatedQuality}</Badge>,
       },
-      {
-        accessorKey: 'starRating',
-        header: 'Star Rating',
-        cell: ({ row }) => (
-          <div className="flex items-center">
-            {row.original.starRating} <Star className="w-4 h-4 ml-1 text-yellow-400" />
-          </div>
-        ),
-      },
+      // Removed starRating column to keep it a surprise
       {
         accessorKey: 'recruitmentCost',
         header: 'Cost',
