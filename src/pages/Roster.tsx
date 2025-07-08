@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { roles } from "@/data/roles";
 import { teams } from "@/data/teams";
-import { Player, Position } from "@/types"; // Import Position type
+import { Player, Position } from "@/types";
 import { Star, StarHalf } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -44,12 +44,32 @@ const Roster = () => {
     );
   };
 
+  const getAttributeColorClass = (value: number) => {
+    if (value >= 17) return "text-green-700";
+    if (value >= 13) return "text-green-500";
+    if (value >= 9) return "text-yellow-500";
+    if (value >= 5) return "text-orange-500";
+    return "text-red-500";
+  };
+
   const getApplicableRoles = (player: Player) => {
     if (player.positions.includes('G')) return [];
-    // Explicitly type the array to ensure 'p' is treated as Position
+
     const forwardPositions: Position[] = ['C', 'LW', 'RW'];
-    const positionType = forwardPositions.some(p => player.positions.includes(p)) ? 'Forward' : 'Defenceman';
-    return roles.filter(r => r.positions.includes(positionType));
+    const defencePositions: Position[] = ['LD', 'RD'];
+
+    const isForward = forwardPositions.some(p => player.positions.includes(p));
+    const isDefenceman = defencePositions.some(p => player.positions.includes(p));
+
+    if (isForward && isDefenceman) {
+        return roles; 
+    } else if (isForward) {
+        return roles.filter(r => r.positions.includes('Forward'));
+    } else if (isDefenceman) {
+        return roles.filter(r => r.positions.includes('Defenceman'));
+    }
+
+    return [];
   };
 
   return (
@@ -97,13 +117,18 @@ const Roster = () => {
                           value={player.role}
                           onValueChange={(newRole) => handleRoleChange(player.id, newRole)}
                         >
-                          <SelectTrigger className="w-[180px]">
+                          <SelectTrigger className="w-[220px]">
                             <SelectValue placeholder="Select a role" />
                           </SelectTrigger>
                           <SelectContent>
                             {applicableRoles.map(role => (
                               <SelectItem key={role.name} value={role.name}>
-                                {role.name}
+                                <div className="flex justify-between w-full pr-2">
+                                  <span>{role.name}</span>
+                                  <span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>
+                                    {player.roleSuitability[role.name]}
+                                  </span>
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>

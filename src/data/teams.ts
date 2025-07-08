@@ -55,7 +55,7 @@ const teamData = [
     { name: "Warwick and Coventry Panthers B", leagueDivision: "Non-Checking 3 - South", nationalsDivision: "Non-Checking 3" },
     { name: "Birmingham Lions D", leagueDivision: "Non-Checking 3 - South", nationalsDivision: "Non-Checking 3" },
     { name: "Bristol Bloodhounds", leagueDivision: "Non-Checking 3 - South", nationalsDivision: "Non-Checking 3" },
-    { name: "Newcastle Wildcats B", leagueDivision: "Non Checking 3 - North", nationalsDivision: "Non-Checking 3" },
+    { name: "Newcastle Wildcats B", leagueDivision: "Non-Checking 3 - North", nationalsDivision: "Non-Checking 3" },
     { name: "Imperial Devils C", leagueDivision: "Non-Checking 3 - South", nationalsDivision: "Non-Checking 3" },
     { name: "UEA Avalanche B", leagueDivision: "Non-Checking 3 - South", nationalsDivision: "Non-Checking 3" },
 ];
