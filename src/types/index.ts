@@ -188,4 +188,5 @@ export interface GameState {
   isGameOver: boolean;
   isPaused: boolean; // Added
   currentDecision: CoachingDecision | null; // Added
+  lastDecisionTime: number; // Added for cooldown
 }

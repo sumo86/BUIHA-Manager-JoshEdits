@@ -34,6 +34,7 @@ const Game = () => {
     isGameOver: false,
     isPaused: true,
     currentDecision: null,
+    lastDecisionTime: -Infinity, // Initialize to a very low number
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -63,7 +64,8 @@ const Game = () => {
       period: prev.period + 1,
       time: 0,
       isPaused: true,
-      gameLog: [{ time: "00:00", period: prev.period + 1, description: `Start of Period ${prev.period + 1}` }, ...prev.gameLog]
+      gameLog: [{ time: "00:00", period: prev.period + 1, description: `Start of Period ${prev.period + 1}` }, ...prev.gameLog],
+      lastDecisionTime: -Infinity, // Reset cooldown for new period
     }));
   };
 
@@ -79,7 +81,8 @@ const Game = () => {
       ...prev,
       currentDecision: null,
       isPaused: false,
-      gameLog: [newLogEntry, ...prev.gameLog]
+      gameLog: [newLogEntry, ...prev.gameLog],
+      lastDecisionTime: prev.time, // Update last decision time
     }));
   };
 

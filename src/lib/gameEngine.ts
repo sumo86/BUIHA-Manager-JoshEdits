@@ -61,6 +61,12 @@ const generateCoachingDecision = (gameState: GameState, userTeam: Team, opponent
     // Prevent decisions in the first 60 game seconds of a period
     if (gameState.time < 60) return null;
 
+    // Implement cooldown: no new decision within 100 game seconds of the last one
+    const COOLDOWN_PERIOD = 100; // game seconds
+    if (gameState.time - gameState.lastDecisionTime < COOLDOWN_PERIOD) {
+        return null;
+    }
+
     // Low chance to trigger a decision on any given tick
     if (Math.random() > 0.999) return null; // Adjusted for ~1-2 decisions per period
 
