@@ -1,4 +1,5 @@
 import { Team, GameEvent, GameState, CoachingDecision } from '@/types';
+import { coachingDecisions, CoachingDecisionTrigger } from '@/data/coachingDecisions';
 
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -7,7 +8,6 @@ const formatTime = (seconds: number): string => {
 };
 
 const generateGameEvent = (time: number, period: number, userTeam: Team, opponentTeam: Team): GameEvent | null => {
-    // Lower the probability of an event each second
     if (Math.random() > 0.05) return null;
 
     const eventTime = formatTime(time);
@@ -28,18 +28,50 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     }
 };
 
-const generateCoachingDecision = (): CoachingDecision | null => {
-    // Low chance to trigger a decision
-    if (Math.random() > 0.01) return null;
+const getContexts = (gameState: GameState, userTeam: Team, opponentTeam: Team): Set<CoachingDecisionTrigger> => {
+    const { userScore, opponentScore, gameLog } = gameState;
+    const contexts: Set<CoachingDecisionTrigger> = new Set(['ANY']);
+
+    // Score context
+    if (userScore > opponentScore) contexts.add('USER_LEADING');
+    else if (userScore < opponentScore) contexts.add('USER_TRAILING');
+    else contexts.add('TIED_GAME');
+
+    // Recent event context
+    const lastEvent = gameLog[0];
+    if (lastEvent && lastEvent.description.startsWith('GOAL!')) {
+        if (lastEvent.team === userTeam.name) contexts.add('RECENT_GOAL_FOR');
+        else contexts.add('RECENT_GOAL_AGAINST');
+    }
+
+    // Pressure/Stall context
+    const recentEvents = gameLog.slice(0, 4);
+    if (recentEvents.length === 4) {
+        if (recentEvents.every(e => e.team === opponentTeam.name)) {
+            contexts.add('OPPONENT_PRESSURE');
+        }
+        if (!recentEvents.some(e => e.team === userTeam.name && e.description.includes('shot'))) {
+            contexts.add('OFFENSIVE_STALL');
+        }
+    }
+    return contexts;
+}
+
+const generateCoachingDecision = (gameState: GameState, userTeam: Team, opponentTeam: Team): CoachingDecision | null => {
+    // Low chance to trigger a decision on any given tick
+    if (Math.random() > 0.02) return null;
+
+    const contexts = getContexts(gameState, userTeam, opponentTeam);
+    const possibleDecisions = coachingDecisions.filter(d => contexts.has(d.trigger));
+
+    if (possibleDecisions.length === 0) return null;
+
+    const decisionTemplate = possibleDecisions[Math.floor(Math.random() * possibleDecisions.length)];
 
     return {
         id: crypto.randomUUID(),
-        prompt: "The opponent's top line is creating a lot of pressure. How do you respond?",
-        options: [
-            { text: "Match with your checking line", effect: { type: 'TACTIC_MODIFIER', value: 0.1, duration: 120 } },
-            { text: "Tell your players to be more physical", effect: { type: 'MORALE_BOOST', value: 0.05, duration: 180 } },
-            { text: "Stick to the game plan", effect: { type: 'FATIGUE_REDUCTION', value: 0, duration: 0 } },
-        ]
+        prompt: decisionTemplate.prompt,
+        options: decisionTemplate.options,
     };
 };
 
@@ -50,7 +82,7 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
 
     newGameState.time += 1;
 
-    // Only generate events if not paused for a decision
+    // Only process game logic if not paused for a decision
     if (!newGameState.currentDecision) {
         newEvent = generateGameEvent(newGameState.time, newGameState.period, userTeam, opponentTeam);
         if (newEvent) {
@@ -58,17 +90,11 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
             if (newEvent.description.startsWith('GOAL!')) {
                 if (newEvent.team === userTeam.name) newGameState.userScore++;
                 else newGameState.opponentScore++;
-                // Higher chance of decision after a goal
-                if (Math.random() < 0.5) {
-                    newDecision = generateCoachingDecision();
-                }
             }
         }
 
-        // Check for a random decision trigger if no event happened
-        if (!newEvent && !newDecision) {
-            newDecision = generateCoachingDecision();
-        }
+        // Now, check if a decision should be triggered based on the new state
+        newDecision = generateCoachingDecision(newGameState, userTeam, opponentTeam);
     }
     
     if (newDecision) {
