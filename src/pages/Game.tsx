@@ -163,7 +163,7 @@ const Game = () => {
             <DialogTitle>Coach's Decision</DialogTitle>
             <DialogDescription>{gameState.currentDecision?.prompt}</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-col space-y-2">
+          <DialogFooter className="flex-col space-y-2 sm:flex-col sm:space-y-2">
             {gameState.currentDecision?.options.map((option, index) => (
               <Button key={index} onClick={() => handleDecision(gameState.currentDecision!, index)}>
                 {option.text}
