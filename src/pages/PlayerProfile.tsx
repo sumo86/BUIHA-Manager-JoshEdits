@@ -85,9 +85,14 @@ const PlayerProfile = () => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-3xl">{player.name}</CardTitle>
-            <p className="text-muted-foreground">
-              #{player.jerseyNumber} | {player.positions.join(", ")} | {player.age} years old | {player.nationality}
+            <CardTitle className="text-5xl font-extrabold leading-none tracking-tight">
+              {player.name}
+            </CardTitle>
+            <p className="text-4xl font-bold text-primary mt-2">
+              #{player.jerseyNumber}
+            </p>
+            <p className="text-muted-foreground text-lg mt-1">
+              {player.positions.join(", ")} | {player.age} years old | {player.nationality}
             </p>
           </div>
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
