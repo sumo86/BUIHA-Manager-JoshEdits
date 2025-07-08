@@ -304,8 +304,9 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
       history.push(generateRandomSeasonStats(isSkater, teamName, leagueDivision, currentYear - (numPriorSeasons - i)));
   }
 
+  const gender = Math.random() < 0.8 ? 'Male' : 'Female';
   const nationality = getRandomNationality();
-  const name = getRandomNameForNationality(nationality);
+  const name = getRandomNameForNationality(nationality, gender);
 
   return {
     id: crypto.randomUUID(),

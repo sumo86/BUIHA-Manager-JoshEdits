@@ -3,10 +3,12 @@ import { nameData } from './names';
 const getRandomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 // Based on BUIHA distribution:
-// UK (44.1) + England (18.5) + Scotland (2.1) + Wales (1.5) = 66.2%
-// Other (15.4%) is broken down into Euro/Asian/African/LatAm
+// Combined UK nations = 66.2%
 const nationalityGroups = {
-    British: 66.2,
+    English: 60.0,
+    Scottish: 3.0,
+    Welsh: 2.2,
+    NorthernIrish: 1.0,
     Canadian: 8.1,
     American: 5.9,
     European: 7.0,
@@ -16,7 +18,10 @@ const nationalityGroups = {
 };
 
 const specificNationalities = {
-    British: ["British"],
+    English: ["English"],
+    Scottish: ["Scottish"],
+    Welsh: ["Welsh"],
+    NorthernIrish: ["Northern Irish"],
     Canadian: ["Canadian"],
     American: ["American"],
     European: ["German", "French", "Czech", "Slovak", "Swedish", "Finnish", "Latvian", "Swiss"],
