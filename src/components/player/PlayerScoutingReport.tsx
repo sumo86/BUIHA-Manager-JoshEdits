@@ -142,7 +142,7 @@ const generateReport = (player: Player, team: Team) => {
 
   // Potential Assessment - only if significant potential
   let potentialAssessment = '';
-  if (potentialAbility - currentAbility > 70) { // Only show if potential is significantly higher (changed from 100 to 70)
+  if (potentialAbility - currentAbility > 50) { // Only show if potential is significantly higher (changed from 70 to 50)
     const potentialDivisions = Object.keys(divisionTiers);
     let bestFitDivision = leagueDivision; // Start with current division
 
