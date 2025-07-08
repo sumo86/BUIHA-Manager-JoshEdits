@@ -5,7 +5,7 @@ import { roles } from "@/data/roles";
 const firstNames = ["James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Charles", "Christopher", "Daniel", "Matthew", "Anthony", "Mark", "Donald", "Steven", "Paul", "Andrew", "Joshua", "Emily", "Hannah", "Megan", "Lauren", "Jessica", "Sophie", "Olivia", "Charlotte", "Chloe", "Amy"];
 const lastNames = ["Smith", "Jones", "Williams", "Brown", "Taylor", "Davies", "Wilson", "Evans", "Thomas", "Johnson", "Roberts", "Walker", "Wright", "Thompson", "White", "Green", "Hall", "Wood", "Harris", "Martin"];
 const nationalities = ["British", "Canadian", "American", "Swedish", "Finnish", "Czech", "Slovak", "German", "Swiss", "Latvian"];
-const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4 (Masters)", "PhD", "Alumni"];
+const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Alumni"];
 const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
 
 const getRandomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -134,7 +134,7 @@ const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDi
     return 1;
 };
 
-const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 'Forward' | 'Defenceman'): { suitabilities: { [key: string]: number }, bestRole: string } => {
+const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 'Forward' | 'Defenceman'): { suitabilities: { [key: string]: number }, bestRole: string, highestSuitability: number } => {
     const suitabilities: { [key: string]: number } = {};
     let bestRole = '';
     let highestSuitability = -1;
@@ -158,16 +158,17 @@ const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 
         }
     });
 
-    return { suitabilities, bestRole };
+    return { suitabilities, bestRole, highestSuitability };
 };
 
 const eligibilityAgeRanges: Record<Player['eligibility'], { min: number, max: number }> = {
     "UG Year 1": { min: 18, max: 19 },
     "UG Year 2": { min: 19, max: 20 },
     "UG Year 3": { min: 20, max: 21 },
-    "UG Year 4 (Masters)": { min: 22, max: 24 },
+    "UG Year 4": { min: 21, max: 22 },
+    "Masters": { min: 22, max: 24 },
     "PhD": { min: 23, max: 28 },
-    "Alumni": { min: 25, max: 35 }, // Capped at 35 for now
+    "Alumni": { min: 22, max: 35 },
 };
 
 const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string): Player => {
@@ -220,10 +221,34 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
 
   if (isSkater) {
       const skaterAttributes = attributes as SkaterAttributes;
-      const playerPositionType = ['C', 'LW', 'RW'].includes(primaryPosition) ? 'Forward' : 'Defenceman';
-      const { suitabilities, bestRole } = calculateRoleSuitability(skaterAttributes, playerPositionType);
-      roleSuitability = suitabilities;
-      role = bestRole;
+      const forwardPositions: Position[] = ['C', 'LW', 'RW'];
+      const defencePositions: Position[] = ['LD', 'RD'];
+      const isForward = forwardPositions.some(p => positions.includes(p));
+      const isDefenceman = defencePositions.some(p => positions.includes(p));
+
+      let finalSuitabilities: { [key: string]: number } = {};
+      let bestRoleOverall = '';
+      let highestSuitabilityOverall = -1;
+
+      if (isForward) {
+          const { suitabilities, bestRole, highestSuitability } = calculateRoleSuitability(skaterAttributes, 'Forward');
+          finalSuitabilities = { ...finalSuitabilities, ...suitabilities };
+          if (highestSuitability > highestSuitabilityOverall) {
+              highestSuitabilityOverall = highestSuitability;
+              bestRoleOverall = bestRole;
+          }
+      }
+      if (isDefenceman) {
+          const { suitabilities, bestRole, highestSuitability } = calculateRoleSuitability(skaterAttributes, 'Defenceman');
+          finalSuitabilities = { ...finalSuitabilities, ...suitabilities };
+          if (highestSuitability > highestSuitabilityOverall) {
+              highestSuitabilityOverall = highestSuitability;
+              bestRoleOverall = bestRole;
+          }
+      }
+      
+      roleSuitability = finalSuitabilities;
+      role = bestRoleOverall;
   }
 
   return {
@@ -236,7 +261,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     starRating,
     morale: "Content",
     healthStatus: "Healthy",
-    eligibility, // Use the generated eligibility
+    eligibility,
     archetype,
     attributes,
     currentAbility,
