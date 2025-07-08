@@ -39,7 +39,7 @@ const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string):
 
     // Base generation for visible attributes, tied to division average
     const generateVisibleAttribute = () => {
-        return targetAvgPerAttr + (Math.random() * 16 - 8); // Increased range from 10 to 16 for more variance
+        return targetAvgPerAttr + (Math.random() * 12 - 6); // Reduced range for less variance
     };
 
     // Generation for hidden/highly variable attributes, wider and independent
