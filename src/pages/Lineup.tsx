@@ -14,12 +14,10 @@ import { useTeam } from '@/context/TeamContext';
 const getAttributeColorClass = (value: number) => {
     if (value >= 17) return "text-green-700";
     if (value >= 13) return "text-green-500";
-    if (value >= 9) return "text-yellow-500";
-    if (value >= 5) return "text-orange-500";
-    return "text-red-500";
+    return "text-yellow-500"; // Default for average
 };
 
-const renderStars = (rating: number, isHalf?: boolean) => {
+const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
     const halfStar = rating % 1 !== 0;
     const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
@@ -329,14 +327,20 @@ const Lineup = () => {
                                                     <Select value={team.tactics[category]} onValueChange={val => handleTacticChange(category, val)}>
                                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                                         <SelectContent>
-                                                            {categoryTactics.map(t => (
-                                                                <SelectItem key={t.tactic} value={t.tactic}>
-                                                                    <div className="flex justify-between w-full items-center pr-2">
-                                                                        <span>{t.tactic}</span>
-                                                                        {renderStars(calculateTacticSuitability(t, team.roster).score)}
-                                                                    </div>
-                                                                </SelectItem>
-                                                            ))}
+                                                            {categoryTactics.map(t => {
+                                                                const tacticSuitability = calculateTacticSuitability(t, team.roster);
+                                                                const scaledScore = tacticSuitability.score * 4; // Scale 1-5 to 4-20
+                                                                return (
+                                                                    <SelectItem key={t.tactic} value={t.tactic}>
+                                                                        <div className="flex justify-between w-full items-center pr-2">
+                                                                            <span>{t.tactic}</span>
+                                                                            <span className="text-muted-foreground text-sm">
+                                                                                Suitability: {scaledScore}/20
+                                                                            </span>
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                );
+                                                            })}
                                                         </SelectContent>
                                                     </Select>
                                                     {selectedTactic && (
