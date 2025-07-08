@@ -87,14 +87,6 @@ const generateReport = (player: Player, team: Team) => {
       `One notable positive is ${firstName}'s ${strengths[0]}.`
     ];
     pros = proPhrases[Math.floor(Math.random() * proPhrases.length)];
-    if (strengths.length > 1) {
-      const additionalProPhrases = [
-        ` ${firstName} also shows strong ${strengths[1]}.`,
-        ` Additionally, ${firstName} is strong in ${strengths[1]}.`,
-        ` Another asset is ${firstName}'s ${strengths[1]}.`
-      ];
-      pros += additionalProPhrases[Math.floor(Math.random() * additionalProPhrases.length)];
-    }
   }
 
   let cons = '';
@@ -105,14 +97,6 @@ const generateReport = (player: Player, team: Team) => {
       `On the other hand, ${firstName} shows weakness in ${weaknesses[0]}.`
     ];
     cons = conPhrases[Math.floor(Math.random() * conPhrases.length)];
-    if (weaknesses.length > 1) {
-      const additionalConPhrases = [
-        ` Additionally, ${firstName} has weak ${weaknesses[1]}.`,
-        ` ${firstName} also needs to improve ${weaknesses[1]}.`,
-        ` Another concern is ${firstName}'s ${weaknesses[1]}.`
-      ];
-      cons += additionalConPhrases[Math.floor(Math.random() * additionalConPhrases.length)];
-    }
   }
 
   // Hints for hidden attributes
@@ -143,13 +127,13 @@ const generateReport = (player: Player, team: Team) => {
 
   // Injury Proneness
   if (hidden.injuryProneness <= 5) {
-    hiddenHints.push(`Remarkably durable, ${firstName} rarely misses a game and can withstand a lot of punishment.`);
+    hiddenHints.push(`Remarkably durable, ${firstName} rarely misses a game.`);
   } else if (hidden.injuryProneness <= 8) {
     hiddenHints.push(`${firstName} is quite durable and rarely misses a game.`);
   } else if (hidden.injuryProneness >= 14) {
     hiddenHints.push(`${firstName} seems to have issues with durability and has a history of nagging injuries.`);
   } else if (hidden.injuryProneness >= 17) {
-    hiddenHints.push(`${firstName}'s career has been plagued by frequent and severe injuries, raising long-term concerns.`);
+    hiddenHints.push(`${firstName}'s career has been plagued by frequent and severe injuries.`);
   }
 
   // Big Games (Clutch Performance)
@@ -158,12 +142,12 @@ const generateReport = (player: Player, team: Team) => {
   } else if (hidden.bigGames >= 15) {
     hiddenHints.push(`${firstName} is known to perform well under pressure in important matchups.`);
   } else if (hidden.bigGames <= 7) {
-    hiddenHints.push(`${firstName} can sometimes struggle when the stakes are highest, tending to disappear in big games.`);
+    hiddenHints.push(`${firstName} can sometimes struggle when the stakes are highest.`);
   }
 
   // Temperament (Discipline)
   if (hidden.temperament <= 5) {
-    hiddenHints.push(`${firstName} plays with a fiery edge and can be prone to taking bad penalties, often costing ${firstName}'s team.`);
+    hiddenHints.push(`${firstName} plays with a fiery edge and can be prone to taking bad penalties.`);
   } else if (hidden.temperament <= 8) {
     hiddenHints.push(`${firstName} can be a bit hot-headed and occasionally takes unnecessary penalties.`);
   } else if (hidden.temperament >= 15) {
