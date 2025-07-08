@@ -144,5 +144,10 @@ export const teams: Team[] = teamData.map(team => {
         roster: roster,
         lineup: lineup,
         tactics: defaultTactics,
+        wins: 0, // Initialize new properties
+        losses: 0,
+        otLosses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
     };
 });

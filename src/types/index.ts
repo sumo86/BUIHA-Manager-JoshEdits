@@ -95,6 +95,17 @@ export interface PlayerArchetype {
   description: string;
 }
 
+export interface PlayerSeasonStats {
+  season: string;
+  team: string;
+  league: string;
+  gamesPlayed: number;
+  goals: number;
+  assists: number;
+  points: number;
+  penaltyMinutes: number;
+}
+
 export interface Player {
   id: string;
   jerseyNumber: number;
@@ -113,6 +124,7 @@ export interface Player {
   role?: string;
   roleSuitability: { [key: string]: number };
   yearsLeftInProgram?: number;
+  history?: PlayerSeasonStats[];
 }
 
 export interface Tactic {
@@ -157,6 +169,11 @@ export interface Team {
   roster: Player[];
   lineup: Lineup;
   tactics: TacticsSelection;
+  wins: number;
+  losses: number;
+  otLosses: number;
+  goalsFor: number;
+  goalsAgainst: number;
 }
 
 export interface GameEvent {

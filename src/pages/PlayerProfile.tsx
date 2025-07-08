@@ -1,19 +1,32 @@
 import { useParams } from 'react-router-dom';
-import { teams } from '@/data/teams';
-import { Player, SkaterAttributes, GoalieAttributes } from '@/types';
+import { useTeam } from '@/context/TeamContext';
+import { Player, SkaterAttributes, GoalieAttributes } from '@/types'; // Removed PartialPlayer
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, User, MapPin, Shield, HeartPulse, GraduationCap, StarHalf, ShieldQuestion } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PlayerHistoryTable } from '@/components/player/PlayerHistoryTable';
+import { PlayerEditForm } from '@/components/player/PlayerEditForm';
 
 const PlayerProfile = () => {
     const { playerId } = useParams<{ playerId: string }>();
+    const { teams, userTeam, updateTeam } = useTeam();
     
     const player = teams.flatMap(team => team.roster).find(p => p.id === playerId);
 
     if (!player) {
         return <div className="text-center p-10">Player not found.</div>;
     }
+
+    const isUserPlayer = userTeam.roster.some(p => p.id === player.id);
+
+    const handleSave = (updatedPlayerData: Partial<Player>) => { // Using Partial<Player>
+        const newRoster = userTeam.roster.map(p => 
+            p.id === updatedPlayerData.id ? { ...p, ...updatedPlayerData } : p
+        );
+        updateTeam({ ...userTeam, roster: newRoster });
+    };
 
     const isSkater = 'acceleration' in player.attributes;
     const skaterAttrs = player.attributes as SkaterAttributes;
@@ -26,13 +39,9 @@ const PlayerProfile = () => {
         
         return (
           <div className="flex">
-            {[...Array(fullStars)].map((_, i) => (
-              <Star key={`full-${i}`} className="h-5 w-5 text-yellow-400 fill-yellow-400" />
-            ))}
+            {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} className="h-5 w-5 text-yellow-400 fill-yellow-400" />)}
             {halfStar && <StarHalf key="half" className="h-5 w-5 text-yellow-400 fill-yellow-400" />}
-            {[...Array(emptyStars)].map((_, i) => (
-              <Star key={`empty-${i}`} className="h-5 w-5 text-gray-300" />
-            ))}
+            {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} className="h-5 w-5 text-gray-300" />)}
           </div>
         );
     };
@@ -84,90 +93,63 @@ const PlayerProfile = () => {
                 {isSkater && (
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <ShieldQuestion size={20} /> Role Suitability
-                            </CardTitle>
-                            <CardDescription>
-                                Player's fit for each role (1-20).
-                            </CardDescription>
+                            <CardTitle className="flex items-center gap-2"><ShieldQuestion size={20} /> Role Suitability</CardTitle>
+                            <CardDescription>Player's fit for each role (1-20).</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            {Object.entries(player.roleSuitability)
-                                .sort(([, a], [, b]) => b - a)
-                                .map(([role, suitability]) => (
-                                    <AttributeItem key={role} label={role} value={suitability} />
-                                ))}
+                            {Object.entries(player.roleSuitability).sort(([, a], [, b]) => b - a).map(([role, suitability]) => (
+                                <AttributeItem key={role} label={role} value={suitability} />
+                            ))}
                         </CardContent>
                     </Card>
                 )}
             </div>
             <div className="lg:col-span-3">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Player Attributes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {isSkater ? (
-                            <div className="space-y-6">
-                                <AttributeCategory title="Physical">
-                                    <AttributeItem label="Acceleration" value={skaterAttrs.acceleration} />
-                                    <AttributeItem label="Agility" value={skaterAttrs.agility} />
-                                    <AttributeItem label="Balance" value={skaterAttrs.balance} />
-                                    <AttributeItem label="Fighting" value={skaterAttrs.fighting} />
-                                    <AttributeItem label="Speed" value={skaterAttrs.speed} />
-                                    <AttributeItem label="Stamina" value={skaterAttrs.stamina} />
-                                    <AttributeItem label="Strength" value={skaterAttrs.strength} />
-                                    <AttributeItem label="Hitting" value={skaterAttrs.hitting} />
-                                </AttributeCategory>
-                                <Separator />
-                                <AttributeCategory title="Mental">
-                                    <AttributeItem label="Aggression" value={skaterAttrs.aggression} />
-                                    <AttributeItem label="Bravery" value={skaterAttrs.bravery} />
-                                    <AttributeItem label="Determination" value={skaterAttrs.determination} />
-                                    <AttributeItem label="Leadership" value={skaterAttrs.leadership} />
-                                    <AttributeItem label="Professionalism" value={skaterAttrs.professionalism} />
-                                    <AttributeItem label="Team Player" value={skaterAttrs.teamPlayer} />
-                                    <AttributeItem label="Temperament" value={skaterAttrs.temperament} />
-                                </AttributeCategory>
-                                <Separator />
-                                <AttributeCategory title="Offensive">
-                                    <AttributeItem label="Getting Open" value={skaterAttrs.gettingOpen} />
-                                    <AttributeItem label="Offensive Read" value={skaterAttrs.offensiveRead} />
-                                    <AttributeItem label="Passing" value={skaterAttrs.passing} />
-                                    <AttributeItem label="Puckhandling" value={skaterAttrs.puckhandling} />
-                                    <AttributeItem label="Screening" value={skaterAttrs.screening} />
-                                    <AttributeItem label="Shooting Accuracy" value={skaterAttrs.shootingAccuracy} />
-                                    <AttributeItem label="Shooting Range" value={skaterAttrs.shootingRange} />
-                                </AttributeCategory>
-                                <Separator />
-                                <AttributeCategory title="Defensive">
-                                    <AttributeItem label="Checking" value={skaterAttrs.checking} />
-                                    <AttributeItem label="Defensive Read" value={skaterAttrs.defensiveRead} />
-                                    <AttributeItem label="Faceoffs" value={skaterAttrs.faceoffs} />
-                                    <AttributeItem label="Positioning" value={skaterAttrs.positioning} />
-                                    <AttributeItem label="Shot Blocking" value={skaterAttrs.shotBlocking} />
-                                    <AttributeItem label="Stickchecking" value={skaterAttrs.stickchecking} />
-                                </AttributeCategory>
-                            </div>
-                        ) : (
-                            <AttributeCategory title="Goaltending">
-                                <AttributeItem label="Blocker" value={goalieAttrs.blocker} />
-                                <AttributeItem label="Glove" value={goalieAttrs.glove} />
-                                <AttributeItem label="Low Shots" value={goalieAttrs.lowShots} />
-                                <AttributeItem label="Positioning" value={goalieAttrs.positioning} />
-                                <AttributeItem label="Rebound Control" value={goalieAttrs.rebound} />
-                                <AttributeItem label="Recovery" value={goalieAttrs.recovery} />
-                                <AttributeItem label="Reflexes" value={goalieAttrs.reflexes} />
-                                <AttributeItem label="Passing" value={goalieAttrs.passing} />
-                                <AttributeItem label="Poke Check" value={goalieAttrs.pokeCheck} />
-                                <AttributeItem label="Puckhandling" value={goalieAttrs.puckhandling} />
-                                <AttributeItem label="Skating" value={goalieAttrs.skating} />
-                                <AttributeItem label="Mental Toughness" value={goalieAttrs.mentalToughness} />
-                                <AttributeItem label="Stamina" value={goalieAttrs.goaltenderStamina} />
-                            </AttributeCategory>
-                        )}
-                    </CardContent>
-                </Card>
+                <Tabs defaultValue="attributes">
+                    <TabsList>
+                        <TabsTrigger value="attributes">Attributes</TabsTrigger>
+                        <TabsTrigger value="history">History</TabsTrigger>
+                        {isUserPlayer && <TabsTrigger value="edit">Edit</TabsTrigger>}
+                    </TabsList>
+                    <TabsContent value="attributes" className="mt-4">
+                        <Card>
+                            <CardHeader><CardTitle>Player Attributes</CardTitle></CardHeader>
+                            <CardContent>
+                                {isSkater ? (
+                                    <div className="space-y-6">
+                                        <AttributeCategory title="Physical"><AttributeItem label="Acceleration" value={skaterAttrs.acceleration} /><AttributeItem label="Agility" value={skaterAttrs.agility} /><AttributeItem label="Balance" value={skaterAttrs.balance} /><AttributeItem label="Fighting" value={skaterAttrs.fighting} /><AttributeItem label="Speed" value={skaterAttrs.speed} /><AttributeItem label="Stamina" value={skaterAttrs.stamina} /><AttributeItem label="Strength" value={skaterAttrs.strength} /><AttributeItem label="Hitting" value={skaterAttrs.hitting} /></AttributeCategory>
+                                        <Separator />
+                                        <AttributeCategory title="Mental"><AttributeItem label="Aggression" value={skaterAttrs.aggression} /><AttributeItem label="Bravery" value={skaterAttrs.bravery} /><AttributeItem label="Determination" value={skaterAttrs.determination} /><AttributeItem label="Leadership" value={skaterAttrs.leadership} /><AttributeItem label="Professionalism" value={skaterAttrs.professionalism} /><AttributeItem label="Team Player" value={skaterAttrs.teamPlayer} /><AttributeItem label="Temperament" value={skaterAttrs.temperament} /></AttributeCategory>
+                                        <Separator />
+                                        <AttributeCategory title="Offensive"><AttributeItem label="Getting Open" value={skaterAttrs.gettingOpen} /><AttributeItem label="Offensive Read" value={skaterAttrs.offensiveRead} /><AttributeItem label="Passing" value={skaterAttrs.passing} /><AttributeItem label="Puckhandling" value={skaterAttrs.puckhandling} /><AttributeItem label="Screening" value={skaterAttrs.screening} /><AttributeItem label="Shooting Accuracy" value={skaterAttrs.shootingAccuracy} /><AttributeItem label="Shooting Range" value={skaterAttrs.shootingRange} /></AttributeCategory>
+                                        <Separator />
+                                        <AttributeCategory title="Defensive"><AttributeItem label="Checking" value={skaterAttrs.checking} /><AttributeItem label="Defensive Read" value={skaterAttrs.defensiveRead} /><AttributeItem label="Faceoffs" value={skaterAttrs.faceoffs} /><AttributeItem label="Positioning" value={skaterAttrs.positioning} /><AttributeItem label="Shot Blocking" value={skaterAttrs.shotBlocking} /><AttributeItem label="Stickchecking" value={skaterAttrs.stickchecking} /></AttributeCategory>
+                                    </div>
+                                ) : (
+                                    <AttributeCategory title="Goaltending"><AttributeItem label="Blocker" value={goalieAttrs.blocker} /><AttributeItem label="Glove" value={goalieAttrs.glove} /><AttributeItem label="Low Shots" value={goalieAttrs.lowShots} /><AttributeItem label="Positioning" value={goalieAttrs.positioning} /><AttributeItem label="Rebound Control" value={goalieAttrs.rebound} /><AttributeItem label="Recovery" value={goalieAttrs.recovery} /><AttributeItem label="Reflexes" value={goalieAttrs.reflexes} /><AttributeItem label="Passing" value={goalieAttrs.passing} /><AttributeItem label="Poke Check" value={goalieAttrs.pokeCheck} /><AttributeItem label="Puckhandling" value={goalieAttrs.puckhandling} /><AttributeItem label="Skating" value={goalieAttrs.skating} /><AttributeItem label="Mental Toughness" value={goalieAttrs.mentalToughness} /><AttributeItem label="Stamina" value={goalieAttrs.goaltenderStamina} /></AttributeCategory>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="history" className="mt-4">
+                        <Card>
+                            <CardHeader><CardTitle>Player History</CardTitle></CardHeader>
+                            <CardContent>
+                                <PlayerHistoryTable history={player.history || []} />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    {isUserPlayer && (
+                        <TabsContent value="edit" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Edit Player</CardTitle></CardHeader>
+                                <CardContent>
+                                    <PlayerEditForm player={player} onSave={handleSave} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    )}
+                </Tabs>
             </div>
         </div>
     );

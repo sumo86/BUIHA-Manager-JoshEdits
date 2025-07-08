@@ -109,6 +109,26 @@ const Game = () => {
     updateTeam(gameUserTeam);
   };
 
+  const handleAbandonGame = () => {
+    if (!opponentTeam) return;
+
+    const updatedUserTeam = {
+        ...userTeam,
+        losses: (userTeam.losses || 0) + 1,
+        goalsAgainst: (userTeam.goalsAgainst || 0) + 5,
+    };
+    updateTeam(updatedUserTeam);
+
+    const updatedOpponentTeam = {
+        ...opponentTeam,
+        wins: (opponentTeam.wins || 0) + 1,
+        goalsFor: (opponentTeam.goalsFor || 0) + 5,
+    };
+    updateTeam(updatedOpponentTeam);
+
+    blocker.proceed?.();
+  };
+
   if (!opponentTeam) return <div>Opponent not found.</div>;
 
   const getPeriodText = () => {
@@ -240,14 +260,14 @@ const Game = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure you want to leave?</AlertDialogTitle>
               <AlertDialogDescription>
-                The current game will be abandoned and the result will be a loss. This action cannot be undone.
+                The current game will be abandoned and the result will be a 5-0 loss. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => blocker.reset?.()}>
                 Stay
               </AlertDialogCancel>
-              <AlertDialogAction onClick={() => blocker.proceed?.()}>
+              <AlertDialogAction onClick={handleAbandonGame}>
                 Abandon Game
               </AlertDialogAction>
             </AlertDialogFooter>
