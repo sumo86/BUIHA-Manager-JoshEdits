@@ -349,13 +349,13 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
   return roster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 };
 
-// Create a map for quick lookup of team's league division
-const teamDivisionMap = new Map(allTeamsData.map(team => [team.name, team.leagueDivision]));
-
 export const generateRecruits = (userLeagueDivision: string, allTeamNames: string[]): Player[] => {
     const recruits: Player[] = [];
     const usedJerseyNumbers = new Set<number>();
     const numRecruits = 30 + Math.floor(Math.random() * 21); // 30-50 recruits
+
+    // Create a map for quick lookup of team's league division inside the function
+    const teamDivisionMap = new Map(allTeamsData.map(team => [team.name, team.leagueDivision]));
 
     for (let i = 0; i < numRecruits; i++) {
         let eligibility: Player['eligibility'];
