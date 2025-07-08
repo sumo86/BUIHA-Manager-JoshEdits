@@ -171,7 +171,7 @@ const eligibilityAgeRanges: Record<Player['eligibility'], { min: number, max: nu
     "Staff": { min: 25, max: 40 },
 };
 
-const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string): Player => {
+const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, allowedEligibilities?: Player['eligibility'][]): Player => {
   let jerseyNumber: number;
   do {
     jerseyNumber = Math.floor(Math.random() * 98) + 1;
@@ -202,7 +202,8 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const archetype = getArchetypeForPosition(position);
   const attributes = generateAttributes(archetype, leagueDivision);
   
-  const eligibility = getRandomItem(eligibilities);
+  const eligibilitiesToUse = allowedEligibilities || eligibilities;
+  const eligibility = getRandomItem(eligibilitiesToUse);
   const ageRange = eligibilityAgeRanges[eligibility];
   const age = Math.floor(Math.random() * (ageRange.max - ageRange.min + 1)) + ageRange.min;
   
@@ -282,16 +283,23 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
 export const generateRoster = (leagueDivision: string): Player[] => {
   const roster: Player[] = [];
   const usedJerseyNumbers = new Set<number>();
+  const nonStaffEligibilities = eligibilities.filter(e => e !== 'Staff');
 
-  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision));
-  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision));
+  // Generate core non-staff players to meet minimums
+  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, nonStaffEligibilities));
+  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision, nonStaffEligibilities));
 
-  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision));
-  for (let i = 0; i < 4; i++) roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision));
-  
-  for (let i = 0; i < 4; i++) roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision));
-  for (let i = 0; i < 4; i++) roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision));
+  // Generate remaining players for the full roster (can be staff)
+  roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision));
+  roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision));
+  roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision));
+  roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision));
+  roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision));
 
   return roster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 };

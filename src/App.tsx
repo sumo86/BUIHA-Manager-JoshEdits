@@ -12,29 +12,32 @@ import Recruitment from "./pages/Recruitment";
 import Finances from "./pages/Finances";
 import PlayerProfile from "./pages/PlayerProfile";
 import Lineup from "./pages/Lineup";
+import { TeamProvider } from "./context/TeamContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/standings" element={<Standings />} />
-            <Route path="/roster" element={<Roster />} />
-            <Route path="/player/:playerId" element={<PlayerProfile />} />
-            <Route path="/recruitment" element={<Recruitment />} />
-            <Route path="/finances" element={<Finances />} />
-            <Route path="/lineup" element={<Lineup />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <TeamProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/standings" element={<Standings />} />
+              <Route path="/roster" element={<Roster />} />
+              <Route path="/player/:playerId" element={<PlayerProfile />} />
+              <Route path="/recruitment" element={<Recruitment />} />
+              <Route path="/finances" element={<Finances />} />
+              <Route path="/lineup" element={<Lineup />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </TeamProvider>
   </QueryClientProvider>
 );
 

@@ -1,5 +1,4 @@
-import { useState, useMemo } from 'react';
-import { teams } from '@/data/teams';
+import { useMemo } from 'react';
 import { tactics } from '@/data/tactics';
 import { roles, Role } from '@/data/roles';
 import { Player, Position, Team, Lineup as LineupType, TacticsSelection } from '@/types';
@@ -10,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { calculateTacticSuitability } from '@/lib/tactics';
 import { Star, StarHalf } from 'lucide-react';
+import { useTeam } from '@/context/TeamContext';
 
 const getAttributeColorClass = (value: number) => {
     if (value >= 17) return "text-green-700";
@@ -72,7 +72,7 @@ const PlayerLineupCard = ({ player, onRoleChange }: { player: Player, onRoleChan
 };
 
 const Lineup = () => {
-    const [team, setTeam] = useState<Team>(teams[0]);
+    const { userTeam: team, updateTeam } = useTeam();
     const playerMap = useMemo(() => new Map(team.roster.map(p => [p.id, p])), [team.roster]);
 
     const assignedPlayerIds = useMemo(() => {
@@ -127,30 +127,24 @@ const Lineup = () => {
     };
 
     const handleLineupChange = (posType: 'forwards' | 'defence', pos: keyof (LineupType['forwards'] | LineupType['defence']), index: number, playerId: string | null) => {
-        setTeam(prevTeam => {
-            const newLineup = JSON.parse(JSON.stringify(prevTeam.lineup));
-            (newLineup[posType][pos] as (string | null)[])[index] = playerId;
-            return { ...prevTeam, lineup: newLineup };
-        });
+        const newLineup = JSON.parse(JSON.stringify(team.lineup));
+        (newLineup[posType][pos] as (string | null)[])[index] = playerId;
+        updateTeam({ ...team, lineup: newLineup });
     };
 
     const handleGoalieChange = (role: 'starter' | 'backup', playerId: string | null) => {
-        setTeam(prevTeam => {
-            const newLineup = { ...prevTeam.lineup };
-            newLineup.goalies[role] = playerId;
-            return { ...prevTeam, lineup: newLineup };
-        });
+        const newLineup = { ...team.lineup };
+        newLineup.goalies[role] = playerId;
+        updateTeam({ ...team, lineup: newLineup });
     };
 
     const handleRoleChange = (playerId: string, newRole: string) => {
-        setTeam(prevTeam => ({
-            ...prevTeam,
-            roster: prevTeam.roster.map(p => p.id === playerId ? { ...p, role: newRole } : p)
-        }));
+        const newRoster = team.roster.map(p => p.id === playerId ? { ...p, role: newRole } : p);
+        updateTeam({ ...team, roster: newRoster });
     };
 
     const handleTacticChange = (category: string, tactic: string) => {
-        setTeam(prevTeam => ({ ...prevTeam, tactics: { ...prevTeam.tactics, [category]: tactic } }));
+        updateTeam({ ...team, tactics: { ...team.tactics, [category]: tactic } });
     };
 
     const autoFillLines = () => {
@@ -183,7 +177,7 @@ const Lineup = () => {
         if (goalies[0]) newLineup.goalies.starter = goalies[0].id;
         if (goalies[1]) newLineup.goalies.backup = goalies[1].id;
 
-        setTeam(prev => ({ ...prev, lineup: newLineup }));
+        updateTeam({ ...team, lineup: newLineup });
     };
 
     const autoFillTactics = () => {
@@ -196,7 +190,7 @@ const Lineup = () => {
                 newTactics[category] = bestTactic.tactic.tactic;
             });
         });
-        setTeam(prev => ({ ...prev, tactics: newTactics }));
+        updateTeam({ ...team, tactics: newTactics });
     };
 
     const groupedTactics = useMemo(() => tactics.reduce((acc, t) => {
@@ -228,7 +222,7 @@ const Lineup = () => {
         }
 
         players = getAvailablePlayers(positionForFilter, currentId);
-        const player = currentId ? playerMap.get(currentId) : null;
+        const player = currentId ? playerMap.get(currentId) : undefined; // Use undefined for clarity
 
         if (player) {
             return (
@@ -240,13 +234,13 @@ const Lineup = () => {
         }
 
         return (
-            <Select value={currentId || 'empty'} onValueChange={(val) => onValueChangeHandler(val === 'empty' ? null : val)}>
+            <Select value={currentId || 'empty'} onValueChange={(val: string) => onValueChangeHandler(val === 'empty' ? null : val)}>
                 <SelectTrigger className="w-full h-full min-h-[118px] bg-muted/50 border-dashed">
                     <SelectValue placeholder={placeholderText} />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="empty">Empty</SelectItem>
-                    {players.map(p => (
+                    {players.map((p: Player) => ( // Explicitly type 'p' as Player
                         <SelectItem key={p.id} value={p.id}>
                             {p.name} ({p.positions.join(', ')}) - {p.starRating}⭐ {p.eligibility === 'Staff' && '(Staff)'}
                         </SelectItem>
