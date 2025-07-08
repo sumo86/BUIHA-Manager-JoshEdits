@@ -45,8 +45,8 @@ const generateReport = (player: Player, team: Team) => {
     }
   });
 
-  let pros = strengths.length > 0 ? `Strengths include his ${strengths.slice(0, 3).join(', ')}.` : '';
-  let cons = weaknesses.length > 0 ? `Weaknesses include his ${weaknesses.slice(0, 3).join(', ')}.` : '';
+  let pros = strengths.length > 0 ? `Strengths include ${player.name}'s ${strengths.slice(0, 3).join(', ')}.` : '';
+  let cons = weaknesses.length > 0 ? `Weaknesses include ${player.name}'s ${weaknesses.slice(0, 3).join(', ')}.` : '';
 
   // Hints for hidden attributes
   const hiddenHints: string[] = [];
@@ -54,53 +54,53 @@ const generateReport = (player: Player, team: Team) => {
 
   // Professionalism & Determination (Work Ethic)
   if (hidden.professionalism >= 18 && hidden.determination >= 18) {
-    hiddenHints.push("His unwavering dedication and relentless work ethic set him apart.");
+    hiddenHints.push(`${player.name}'s unwavering dedication and relentless work ethic are exceptional.`);
   } else if (hidden.professionalism >= 15 && hidden.determination >= 15) {
-    hiddenHints.push("He is known for his strong work ethic and never-give-up attitude.");
+    hiddenHints.push(`${player.name} is known for a strong work ethic and never-give-up attitude.`);
   } else if (hidden.professionalism >= 12 && hidden.determination >= 12) {
-    hiddenHints.push("He generally puts in a good effort and is committed to improving.");
+    hiddenHints.push(`${player.name} generally puts in a good effort and is committed to improving.`);
   } else if (hidden.professionalism <= 7 || hidden.determination <= 7) {
-    hiddenHints.push("He sometimes lacks focus in practice and could be more dedicated.");
+    hiddenHints.push(`${player.name} sometimes lacks focus in practice and could be more dedicated.`);
   } else if (hidden.professionalism <= 4 || hidden.determination <= 4) {
-    hiddenHints.push("Concerns exist about his commitment; he often seems disengaged.");
+    hiddenHints.push(`Concerns exist about ${player.name}'s commitment; ${player.name} often seems disengaged.`);
   }
 
   // Leadership
   if (hidden.leadership >= 18) {
-    hiddenHints.push("A true captain, he inspires those around him with his exceptional leadership.");
+    hiddenHints.push(`A true captain, ${player.name} inspires teammates with exceptional leadership.`);
   } else if (hidden.leadership >= 15) {
-    hiddenHints.push("He is a natural leader in the locker room, guiding his teammates by example.");
+    hiddenHints.push(`${player.name} is a natural leader in the locker room, guiding teammates by example.`);
   } else if (hidden.leadership <= 7) {
-    hiddenHints.push("He tends to keep to himself and isn't much of a vocal presence.");
+    hiddenHints.push(`${player.name} tends to keep to ${player.name}self and is not a vocal presence.`);
   }
 
   // Injury Proneness
   if (hidden.injuryProneness <= 5) {
-    hiddenHints.push("Remarkably durable, he rarely misses a game and can withstand a lot of punishment.");
+    hiddenHints.push(`Remarkably durable, ${player.name} rarely misses a game and can withstand a lot of punishment.`);
   } else if (hidden.injuryProneness <= 8) {
-    hiddenHints.push("He is quite durable and rarely misses a game.");
+    hiddenHints.push(`${player.name} is quite durable and rarely misses a game.`);
   } else if (hidden.injuryProneness >= 14) {
-    hiddenHints.push("He seems to have issues with durability and has a history of nagging injuries.");
+    hiddenHints.push(`${player.name} seems to have issues with durability and has a history of nagging injuries.`);
   } else if (hidden.injuryProneness >= 17) {
-    hiddenHints.push("His career has been plagued by frequent and severe injuries, raising long-term concerns.");
+    hiddenHints.push(`${player.name}'s career has been plagued by frequent and severe injuries, raising long-term concerns.`);
   }
 
   // Big Games (Clutch Performance)
   if (hidden.bigGames >= 18) {
-    hiddenHints.push("He thrives under immense pressure, consistently delivering in the biggest moments.");
+    hiddenHints.push(`${player.name} thrives under immense pressure, consistently delivering in the biggest moments.`);
   } else if (hidden.bigGames >= 15) {
-    hiddenHints.push("He is known to perform well under pressure in important matchups.");
+    hiddenHints.push(`${player.name} is known to perform well under pressure in important matchups.`);
   } else if (hidden.bigGames <= 7) {
-    hiddenHints.push("He can sometimes struggle when the stakes are highest, tending to disappear in big games.");
+    hiddenHints.push(`${player.name} can sometimes struggle when the stakes are highest, tending to disappear in big games.`);
   }
 
   // Temperament (Discipline)
   if (hidden.temperament <= 5) {
-    hiddenHints.push("He plays with a fiery edge and can be prone to taking bad penalties, often costing his team.");
+    hiddenHints.push(`${player.name} plays with a fiery edge and can be prone to taking bad penalties, often costing ${player.name}'s team.`);
   } else if (hidden.temperament <= 8) {
-    hiddenHints.push("He can be a bit hot-headed and occasionally takes unnecessary penalties.");
+    hiddenHints.push(`${player.name} can be a bit hot-headed and occasionally takes unnecessary penalties.`);
   } else if (hidden.temperament >= 15) {
-    hiddenHints.push("He maintains excellent composure under pressure and rarely takes a bad penalty.");
+    hiddenHints.push(`${player.name} maintains excellent composure under pressure and rarely takes a bad penalty.`);
   }
 
   return [summary, pros, cons, ...hiddenHints].filter(Boolean).join(' ');
