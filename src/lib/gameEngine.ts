@@ -59,7 +59,7 @@ const getContexts = (gameState: GameState, userTeam: Team, opponentTeam: Team): 
 
 const generateCoachingDecision = (gameState: GameState, userTeam: Team, opponentTeam: Team): CoachingDecision | null => {
     // Low chance to trigger a decision on any given tick
-    if (Math.random() > 0.998) return null; // Adjusted for ~2-3 decisions per period
+    if (Math.random() > 0.999) return null; // Adjusted for ~1-2 decisions per period
 
     const contexts = getContexts(gameState, userTeam, opponentTeam);
     const possibleDecisions = coachingDecisions.filter(d => contexts.has(d.trigger));

@@ -88,73 +88,61 @@ const defaultTactics: TacticsSelection = {
     "Defensive Zone Coverage": "Strict Zonal",
 };
 
-// Helper to get players by position
-const getPlayersByPosition = (roster: Player[], position: Position) =>
-    roster.filter(p => p.positions.includes(position));
-
-// Function to populate a lineup with players from a roster
 const populateLineup = (roster: Player[]): Lineup => {
-    const populated: Lineup = {
-        forwards: { lw: [], c: [], rw: [] },
-        defence: { ld: [], rd: [] },
+    const lineup: Lineup = {
+        forwards: { lw: Array(3).fill(null), c: Array(3).fill(null), rw: Array(3).fill(null) },
+        defence: { ld: Array(3).fill(null), rd: Array(3).fill(null) },
         goalies: { starter: null, backup: null },
     };
 
-    const assignedPlayerIds = new Set<string>();
+    const playerPool = [...roster];
 
-    const assignToSlots = (slots: (string | null)[], players: Player[], count: number) => {
-        let assigned = 0;
-        for (let i = 0; i < players.length && assigned < count; i++) {
-            if (!assignedPlayerIds.has(players[i].id)) {
-                slots.push(players[i].id);
-                assignedPlayerIds.add(players[i].id);
-                assigned++;
-            }
+    const assignPlayer = (position: Position, slotIndex?: number) => {
+        let bestPlayerIndex = -1;
+
+        // Prioritize primary position
+        bestPlayerIndex = playerPool.findIndex(p => p.positions[0] === position);
+
+        // Fallback to any player who can play the position
+        if (bestPlayerIndex === -1) {
+            bestPlayerIndex = playerPool.findIndex(p => p.positions.includes(position));
         }
-        // Fill remaining slots with null if not enough players
-        while (slots.length < count) {
-            slots.push(null);
+
+        if (bestPlayerIndex !== -1) {
+            const player = playerPool.splice(bestPlayerIndex, 1)[0];
+            return player.id;
         }
+        return null;
     };
 
-    // Forwards
-    const lwPlayers = getPlayersByPosition(roster, 'LW');
-    const cPlayers = getPlayersByPosition(roster, 'C');
-    const rwPlayers = getPlayersByPosition(roster, 'RW');
-
-    assignToSlots(populated.forwards.lw, lwPlayers, 3);
-    assignToSlots(populated.forwards.c, cPlayers, 3);
-    assignToSlots(populated.forwards.rw, rwPlayers, 3);
-
-    // Defense
-    const ldPlayers = getPlayersByPosition(roster, 'LD');
-    const rdPlayers = getPlayersByPosition(roster, 'RD');
-
-    assignToSlots(populated.defence.ld, ldPlayers, 3);
-    assignToSlots(populated.defence.rd, rdPlayers, 3);
-
-    // Goalies
-    const gPlayers = getPlayersByPosition(roster, 'G');
-    if (gPlayers[0] && !assignedPlayerIds.has(gPlayers[0].id)) {
-        populated.goalies.starter = gPlayers[0].id;
-        assignedPlayerIds.add(gPlayers[0].id);
-    }
-    if (gPlayers[1] && !assignedPlayerIds.has(gPlayers[1].id)) {
-        populated.goalies.backup = gPlayers[1].id;
-        assignedPlayerIds.add(gPlayers[1].id);
+    // Fill forward lines
+    for (let i = 0; i < 3; i++) {
+        lineup.forwards.lw[i] = assignPlayer('LW');
+        lineup.forwards.c[i] = assignPlayer('C');
+        lineup.forwards.rw[i] = assignPlayer('RW');
     }
 
-    return populated;
+    // Fill defence pairings
+    for (let i = 0; i < 3; i++) {
+        lineup.defence.ld[i] = assignPlayer('LD');
+        lineup.defence.rd[i] = assignPlayer('RD');
+    }
+
+    // Fill goalies
+    lineup.goalies.starter = assignPlayer('G');
+    lineup.goalies.backup = assignPlayer('G');
+
+    return lineup;
 };
 
 export const teams: Team[] = teamData.map(team => {
     const roster = generateRoster(team.leagueDivision);
-    const lineup = populateLineup(roster); // Populate lineup based on generated roster
+    const lineup = populateLineup(roster);
     return {
         ...team,
         nationalsDivision: getNationalsDivision(team.leagueDivision),
         roster: roster,
-        lineup: lineup, // Use the populated lineup
+        lineup: lineup,
         tactics: defaultTactics,
     };
 });
