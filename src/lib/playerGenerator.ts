@@ -207,6 +207,13 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const ageRange = eligibilityAgeRanges[eligibility];
   const age = Math.floor(Math.random() * (ageRange.max - ageRange.min + 1)) + ageRange.min;
   
+  let yearsLeftInProgram: number | undefined = undefined;
+  if (eligibility === 'Masters') {
+      yearsLeftInProgram = Math.floor(Math.random() * 2) + 1; // 1 or 2
+  } else if (eligibility === 'PhD') {
+      yearsLeftInProgram = Math.floor(Math.random() * 5) + 1; // 1 to 5
+  }
+
   const currentAbility = calculateCurrentAbility(attributes, isSkater);
   
   const potentialBonus = Math.floor(Math.random() * 150) * ((30 - age) / 12);
@@ -269,6 +276,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     potentialAbility,
     role,
     roleSuitability,
+    yearsLeftInProgram,
   };
 };
 

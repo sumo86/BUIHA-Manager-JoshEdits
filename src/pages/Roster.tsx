@@ -72,6 +72,14 @@ const Roster = () => {
     return [];
   };
 
+  const renderEligibility = (player: Player) => {
+    if ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && player.yearsLeftInProgram) {
+        const yearsText = player.yearsLeftInProgram === 1 ? '1 year left' : `${player.yearsLeftInProgram} years left`;
+        return `${player.eligibility} (${yearsText})`;
+    }
+    return player.eligibility;
+  };
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">{team.name} Roster</h1>
@@ -148,7 +156,7 @@ const Roster = () => {
                         {player.healthStatus}
                       </Badge>
                     </TableCell>
-                    <TableCell>{player.eligibility}</TableCell>
+                    <TableCell>{renderEligibility(player)}</TableCell>
                   </TableRow>
                 )
               })}

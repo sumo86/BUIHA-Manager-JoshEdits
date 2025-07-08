@@ -112,6 +112,7 @@ export interface Player {
   potentialAbility: number;
   role?: string;
   roleSuitability: { [key: string]: number };
+  yearsLeftInProgram?: number;
 }
 
 export interface Tactic {
