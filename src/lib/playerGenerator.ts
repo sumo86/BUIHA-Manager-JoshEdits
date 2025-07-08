@@ -270,7 +270,13 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
 
   const currentAbility = calculateCurrentAbility(attributes, isSkater);
   
-  const potentialBonus = Math.floor(Math.random() * 150) * ((30 - age) / 12);
+  let potentialBonus: number;
+  if (isSkater) {
+      potentialBonus = Math.floor(Math.random() * 80) * ((30 - age) / 12); // Reduced max bonus for skaters
+  } else {
+      potentialBonus = Math.floor(Math.random() * 40) * ((30 - age) / 12); // Reduced max bonus for goalies
+  }
+
   const maxAbility = isSkater ? 560 : 260;
   let potentialAbility = Math.round(currentAbility + potentialBonus);
   if (potentialAbility > maxAbility) potentialAbility = maxAbility;
