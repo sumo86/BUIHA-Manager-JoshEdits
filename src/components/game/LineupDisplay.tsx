@@ -13,12 +13,25 @@ const PlayerCard = ({ playerId, roster, slotPosition }: { playerId: string | nul
     return <div className="border rounded-lg p-2 text-center bg-muted/50 h-[60px] flex items-center justify-center text-muted-foreground text-sm">Empty</div>;
   }
 
-  // Check if the player's primary position is different from the slot position
+  // Creates a stable "random" number based on a seed string (e.g., player ID).
+  // This ensures the penalty is the same every time for the same player in the same slot.
+  const getDeterministicRandom = (seed: string) => {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+        const char = seed.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    const x = Math.sin(Math.abs(hash)) * 10000;
+    return x - Math.floor(x); // Return a value between 0 and 1
+  };
+
   const isOutOfPrimaryPosition = player.positions[0] !== slotPosition;
   let displayRating = player.starRating;
 
   if (isOutOfPrimaryPosition) {
-    const penalty = Math.random() * 1.5 + 1; // Random penalty between 1.0 and 2.5
+    const deterministicRandom = getDeterministicRandom(player.id + slotPosition);
+    const penalty = 1.0 + deterministicRandom * 1.5; // Penalty between 1.0 and 2.5
     displayRating = Math.max(0.5, player.starRating - penalty);
   }
 
