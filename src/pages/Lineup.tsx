@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { teams } from '@/data/teams';
 import { tactics } from '@/data/tactics';
-import { roles, Role } from '@/data/roles'; // Corrected import for Role
+import { roles, Role } from '@/data/roles';
 import { Player, Position, Team, Lineup as LineupType, TacticsSelection } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -84,14 +84,39 @@ const Lineup = () => {
         return ids;
     }, [team.lineup]);
 
+    const staffInLineupCount = useMemo(() => {
+        const lineupPlayerIds = [
+            ...Object.values(team.lineup.forwards).flat(),
+            ...Object.values(team.lineup.defence).flat(),
+            team.lineup.goalies.starter,
+            team.lineup.goalies.backup,
+        ].filter((id): id is string => id !== null);
+
+        return lineupPlayerIds.reduce((count, id) => {
+            const player = playerMap.get(id);
+            if (player && player.eligibility === 'Staff') {
+                return count + 1;
+            }
+            return count;
+        }, 0);
+    }, [team.lineup, playerMap]);
+
     const getAvailablePlayers = (position: Position, currentSelection: string | null): Player[] => {
         const skaters = team.roster.filter(p => !p.positions.includes('G'));
         const goalies = team.roster.filter(p => p.positions.includes('G'));
-
         const players = position === 'G' ? goalies : skaters;
+        const staffLimitReached = staffInLineupCount >= 2;
 
         return players
-            .filter(p => assignedPlayerIds.has(p.id) ? p.id === currentSelection : true)
+            .filter(p => {
+                if (assignedPlayerIds.has(p.id) && p.id !== currentSelection) {
+                    return false;
+                }
+                if (p.eligibility === 'Staff' && staffLimitReached) {
+                    return p.id === currentSelection;
+                }
+                return true;
+            })
             .sort((a, b) => {
                 const aIsNatural = a.positions.includes(position);
                 const bIsNatural = b.positions.includes(position);
@@ -184,7 +209,7 @@ const Lineup = () => {
     const LineupSlot = ({ posType, pos, index }: { posType: 'forwards' | 'defence' | 'goalies', pos: string, index: number | null }) => {
         let currentId: string | null;
         let players: Player[];
-        let onValueChangeHandler: (val: string) => void;
+        let onValueChangeHandler: (val: string | null) => void;
         let placeholderText: string;
         let positionForFilter: Position;
 
@@ -192,9 +217,9 @@ const Lineup = () => {
             const typedPos = pos as keyof (LineupType['forwards'] | LineupType['defence']);
             currentId = team.lineup[posType][typedPos][index!];
             onValueChangeHandler = (val) => handleLineupChange(posType, typedPos, index!, val);
-            positionForFilter = pos.toUpperCase() as Position; // e.g., "LW", "LD"
+            positionForFilter = pos.toUpperCase() as Position;
             placeholderText = `Select ${pos.toUpperCase()}`;
-        } else { // posType === 'goalies'
+        } else {
             const typedPos = pos as keyof LineupType['goalies'];
             currentId = team.lineup.goalies[typedPos];
             onValueChangeHandler = (val) => handleGoalieChange(typedPos, val);
@@ -203,20 +228,19 @@ const Lineup = () => {
         }
 
         players = getAvailablePlayers(positionForFilter, currentId);
-
         const player = currentId ? playerMap.get(currentId) : null;
 
         if (player) {
             return (
                 <div className="flex flex-col items-center gap-1">
                     <PlayerLineupCard player={player} onRoleChange={(newRole) => handleRoleChange(player.id, newRole)} />
-                    <Button variant="link" className="h-auto p-0 text-xs" onClick={() => onValueChangeHandler('empty')}>Remove</Button>
+                    <Button variant="link" className="h-auto p-0 text-xs" onClick={() => onValueChangeHandler(null)}>Remove</Button>
                 </div>
             );
         }
 
         return (
-            <Select value={currentId || 'empty'} onValueChange={onValueChangeHandler}>
+            <Select value={currentId || 'empty'} onValueChange={(val) => onValueChangeHandler(val === 'empty' ? null : val)}>
                 <SelectTrigger className="w-full h-full min-h-[118px] bg-muted/50 border-dashed">
                     <SelectValue placeholder={placeholderText} />
                 </SelectTrigger>
@@ -224,7 +248,7 @@ const Lineup = () => {
                     <SelectItem value="empty">Empty</SelectItem>
                     {players.map(p => (
                         <SelectItem key={p.id} value={p.id}>
-                            {p.name} ({p.positions.join(', ')}) - {p.starRating}⭐
+                            {p.name} ({p.positions.join(', ')}) - {p.starRating}⭐ {p.eligibility === 'Staff' && '(Staff)'}
                         </SelectItem>
                     ))}
                 </SelectContent>
@@ -252,6 +276,9 @@ const Lineup = () => {
                             <CardTitle>Set Your Lines</CardTitle>
                             <Button onClick={autoFillLines}>Auto-Fill Lines</Button>
                         </div>
+                        <CardDescription>
+                            You can have a maximum of 2 staff members in your lineup. Currently: {staffInLineupCount}/2
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div>

@@ -105,7 +105,7 @@ export interface Player {
   starRating: number;
   morale: "Ecstatic" | "Happy" | "Content" | "Unhappy" | "Angry";
   healthStatus: "Healthy" | "Minor Injury" | "Major Injury";
-  eligibility: "UG Year 1" | "UG Year 2" | "UG Year 3" | "UG Year 4" | "Masters" | "PhD" | "Alumni";
+  eligibility: "UG Year 1" | "UG Year 2" | "UG Year 3" | "UG Year 4" | "Masters" | "PhD" | "Alumni" | "Staff";
   archetype: PlayerArchetype;
   attributes: SkaterAttributes | GoalieAttributes;
   currentAbility: number;
