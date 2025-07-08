@@ -104,35 +104,35 @@ const generateReport = (player: Player, team: Team) => {
   const hidden = attributes as any; // To access hidden attributes by string key
 
   // Professionalism & Determination (Work Ethic)
-  if (hidden.professionalism >= 18 && hidden.determination >= 18) hiddenHints.push({ text: `Exceptional work ethic and dedication.`, score: 10 });
-  else if (hidden.professionalism >= 15 && hidden.determination >= 15) hiddenHints.push({ text: `Strong work ethic and committed to improvement.`, score: 8 });
-  else if (hidden.professionalism <= 7 || hidden.determination <= 7) hiddenHints.push({ text: `Lacks focus and dedication.`, score: 8 });
-  else if (hidden.professionalism <= 4 || hidden.determination <= 4) hiddenHints.push({ text: `Significant concerns about commitment and engagement.`, score: 10 });
+  if (hidden.professionalism >= 18 && hidden.determination >= 18) hiddenHints.push({ text: `demonstrates exceptional work ethic and dedication.`, score: 10 });
+  else if (hidden.professionalism >= 15 && hidden.determination >= 15) hiddenHints.push({ text: `has a strong work ethic and is committed to improvement.`, score: 8 });
+  else if (hidden.professionalism <= 7 || hidden.determination <= 7) hiddenHints.push({ text: `lacks focus and dedication.`, score: 8 });
+  else if (hidden.professionalism <= 4 || hidden.determination <= 4) hiddenHints.push({ text: `raises significant concerns about commitment and engagement.`, score: 10 });
 
   // Leadership
-  if (hidden.leadership >= 18) hiddenHints.push({ text: `Exceptional leader, inspires teammates.`, score: 9 });
-  else if (hidden.leadership >= 15) hiddenHints.push({ text: `Natural leader, guides by example.`, score: 7 });
-  else if (hidden.leadership <= 7) hiddenHints.push({ text: `Not a vocal presence, keeps to themself.`, score: 7 });
+  if (hidden.leadership >= 18) hiddenHints.push({ text: `is an exceptional leader, inspiring teammates.`, score: 9 });
+  else if (hidden.leadership >= 15) hiddenHints.push({ text: `is a natural leader, guiding by example.`, score: 7 });
+  else if (hidden.leadership <= 7) hiddenHints.push({ text: `is not a vocal presence and tends to keep to themself.`, score: 7 });
 
   // Injury Proneness
-  if (hidden.injuryProneness <= 5) hiddenHints.push({ text: `Remarkably durable, rarely misses games.`, score: 9 });
-  else if (hidden.injuryProneness >= 17) hiddenHints.push({ text: `Career plagued by frequent, severe injuries.`, score: 10 });
+  if (hidden.injuryProneness <= 5) hiddenHints.push({ text: `is remarkably durable, rarely missing games.`, score: 9 });
+  else if (hidden.injuryProneness >= 17) hiddenHints.push({ text: `has a career plagued by frequent, severe injuries.`, score: 10 });
 
   // Big Games (Clutch Performance)
-  if (hidden.bigGames >= 18) hiddenHints.push({ text: `Thrives under pressure, delivers in big moments.`, score: 9 });
-  else if (hidden.bigGames <= 7) hiddenHints.push({ text: `Struggles when stakes are highest, disappears in big games.`, score: 8 });
+  if (hidden.bigGames >= 18) hiddenHints.push({ text: `thrives under pressure, delivering in big moments.`, score: 9 });
+  else if (hidden.bigGames <= 7) hiddenHints.push({ text: `struggles when stakes are highest, often disappearing in big games.`, score: 8 });
 
   // Temperament (Discipline)
-  if (hidden.temperament <= 5) hiddenHints.push({ text: `Fiery edge, prone to bad penalties.`, score: 9 });
-  else if (hidden.temperament >= 15) hiddenHints.push({ text: `Excellent composure, rarely takes bad penalties.`, score: 7 });
+  if (hidden.temperament <= 5) hiddenHints.push({ text: `plays with a fiery edge and is prone to bad penalties.`, score: 9 });
+  else if (hidden.temperament >= 15) hiddenHints.push({ text: `shows excellent composure and rarely takes bad penalties.`, score: 7 });
 
   // Greed
-  if (hidden.greed <= 5) hiddenHints.push({ text: `Selfless and team-oriented.`, score: 7 });
-  else if (hidden.greed >= 15) hiddenHints.push({ text: `Overly focused on personal gain.`, score: 8 });
+  if (hidden.greed <= 5) hiddenHints.push({ text: `is selfless and team-oriented.`, score: 7 });
+  else if (hidden.greed >= 15) hiddenHints.push({ text: `is overly focused on personal gain.`, score: 8 });
 
   // Controversy
-  if (hidden.controversy <= 5) hiddenHints.push({ text: `Clean public image, avoids distractions.`, score: 7 });
-  else if (hidden.controversy >= 15) hiddenHints.push({ text: `History of off-ice incidents, potential distraction.`, score: 8 });
+  if (hidden.controversy <= 5) hiddenHints.push({ text: `maintains a clean public image and avoids distractions.`, score: 7 });
+  else if (hidden.controversy >= 15) hiddenHints.push({ text: `has a history of off-ice incidents, which could be a distraction.`, score: 8 });
 
   // Sort hints by score and take top 3 (or fewer if not enough)
   const selectedHiddenHints = hiddenHints
@@ -142,7 +142,7 @@ const generateReport = (player: Player, team: Team) => {
 
   // Potential Assessment - only if significant potential
   let potentialAssessment = '';
-  if (potentialAbility - currentAbility > 100) { // Only show if potential is significantly higher
+  if (potentialAbility - currentAbility > 70) { // Only show if potential is significantly higher (changed from 100 to 70)
     const potentialDivisions = Object.keys(divisionTiers);
     let bestFitDivision = leagueDivision; // Start with current division
 
