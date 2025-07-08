@@ -124,6 +124,11 @@ export interface Tactic {
   weakVs:string;
 }
 
+export interface TacticSuitability {
+    score: number; // 1-5
+    explanation: string;
+}
+
 export interface Lineup {
   forwards: {
     lw: (string | null)[];
