@@ -182,6 +182,7 @@ export interface Financials {
   totalBudget: number;
   budgetAllocations: BudgetAllocations;
   iceTimeCostPerGame: number;
+  equipmentCost: number;
 }
 
 export interface Team {

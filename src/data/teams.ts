@@ -144,18 +144,19 @@ export const teams: Team[] = teamData.map(team => {
         roster: roster,
         lineup: lineup,
         tactics: defaultTactics,
-        wins: 0, // Initialize new properties
+        wins: 0,
         losses: 0,
         otLosses: 0,
         goalsFor: 0,
         goalsAgainst: 0,
         financials: {
-            totalBudget: 15000, // Default total budget
-            iceTimeCostPerGame: 350, // Default ice time cost
+            totalBudget: 15000,
+            iceTimeCostPerGame: 350,
+            equipmentCost: Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500,
             budgetAllocations: {
                 Travel: 0,
                 Equipment: 0,
-                "Ice Time": 0, // This will be auto-calculated in the component
+                "Ice Time": 0,
                 "Operating Costs": 0,
                 Recruiting: 0,
                 "Student Life": 0,

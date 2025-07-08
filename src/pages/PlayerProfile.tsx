@@ -13,15 +13,26 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PlayerEditForm } from "@/components/player/PlayerEditForm";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
-  const { userTeam, updateTeam } = useTeam();
+  const { teams, userTeam, updateTeam } = useTeam();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const player = userTeam.roster.find((p) => p.id === playerId);
+  const { player, team } = useMemo(() => {
+    for (const t of teams) {
+      const p = t.roster.find((p) => p.id === playerId);
+      if (p) {
+        return { player: p, team: t };
+      }
+    }
+    // Check scouting and recruited pools as well, if needed in the future
+    return { player: undefined, team: undefined };
+  }, [teams, playerId]);
+
+  const isUserPlayer = player && team?.name === userTeam.name;
 
   if (!player) {
     return <div>Player not found</div>;
@@ -75,11 +86,15 @@ const PlayerProfile = () => {
 
   const allUsedJerseyNumbers = userTeam.roster.map(p => p.jerseyNumber);
 
+  const sortedRoles = isSkater ? Object.entries(player.roleSuitability)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5) : [];
+
   return (
     <div className="space-y-6">
       <Button variant="outline" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Roster
+        Back
       </Button>
 
       <Card>
@@ -95,30 +110,28 @@ const PlayerProfile = () => {
               {player.positions.join(", ")} | {player.age} years old | {player.nationality}
             </p>
           </div>
-          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Edit className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Edit {player.name}</DialogTitle>
-              </DialogHeader>
-              <PlayerEditForm 
-                player={player} 
-                onSave={handleSaveChanges}
-                allUsedJerseyNumbers={allUsedJerseyNumbers}
-              />
-            </DialogContent>
-          </Dialog>
+          {isUserPlayer && (
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit {player.name}</DialogTitle>
+                </DialogHeader>
+                <PlayerEditForm 
+                  player={player} 
+                  onSave={handleSaveChanges}
+                  allUsedJerseyNumbers={allUsedJerseyNumbers}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </CardHeader>
-        <CardContent>
-          {/* ... other player details ... */}
-        </CardContent>
       </Card>
 
-      {/* Attribute Cards */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {isSkater ? (
           <>
@@ -146,6 +159,22 @@ const PlayerProfile = () => {
           </Card>
         )}
       </div>
+
+      {isSkater && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Role Suitability</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {sortedRoles.map(([role, suitability]) => (
+              <div key={role} className="flex items-center justify-between text-sm">
+                <span className="font-medium">{role}</span>
+                <span className={`font-bold ${getAttributeColorClass(suitability)}`}>{suitability}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {player.history && player.history.length > 0 && (
         <PlayerHistoryTable history={player.history} />

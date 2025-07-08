@@ -18,19 +18,35 @@ const categoryDetails: Record<BudgetCategory, { icon: React.ElementType, descrip
   "Facilities": { icon: Building, description: "Upgrades and new construction", tooltip: "Long-term investments in improving team facilities." },
 };
 
+const categoryColors: Record<BudgetCategory, string> = {
+  "Travel": "bg-blue-100 text-blue-800",
+  "Equipment": "bg-orange-100 text-orange-800",
+  "Ice Time": "bg-indigo-100 text-indigo-800",
+  "Operating Costs": "bg-gray-100 text-gray-800",
+  "Recruiting": "bg-green-100 text-green-800",
+  "Student Life": "bg-pink-100 text-pink-800",
+  "Facilities": "bg-purple-100 text-purple-800",
+};
+
 export const BudgetAllocation = () => {
   const { userTeam, updateBudgetAllocations } = useTeam();
   const [allocations, setAllocations] = useState<BudgetAllocations>(userTeam.financials.budgetAllocations);
 
-  const numberOfHomeGames = 13; // Assuming a 26-game season, half at home
-  const iceTimeCost = useMemo(() => {
-    return numberOfHomeGames * userTeam.financials.iceTimeCostPerGame;
-  }, [userTeam.financials.iceTimeCostPerGame]);
+  const numberOfHomeGames = 13;
+  const numberOfAwayGames = 13;
+  
+  const iceTimeCost = useMemo(() => numberOfHomeGames * userTeam.financials.iceTimeCostPerGame, [userTeam.financials.iceTimeCostPerGame]);
+  const travelCost = useMemo(() => numberOfAwayGames * 200, []);
+  const equipmentCost = useMemo(() => userTeam.financials.equipmentCost, [userTeam.financials.equipmentCost]);
 
-  // Update local state to include the calculated ice time cost
   useEffect(() => {
-    setAllocations(prev => ({ ...prev, "Ice Time": iceTimeCost }));
-  }, [iceTimeCost]);
+    setAllocations(prev => ({ 
+      ...prev, 
+      "Ice Time": iceTimeCost,
+      "Travel": travelCost,
+      "Equipment": equipmentCost,
+    }));
+  }, [iceTimeCost, travelCost, equipmentCost]);
 
   const handleAllocationChange = (category: BudgetCategory, value: string) => {
     const numberValue = parseInt(value, 10);
@@ -68,11 +84,13 @@ export const BudgetAllocation = () => {
           {Object.keys(categoryDetails).map((cat) => {
             const category = cat as BudgetCategory;
             const Icon = categoryDetails[category].icon;
-            const isReadOnly = category === "Ice Time";
+            const isReadOnly = ["Ice Time", "Travel", "Equipment"].includes(category);
             return (
-              <div key={category} className="flex items-center justify-between p-4 rounded-lg border">
+              <div key={category} className="flex items-center justify-between p-3 rounded-lg border">
                 <div className="flex items-center gap-4">
-                  <Icon className="h-8 w-8 text-muted-foreground" />
+                  <div className={`flex items-center justify-center h-12 w-12 rounded-lg ${categoryColors[category]}`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">{category}</h3>
