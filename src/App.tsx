@@ -17,6 +17,7 @@ import { TeamProvider } from "./context/TeamContext";
 import BuihaOverview from "./pages/BuihaOverview";
 import PlayGame from "./pages/PlayGame";
 import Game from "./pages/Game";
+import Training from "./pages/Training";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const router = createBrowserRouter(
       <Route path="/finances" element={<Finances />} />
       <Route path="/facilities" element={<Facilities />} />
       <Route path="/lineup" element={<Lineup />} />
+      <Route path="/training" element={<Training />} />
       <Route path="/buiha-overview" element={<BuihaOverview />} />
       <Route path="/play-game" element={<PlayGame />} />
       <Route path="/game/:opponentName" element={<Game />} />

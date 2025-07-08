@@ -125,7 +125,7 @@ const Lineup = () => {
     };
 
     const handleLineupChange = (posType: 'forwards' | 'defence', pos: keyof (LineupType['forwards'] | LineupType['defence']), index: number, playerId: string | null) => {
-        const newLineup = JSON.parse(JSON.stringify(team.lineup));
+        const newLineup = JSON.parse(JSON.stringify(team.lineup)) as LineupType;
         (newLineup[posType][pos] as (string | null)[])[index] = playerId;
         updateTeam({ ...team, lineup: newLineup });
     };

@@ -70,7 +70,7 @@ const PlayerProfile = () => {
         <div key={attr as string}>
           {renderAttribute(
             (attr as string).replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase()),
-            player.attributes[attr as keyof typeof attributes]
+            (player.attributes[attr as keyof typeof attributes] as number) // Type assertion here
           )}
         </div>
       ))}
@@ -87,7 +87,7 @@ const PlayerProfile = () => {
   const allUsedJerseyNumbers = userTeam.roster.map(p => p.jerseyNumber);
 
   const sortedRoles = isSkater ? Object.entries(player.roleSuitability)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([, a]: [string, number], [, b]: [string, number]) => b - a)
     .slice(0, 5) : [];
 
   return (
@@ -168,7 +168,7 @@ const PlayerProfile = () => {
             <CardTitle>Top Role Suitability</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {sortedRoles.map(([role, suitability]) => (
+            {sortedRoles.map(([role, suitability]: [string, number]) => (
               <div key={role} className="flex items-center justify-between text-sm">
                 <span className="font-medium">{role}</span>
                 <span className={`font-bold ${getAttributeColorClass(suitability)}`}>{suitability}</span>

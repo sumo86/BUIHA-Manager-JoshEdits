@@ -176,7 +176,7 @@ const Roster = () => {
                 <SelectValue placeholder="Filter by degree" />
               </SelectTrigger>
               <SelectContent>
-                {uniqueEligibilities.map(eligibility => (
+                {uniqueEligibilities.map((eligibility: string) => (
                   <SelectItem key={eligibility} value={eligibility}>{eligibility}</SelectItem>
                 ))}
               </SelectContent>
@@ -211,8 +211,6 @@ const Roster = () => {
                 <TableHead>Age</TableHead>
                 <TableHead>Nationality</TableHead>
                 <TableHead>Rating</TableHead>
-                <TableHead>Current Ability</TableHead> {/* New Column */}
-                <TableHead>Potential Ability</TableHead> {/* New Column */}
                 <TableHead>Morale</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Eligibility</TableHead>
@@ -268,8 +266,6 @@ const Roster = () => {
                     <TableCell>{player.age}</TableCell>
                     <TableCell>{player.nationality}</TableCell>
                     <TableCell>{renderStars(player.starRating)}</TableCell>
-                    <TableCell>{player.currentAbility}</TableCell> {/* New Cell */}
-                    <TableCell>{player.potentialAbility}</TableCell> {/* New Cell */}
                     <TableCell>
                       <Badge variant="outline">{player.morale}</Badge>
                     </TableCell>

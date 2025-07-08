@@ -104,7 +104,7 @@ const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string):
     return attrs;
 };
 
-const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAttributes, isSkater: boolean): number => {
+export const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAttributes, isSkater: boolean): number => {
     const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament', 'gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
     const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
     
@@ -115,7 +115,7 @@ const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAttributes
     }
 };
 
-const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDivision: string): number => {
+export const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDivision: string): number => {
     const tierKey = Object.keys(divisionTiers).find(key => leagueDivision.includes(key)) || 'Non-Checking 3';
     const tier = divisionTiers[tierKey];
     

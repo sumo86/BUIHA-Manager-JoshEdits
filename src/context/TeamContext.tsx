@@ -1,8 +1,17 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Team, Player, BudgetAllocations } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes } from '@/types';
 import { teams as initialTeams } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
+import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
+
+interface GameDate {
+    month: string;
+    week: number;
+    year: number;
+}
+
+const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 
 interface TeamContextType {
     teams: Team[];
@@ -18,11 +27,13 @@ interface TeamContextType {
     updateBudgetAllocations: (newAllocations: BudgetAllocations) => void;
     runStudentLifeInitiative: () => void;
     startFacilityProject: (projectId: string) => void;
+    currentDate: GameDate;
+    advanceWeek: () => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
-export const TeamProvider = ({ children }: { children: ReactNode }) => {
+export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element => {
     const [teams, setTeams] = useState<Team[]>(initialTeams);
     
     const [scoutingPool, setScoutingPool] = useState<Player[]>(() => {
@@ -55,6 +66,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
         }
     });
 
+    const [currentDate, setCurrentDate] = useState<GameDate>(() => {
+        try {
+            const saved = localStorage.getItem('currentDate');
+            return saved ? JSON.parse(saved) : { month: 'August', week: 1, year: new Date().getFullYear() };
+        } catch (error) {
+            console.error("Failed to parse currentDate from localStorage", error);
+            return { month: 'August', week: 1, year: new Date().getFullYear() };
+        }
+    });
+
     useEffect(() => {
         localStorage.setItem('scoutingPool', JSON.stringify(scoutingPool));
     }, [scoutingPool]);
@@ -67,6 +88,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('fairHosted', JSON.stringify(fairHosted));
     }, [fairHosted]);
 
+    useEffect(() => {
+        localStorage.setItem('currentDate', JSON.stringify(currentDate));
+    }, [currentDate]);
+
     const updateTeam = (updatedTeam: Team) => {
         setTeams(currentTeams =>
             currentTeams.map(t => (t.name === updatedTeam.name ? updatedTeam : t))
@@ -74,6 +99,75 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
     };
     
     const userTeam = teams[0];
+
+    const handlePlayerDevelopment = () => {
+        const improvedPlayers: string[] = [];
+        const newRoster = userTeam.roster.map(player => {
+            if (player.currentAbility >= player.potentialAbility) {
+                return player; // No more room to grow
+            }
+
+            // Development chance influenced by age, professionalism, and determination
+            const devChance = (
+                (player.attributes.professionalism + player.attributes.determination) / 40
+            ) * (1 - (player.age / 45)); // Diminishing returns with age
+
+            if (Math.random() < devChance) {
+                const isSkater = player.positions[0] !== 'G';
+                const attributes = { ...player.attributes };
+                const keys = Object.keys(attributes) as (keyof typeof attributes)[];
+                
+                // Find attributes that can be improved
+                const improvableAttributes = keys.filter(key => {
+                    const attrValue = attributes[key] as number;
+                    return typeof attrValue === 'number' && attrValue < 20;
+                });
+
+                if (improvableAttributes.length > 0) {
+                    // Improve a random attribute
+                    const attrToImprove = getRandomItem(improvableAttributes);
+                    (attributes[attrToImprove] as number) += 1;
+                    
+                    const newCurrentAbility = calculateCurrentAbility(attributes, isSkater);
+                    const newStarRating = calculateStarRating(newCurrentAbility, isSkater, userTeam.leagueDivision);
+
+                    if (newStarRating > player.starRating) {
+                        improvedPlayers.push(`${player.name} (${newStarRating.toFixed(1)} stars)`);
+                    }
+
+                    return { ...player, attributes, currentAbility: newCurrentAbility, starRating: newStarRating };
+                }
+            }
+            return player;
+        });
+
+        if (improvedPlayers.length > 0) {
+            toast.success("Player Development", {
+                description: `Improvements seen in: ${improvedPlayers.join(', ')}.`,
+            });
+        }
+
+        updateTeam({ ...userTeam, roster: newRoster });
+    };
+
+    const advanceWeek = () => {
+        setCurrentDate(prevDate => {
+            let { month, week, year } = prevDate;
+            week += 1;
+            if (week > 4) {
+                week = 1;
+                const monthIndex = months.indexOf(month);
+                if (monthIndex === 11) {
+                    month = months[0];
+                    year += 1;
+                } else {
+                    month = months[monthIndex + 1];
+                }
+            }
+            return { month, week, year };
+        });
+        handlePlayerDevelopment();
+    };
 
     const generateScoutingPool = () => {
         const allTeamNames = teams.map(t => t.name).filter(name => name !== userTeam.name);
@@ -206,6 +300,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
         });
     };
 
+    const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
     return (
         <TeamContext.Provider value={{ 
             teams, 
@@ -220,7 +316,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
             discardRecruit,
             updateBudgetAllocations,
             runStudentLifeInitiative,
-            startFacilityProject
+            startFacilityProject,
+            currentDate,
+            advanceWeek
         }}>
             {children}
         </TeamContext.Provider>

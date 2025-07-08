@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTeam } from '@/context/TeamContext';
-import { Player } from '@/types';
+import { Player, Position } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -99,7 +99,7 @@ const BuihaOverview = () => {
 
   const uniqueTeams = useMemo(() => [...new Set(teams.map(t => t.name))].sort(), [teams]);
   const uniqueDivisions = useMemo(() => [...new Set(teams.map(t => t.nationalsDivision))].sort(), [teams]);
-  const uniquePositions: Player['positions'] = ["C", "LW", "RW", "LD", "RD", "G"];
+  const uniquePositions: Position[] = ["C", "LW", "RW", "LD", "RD", "G"];
 
   const SortableHeader = ({ sortKey, children }: { sortKey: keyof PlayerWithTeamInfo | 'teamName', children: React.ReactNode }) => (
     <TableHead>
@@ -122,21 +122,21 @@ const BuihaOverview = () => {
             <SelectTrigger><SelectValue placeholder="Filter by team..." /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Teams</SelectItem>
-              {uniqueTeams.map(team => <SelectItem key={team} value={team}>{team}</SelectItem>)}
+              {uniqueTeams.map((team: string) => <SelectItem key={team} value={team}>{team}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.division} onValueChange={value => handleFilterChange('division', value)}>
             <SelectTrigger><SelectValue placeholder="Filter by division..." /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Divisions</SelectItem>
-              {uniqueDivisions.map(div => <SelectItem key={div} value={div}>{div}</SelectItem>)}
+              {uniqueDivisions.map((div: string) => <SelectItem key={div} value={div}>{div}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.position} onValueChange={value => handleFilterChange('position', value)}>
             <SelectTrigger><SelectValue placeholder="Filter by position..." /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Positions</SelectItem>
-              {uniquePositions.map(pos => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
+              {uniquePositions.map((pos: Position) => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

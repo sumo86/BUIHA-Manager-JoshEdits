@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { Home, Users, BarChart, Shield, DollarSign, ClipboardList, Globe, Gamepad2, Building } from "lucide-react";
+import { Home, Users, BarChart, Shield, DollarSign, ClipboardList, Globe, Gamepad2, Building, TrendingUp } from "lucide-react";
 
 const navItems = [
   { to: "/", icon: Home, label: "Dashboard" },
   { to: "/standings", icon: BarChart, label: "Standings" },
   { to: "/roster", icon: Users, label: "Roster" },
   { to: "/lineup", icon: ClipboardList, label: "Lineup" },
+  { to: "/training", icon: TrendingUp, label: "Training" },
   { to: "/buiha-overview", icon: Globe, label: "BUIHA Overview" },
   { to: "/play-game", icon: Gamepad2, label: "Play a Game" },
   { to: "/recruitment", icon: Shield, label: "Recruitment" },
