@@ -126,7 +126,7 @@ const Roster = () => {
                                 <div className="flex justify-between w-full pr-2">
                                   <span>{role.name}</span>
                                   <span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>
-                                    {player.roleSuitability[role.name]}
+                                    {player.roleSuitability[role.name]}/20
                                   </span>
                                 </div>
                               </SelectItem>

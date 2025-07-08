@@ -161,6 +161,15 @@ const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 
     return { suitabilities, bestRole };
 };
 
+const eligibilityAgeRanges: Record<Player['eligibility'], { min: number, max: number }> = {
+    "UG Year 1": { min: 18, max: 19 },
+    "UG Year 2": { min: 19, max: 20 },
+    "UG Year 3": { min: 20, max: 21 },
+    "UG Year 4 (Masters)": { min: 22, max: 24 },
+    "PhD": { min: 23, max: 28 },
+    "Alumni": { min: 25, max: 35 }, // Capped at 35 for now
+};
+
 const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string): Player => {
   let jerseyNumber: number;
   do {
@@ -191,7 +200,10 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
 
   const archetype = getArchetypeForPosition(position);
   const attributes = generateAttributes(archetype, leagueDivision);
-  const age = Math.floor(Math.random() * (28 - 18 + 1)) + 18;
+  
+  const eligibility = getRandomItem(eligibilities);
+  const ageRange = eligibilityAgeRanges[eligibility];
+  const age = Math.floor(Math.random() * (ageRange.max - ageRange.min + 1)) + ageRange.min;
   
   const currentAbility = calculateCurrentAbility(attributes, isSkater);
   
@@ -224,7 +236,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     starRating,
     morale: "Content",
     healthStatus: "Healthy",
-    eligibility: getRandomItem(eligibilities),
+    eligibility, // Use the generated eligibility
     archetype,
     attributes,
     currentAbility,
