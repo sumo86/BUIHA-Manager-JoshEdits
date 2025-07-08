@@ -110,6 +110,8 @@ export interface Player {
   attributes: SkaterAttributes | GoalieAttributes;
   currentAbility: number;
   potentialAbility: number;
+  role?: string;
+  roleSuitability: { [key: string]: number };
 }
 
 export interface Team {

@@ -1,5 +1,6 @@
 import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes } from "@/types";
 import { archetypes } from "@/data/archetypes";
+import { roles } from "@/data/roles";
 
 const firstNames = ["James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Charles", "Christopher", "Daniel", "Matthew", "Anthony", "Mark", "Donald", "Steven", "Paul", "Andrew", "Joshua", "Emily", "Hannah", "Megan", "Lauren", "Jessica", "Sophie", "Olivia", "Charlotte", "Chloe", "Amy"];
 const lastNames = ["Smith", "Jones", "Williams", "Brown", "Taylor", "Davies", "Wilson", "Evans", "Thomas", "Johnson", "Roberts", "Walker", "Wright", "Thompson", "White", "Green", "Hall", "Wood", "Harris", "Martin"];
@@ -43,7 +44,6 @@ const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string):
     const targetAvgPerAttr = avgAbilityForDivision / numVisibleAttrs;
 
     const base = () => {
-        // Generate a random value around the targetAvgPerAttr, with a range of +/- 5
         return targetAvgPerAttr + (Math.random() * 10 - 5);
     };
 
@@ -134,6 +134,33 @@ const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDi
     return 1;
 };
 
+const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 'Forward' | 'Defenceman'): { suitabilities: { [key: string]: number }, bestRole: string } => {
+    const suitabilities: { [key: string]: number } = {};
+    let bestRole = '';
+    let highestSuitability = -1;
+
+    const applicableRoles = roles.filter(r => r.positions.includes(playerPosition));
+
+    applicableRoles.forEach(role => {
+        const totalAttributeValue = role.keyAttributes.reduce((sum, attr) => {
+            return sum + attributes[attr];
+        }, 0);
+
+        const maxPossibleValue = role.keyAttributes.length * 20;
+        const normalizedSuitability = (totalAttributeValue / maxPossibleValue) * 19 + 1;
+        const finalSuitability = Math.round(Math.min(20, Math.max(1, normalizedSuitability)));
+
+        suitabilities[role.name] = finalSuitability;
+
+        if (finalSuitability > highestSuitability) {
+            highestSuitability = finalSuitability;
+            bestRole = role.name;
+        }
+    });
+
+    return { suitabilities, bestRole };
+};
+
 const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string): Player => {
   let jerseyNumber: number;
   do {
@@ -163,7 +190,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   }
 
   const archetype = getArchetypeForPosition(position);
-  const attributes = generateAttributes(archetype, leagueDivision); // Pass leagueDivision here
+  const attributes = generateAttributes(archetype, leagueDivision);
   const age = Math.floor(Math.random() * (28 - 18 + 1)) + 18;
   
   const currentAbility = calculateCurrentAbility(attributes, isSkater);
@@ -175,6 +202,17 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   if (potentialAbility < currentAbility) potentialAbility = currentAbility;
 
   const starRating = calculateStarRating(currentAbility, isSkater, leagueDivision);
+
+  let role: string | undefined = undefined;
+  let roleSuitability: { [key: string]: number } = {};
+
+  if (isSkater) {
+      const skaterAttributes = attributes as SkaterAttributes;
+      const playerPositionType = ['C', 'LW', 'RW'].includes(primaryPosition) ? 'Forward' : 'Defenceman';
+      const { suitabilities, bestRole } = calculateRoleSuitability(skaterAttributes, playerPositionType);
+      roleSuitability = suitabilities;
+      role = bestRole;
+  }
 
   return {
     id: crypto.randomUUID(),
@@ -191,6 +229,8 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     attributes,
     currentAbility,
     potentialAbility,
+    role,
+    roleSuitability,
   };
 };
 

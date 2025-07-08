@@ -3,7 +3,7 @@ import { teams } from '@/data/teams';
 import { Player, SkaterAttributes, GoalieAttributes } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Star, User, MapPin, Shield, HeartPulse, GraduationCap, Zap, TrendingUp, StarHalf } from 'lucide-react';
+import { Star, User, MapPin, Shield, HeartPulse, GraduationCap, StarHalf, ShieldQuestion } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 const PlayerProfile = () => {
@@ -38,11 +38,11 @@ const PlayerProfile = () => {
     };
 
     const getAttributeColorClass = (value: number) => {
-        if (value >= 17) return "text-green-700"; // Dark Green
-        if (value >= 13) return "text-green-500"; // Light Green
-        if (value >= 9) return "text-yellow-500"; // Yellow
-        if (value >= 5) return "text-orange-500"; // Orange
-        return "text-red-500"; // Red
+        if (value >= 17) return "text-green-700";
+        if (value >= 13) return "text-green-500";
+        if (value >= 9) return "text-yellow-500";
+        if (value >= 5) return "text-orange-500";
+        return "text-red-500";
     };
 
     const AttributeItem = ({ label, value }: { label: string, value: number }) => (
@@ -62,7 +62,7 @@ const PlayerProfile = () => {
     );
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-1 space-y-6">
                 <Card>
                     <CardHeader className="text-center">
@@ -75,16 +75,33 @@ const PlayerProfile = () => {
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><MapPin size={16} /> Nationality</span> <span>{player.nationality}</span></div>
                         <Separator />
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><Star size={16} /> Division Rating</span> <span className="flex">{renderStars(player.starRating)}</span></div>
-                        <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><Zap size={16} /> Current Ability</span> <span>{player.currentAbility}</span></div>
-                        <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><TrendingUp size={16} /> Potential Ability</span> <span>{player.potentialAbility}</span></div>
                         <Separator />
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><Shield size={16} /> Morale</span> <Badge variant="outline">{player.morale}</Badge></div>
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><HeartPulse size={16} /> Status</span> <Badge variant={player.healthStatus === 'Healthy' ? 'secondary' : 'destructive'}>{player.healthStatus}</Badge></div>
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><GraduationCap size={16} /> Eligibility</span> <span>{player.eligibility}</span></div>
                     </CardContent>
                 </Card>
+                {isSkater && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <ShieldQuestion size={20} /> Role Suitability
+                            </CardTitle>
+                            <CardDescription>
+                                Player's fit for each role (1-20).
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            {Object.entries(player.roleSuitability)
+                                .sort(([, a], [, b]) => b - a)
+                                .map(([role, suitability]) => (
+                                    <AttributeItem key={role} label={role} value={suitability} />
+                                ))}
+                        </CardContent>
+                    </Card>
+                )}
             </div>
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
                 <Card>
                     <CardHeader>
                         <CardTitle>Player Attributes</CardTitle>
