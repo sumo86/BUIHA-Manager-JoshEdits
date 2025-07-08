@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Team, Player } from '@/types';
+import { Team, Player, BudgetAllocations } from '@/types';
 import { teams as initialTeams } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 
@@ -14,6 +14,7 @@ interface TeamContextType {
     recruitPlayer: (playerId: string) => void;
     assignPlayerToRoster: (playerId: string) => void;
     discardRecruit: (playerId: string) => void;
+    updateBudgetAllocations: (newAllocations: BudgetAllocations) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -107,6 +108,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
         setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
     };
 
+    const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {
+        const updatedTeam = {
+            ...userTeam,
+            financials: {
+                ...userTeam.financials,
+                budgetAllocations: newAllocations,
+            }
+        };
+        updateTeam(updatedTeam);
+    };
+
     return (
         <TeamContext.Provider value={{ 
             teams, 
@@ -118,7 +130,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
             generateScoutingPool, 
             recruitPlayer, 
             assignPlayerToRoster,
-            discardRecruit
+            discardRecruit,
+            updateBudgetAllocations
         }}>
             {children}
         </TeamContext.Provider>

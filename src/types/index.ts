@@ -166,6 +166,24 @@ export type TacticsSelection = {
   [category: string]: string;
 };
 
+export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Operating Costs" | "Recruiting" | "Student Life" | "Facilities";
+
+export interface BudgetAllocations {
+  Travel: number;
+  Equipment: number;
+  "Ice Time": number;
+  "Operating Costs": number;
+  Recruiting: number;
+  "Student Life": number;
+  Facilities: number;
+}
+
+export interface Financials {
+  totalBudget: number;
+  budgetAllocations: BudgetAllocations;
+  iceTimeCostPerGame: number;
+}
+
 export interface Team {
   name: string;
   leagueDivision: string;
@@ -178,6 +196,7 @@ export interface Team {
   otLosses: number;
   goalsFor: number;
   goalsAgainst: number;
+  financials: Financials;
 }
 
 export interface GameEvent {

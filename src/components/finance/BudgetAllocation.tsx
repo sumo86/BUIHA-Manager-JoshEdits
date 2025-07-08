@@ -1,0 +1,126 @@
+import { useState, useMemo, useEffect } from 'react';
+import { useTeam } from '@/context/TeamContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { BudgetAllocations, BudgetCategory } from '@/types';
+import { toast } from 'sonner';
+import { Plane, Box, Calendar, Activity, UserPlus, Users, Building, Info } from 'lucide-react';
+
+const categoryDetails: Record<BudgetCategory, { icon: React.ElementType, description: string, tooltip: string }> = {
+  "Travel": { icon: Plane, description: "Match travel and accommodation", tooltip: "Costs for away games, including transport and hotels." },
+  "Equipment": { icon: Box, description: "Gear, sticks, and protective equipment", tooltip: "Includes player sticks, helmets, pads, and jerseys." },
+  "Ice Time": { icon: Calendar, description: "Rental costs for home games and practices", tooltip: "This is an auto-calculated fixed cost based on your home games." },
+  "Operating Costs": { icon: Activity, description: "Facility operating and maintenance costs", tooltip: "Day-to-day costs of running the team and facilities." },
+  "Recruiting": { icon: UserPlus, description: "Player recruitment and scouting", tooltip: "Funds for scouting trips and hosting potential recruits." },
+  "Student Life": { icon: Users, description: "Improves player morale through team events", tooltip: "Budget for team-building activities, dinners, and social events." },
+  "Facilities": { icon: Building, description: "Upgrades and new construction", tooltip: "Long-term investments in improving team facilities." },
+};
+
+export const BudgetAllocation = () => {
+  const { userTeam, updateBudgetAllocations } = useTeam();
+  const [allocations, setAllocations] = useState<BudgetAllocations>(userTeam.financials.budgetAllocations);
+
+  const numberOfHomeGames = 13; // Assuming a 26-game season, half at home
+  const iceTimeCost = useMemo(() => {
+    return numberOfHomeGames * userTeam.financials.iceTimeCostPerGame;
+  }, [userTeam.financials.iceTimeCostPerGame]);
+
+  // Update local state to include the calculated ice time cost
+  useEffect(() => {
+    setAllocations(prev => ({ ...prev, "Ice Time": iceTimeCost }));
+  }, [iceTimeCost]);
+
+  const handleAllocationChange = (category: BudgetCategory, value: string) => {
+    const numberValue = parseInt(value, 10);
+    if (!isNaN(numberValue) || value === '') {
+      setAllocations(prev => ({
+        ...prev,
+        [category]: isNaN(numberValue) ? 0 : numberValue,
+      }));
+    }
+  };
+
+  const totalAllocated = useMemo(() => {
+    return Object.values(allocations).reduce((sum, value) => sum + (value || 0), 0);
+  }, [allocations]);
+
+  const unallocated = userTeam.financials.totalBudget - totalAllocated;
+
+  const handleSave = () => {
+    if (unallocated < 0) {
+      toast.error("Total allocated budget cannot exceed the total budget.");
+      return;
+    }
+    updateBudgetAllocations(allocations);
+    toast.success("Budget allocations saved successfully!");
+  };
+
+  return (
+    <TooltipProvider>
+      <Card>
+        <CardHeader>
+          <CardTitle>Budget Allocation</CardTitle>
+          <p className="text-muted-foreground">Distribute your total budget across different categories.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Object.keys(categoryDetails).map((cat) => {
+            const category = cat as BudgetCategory;
+            const Icon = categoryDetails[category].icon;
+            const isReadOnly = category === "Ice Time";
+            return (
+              <div key={category} className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center gap-4">
+                  <Icon className="h-8 w-8 text-muted-foreground" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{category}</h3>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{categoryDetails[category].tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{categoryDetails[category].description}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-sm font-medium">Spent: £0</p>
+                    <p className="text-xs text-muted-foreground">0.0% of allocation used</p>
+                  </div>
+                  <Input
+                    type="number"
+                    className="w-32 text-right"
+                    placeholder="0"
+                    value={allocations[category]}
+                    onChange={(e) => handleAllocationChange(category, e.target.value)}
+                    readOnly={isReadOnly}
+                    disabled={isReadOnly}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+      <div className="flex justify-end items-center gap-6 mt-6 p-4 bg-muted rounded-lg">
+        <div className="text-right">
+          <span className="text-muted-foreground">Total Allocated: </span>
+          <span className="font-bold">£{totalAllocated.toLocaleString()}</span>
+        </div>
+        <div className="text-right">
+          <span className="text-muted-foreground">Unallocated: </span>
+          <span className={`font-bold ${unallocated < 0 ? 'text-destructive' : 'text-green-600'}`}>
+            £{unallocated.toLocaleString()}
+          </span>
+        </div>
+        <Button onClick={handleSave}>Save Allocations</Button>
+      </div>
+    </TooltipProvider>
+  );
+};
