@@ -37,25 +37,28 @@ const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string):
     const numVisibleAttrs = isSkater ? numVisibleSkaterAttrs : numVisibleGoalieAttrs;
     const targetAvgPerAttr = avgAbilityForDivision / numVisibleAttrs;
 
-    const base = () => {
-        return targetAvgPerAttr + (Math.random() * 10 - 5);
+    // Base generation for visible attributes, tied to division average
+    const generateVisibleAttribute = () => {
+        return targetAvgPerAttr + (Math.random() * 10 - 5); // Range of 10 points around target average
     };
 
-    const generateHidden = () => ({
-        aging: base(), ambition: base(), bigGames: base(), coachability: base(),
-        controversy: base(), developmentRate: base(), greed: base(), handleFailure: base(),
-        handleSuccess: base(), handleCritics: base(), injuryProneness: base(), intelligence: base(),
-        loyalty: base(), mood: base(), sportsmanship: base(),
-    });
+    // Generation for hidden/highly variable attributes, wider and independent
+    const generateHiddenAttribute = () => {
+        return Math.floor(Math.random() * 20) + 1; // Uniform distribution from 1 to 20
+    };
 
     if (archetype.position === 'Goaltender') {
         const attrs: GoalieAttributes = {
-            blocker: base(), glove: base(), lowShots: base(), positioning: base() + 5,
-            rebound: base(), recovery: base(), reflexes: base() + 3, passing: base(),
-            pokeCheck: base(), puckhandling: base(), skating: base(), mentalToughness: base() + 3,
-            goaltenderStamina: base(),
-            ...generateHidden(),
-            professionalism: base(), determination: base(), leadership: base(),
+            blocker: generateVisibleAttribute(), glove: generateVisibleAttribute(), lowShots: generateVisibleAttribute(), positioning: generateVisibleAttribute() + 5,
+            rebound: generateVisibleAttribute(), recovery: generateVisibleAttribute(), reflexes: generateVisibleAttribute() + 3, passing: generateVisibleAttribute(),
+            pokeCheck: generateVisibleAttribute(), puckhandling: generateVisibleAttribute(), skating: generateVisibleAttribute(), mentalToughness: generateVisibleAttribute(),
+            goaltenderStamina: generateVisibleAttribute(),
+            // Hidden/Highly Variable Attributes
+            aging: generateHiddenAttribute(), ambition: generateHiddenAttribute(), bigGames: generateHiddenAttribute(), coachability: generateHiddenAttribute(),
+            controversy: generateHiddenAttribute(), developmentRate: generateHiddenAttribute(), greed: generateHiddenAttribute(), handleFailure: generateHiddenAttribute(),
+            handleSuccess: generateHiddenAttribute(), handleCritics: generateHiddenAttribute(), injuryProneness: generateHiddenAttribute(), intelligence: generateHiddenAttribute(),
+            loyalty: generateHiddenAttribute(), mood: generateHiddenAttribute(), sportsmanship: generateHiddenAttribute(),
+            professionalism: generateHiddenAttribute(), determination: generateHiddenAttribute(), leadership: generateHiddenAttribute(),
         };
 
         if (archetype.type === 'Standup') { attrs.positioning += 3; attrs.recovery -= 2; } 
@@ -70,15 +73,19 @@ const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string):
     } 
     
     const attrs: SkaterAttributes = {
-        acceleration: base(), agility: base(), balance: base(), fighting: base(), speed: base(),
-        stamina: base(), strength: base(), hitting: base(), aggression: base(), bravery: base(),
-        determination: base(), leadership: base(), professionalism: base(), teamPlayer: base(),
-        temperament: base(), gettingOpen: base(), offensiveRead: base(), passing: base(),
-        puckhandling: base(), screening: base(), shootingAccuracy: base(), shootingRange: base(),
-        checking: base(), defensiveRead: base(), faceoffs: base(), positioning: base(),
-        shotBlocking: base(), stickchecking: base(),
-        ...generateHidden(),
-        passShootTendency: base(),
+        acceleration: generateVisibleAttribute(), agility: generateVisibleAttribute(), balance: generateVisibleAttribute(), fighting: generateVisibleAttribute(), speed: generateVisibleAttribute(),
+        stamina: generateVisibleAttribute(), strength: generateVisibleAttribute(), hitting: generateVisibleAttribute(), aggression: generateVisibleAttribute(), bravery: generateVisibleAttribute(),
+        gettingOpen: generateVisibleAttribute(), offensiveRead: generateVisibleAttribute(), passing: generateVisibleAttribute(),
+        puckhandling: generateVisibleAttribute(), screening: generateVisibleAttribute(), shootingAccuracy: generateVisibleAttribute(), shootingRange: generateVisibleAttribute(),
+        checking: generateVisibleAttribute(), defensiveRead: generateVisibleAttribute(), faceoffs: generateVisibleAttribute(), positioning: generateVisibleAttribute(),
+        shotBlocking: generateVisibleAttribute(), stickchecking: generateVisibleAttribute(),
+        // Hidden/Highly Variable Attributes
+        aging: generateHiddenAttribute(), ambition: generateHiddenAttribute(), bigGames: generateHiddenAttribute(), coachability: generateHiddenAttribute(),
+        controversy: generateHiddenAttribute(), developmentRate: generateHiddenAttribute(), greed: generateHiddenAttribute(), handleFailure: generateHiddenAttribute(),
+        handleSuccess: generateHiddenAttribute(), handleCritics: generateHiddenAttribute(), injuryProneness: generateHiddenAttribute(), intelligence: generateHiddenAttribute(),
+        loyalty: generateHiddenAttribute(), mood: generateHiddenAttribute(), sportsmanship: generateHiddenAttribute(),
+        determination: generateHiddenAttribute(), leadership: generateHiddenAttribute(), professionalism: generateHiddenAttribute(), teamPlayer: generateHiddenAttribute(),
+        temperament: generateHiddenAttribute(), passShootTendency: generateHiddenAttribute(),
     };
 
     if (archetype.type.includes('Offensive')) { attrs.offensiveRead += 5; attrs.puckhandling += 3; attrs.shootingAccuracy += 4; }
