@@ -460,19 +460,23 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         if (estimatedQuality === 'Beginner') {
             targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 3'].skater : divisionTiers['Non-Checking 3'].goalie;
             targetCurrentAbilityMax = isSkater ? divisionTiers['Non-Checking 2'].skater : divisionTiers['Non-Checking 2'].goalie;
+            player.recruitmentCost = getRandomValueInRange(75, 150);
         } else if (estimatedQuality === 'Moderate') {
             targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 2'].skater : divisionTiers['Non-Checking 2'].goalie;
             targetCurrentAbilityMax = isSkater ? divisionTiers['Non-Checking 1'].skater : divisionTiers['Non-Checking 1'].goalie;
+            player.recruitmentCost = getRandomValueInRange(150, 300);
         } else if (estimatedQuality === 'Intermediate') {
             targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 1'].skater : divisionTiers['Non-Checking 1'].goalie;
             targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
             targetCurrentAbilityMin += isSkater ? 10 : 5;
             targetCurrentAbilityMax += isSkater ? 10 : 5;
+            player.recruitmentCost = getRandomValueInRange(300, 500);
         } else { // Experienced
             targetCurrentAbilityMin = isSkater ? divisionTiers['Checking 2'].skater : divisionTiers['Checking 2'].goalie;
             targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
             targetCurrentAbilityMin += isSkater ? 15 : 8;
             targetCurrentAbilityMax += isSkater ? 15 : 8;
+            player.recruitmentCost = getRandomValueInRange(500, 750);
         }
 
         player.currentAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);

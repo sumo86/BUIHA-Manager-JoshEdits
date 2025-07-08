@@ -83,10 +83,29 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
 
     const recruitPlayer = (playerId: string) => {
         const playerToRecruit = scoutingPool.find(p => p.id === playerId);
-        if (playerToRecruit) {
-            setScoutingPool(prev => prev.filter(p => p.id !== playerId));
-            setRecruitedPool(prev => [...prev, playerToRecruit]);
+        if (!playerToRecruit) return;
+
+        const cost = playerToRecruit.recruitmentCost || 0;
+        const currentBudget = userTeam.financials.budgetAllocations.Recruiting;
+
+        if (currentBudget < cost) {
+            toast.error("Insufficient Recruiting Budget", {
+                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+            });
+            return;
         }
+
+        const newBudgetAllocations = {
+            ...userTeam.financials.budgetAllocations,
+            Recruiting: currentBudget - cost,
+        };
+        
+        updateBudgetAllocations(newBudgetAllocations);
+        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        setRecruitedPool(prev => [...prev, playerToRecruit]);
+        toast.success(`${playerToRecruit.name} recruited!`, {
+            description: `Cost: £${cost.toLocaleString()}. Remaining budget: £${(currentBudget - cost).toLocaleString()}`,
+        });
     };
 
     const assignPlayerToRoster = (playerId: string) => {

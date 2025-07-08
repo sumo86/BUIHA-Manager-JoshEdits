@@ -135,6 +135,7 @@ export interface Player {
   history?: PlayerSeasonStats[];
   source?: 'Local' | 'Transfer' | 'International';
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced';
+  recruitmentCost?: number;
 }
 
 export interface Tactic {
@@ -172,13 +173,12 @@ export type TacticsSelection = {
   [category: string]: string;
 };
 
-export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Operating Costs" | "Recruiting" | "Student Life" | "Facilities";
+export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities";
 
 export interface BudgetAllocations {
   Travel: number;
   Equipment: number;
   "Ice Time": number;
-  "Operating Costs": number;
   Recruiting: number;
   "Student Life": number;
   Facilities: number;

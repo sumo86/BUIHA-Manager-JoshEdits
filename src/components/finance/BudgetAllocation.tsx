@@ -6,13 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BudgetAllocations, BudgetCategory } from '@/types';
 import { toast } from 'sonner';
-import { Plane, Box, Calendar, Activity, UserPlus, Users, Building, Info } from 'lucide-react';
+import { Plane, Box, Calendar, UserPlus, Users, Building, Info } from 'lucide-react';
 
 const categoryDetails: Record<BudgetCategory, { icon: React.ElementType, description: string, tooltip: string }> = {
   "Travel": { icon: Plane, description: "Match travel and accommodation", tooltip: "Costs for away games, including transport and hotels." },
   "Equipment": { icon: Box, description: "Gear, sticks, and protective equipment", tooltip: "Includes player sticks, helmets, pads, and jerseys." },
   "Ice Time": { icon: Calendar, description: "Rental costs for home games and practices", tooltip: "This is an auto-calculated fixed cost based on your home games." },
-  "Operating Costs": { icon: Activity, description: "Facility operating and maintenance costs", tooltip: "Day-to-day costs of running the team and facilities." },
   "Recruiting": { icon: UserPlus, description: "Player recruitment and scouting", tooltip: "Funds for scouting trips and hosting potential recruits." },
   "Student Life": { icon: Users, description: "Improves player morale through team events", tooltip: "Budget for team-building activities, dinners, and social events." },
   "Facilities": { icon: Building, description: "Upgrades and new construction", tooltip: "Long-term investments in improving team facilities." },
@@ -22,7 +21,6 @@ const categoryColors: Record<BudgetCategory, string> = {
   "Travel": "bg-blue-100 text-blue-800",
   "Equipment": "bg-orange-100 text-orange-800",
   "Ice Time": "bg-indigo-100 text-indigo-800",
-  "Operating Costs": "bg-gray-100 text-gray-800",
   "Recruiting": "bg-green-100 text-green-800",
   "Student Life": "bg-pink-100 text-pink-800",
   "Facilities": "bg-purple-100 text-purple-800",
