@@ -191,6 +191,15 @@ export interface Financials {
   equipmentCost: number;
 }
 
+export interface FacilityProject {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  status: 'Not Started' | 'In Progress' | 'Completed';
+  benefit: string;
+}
+
 export interface Team {
   name: string;
   leagueDivision: string;
@@ -204,6 +213,7 @@ export interface Team {
   goalsFor: number;
   goalsAgainst: number;
   financials: Financials;
+  facilities: FacilityProject[];
 }
 
 export interface GameEvent {

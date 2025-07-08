@@ -10,6 +10,7 @@ import Standings from "./pages/Standings";
 import Roster from "./pages/Roster";
 import Recruitment from "./pages/Recruitment";
 import Finances from "./pages/Finances";
+import Facilities from "./pages/Facilities";
 import PlayerProfile from "./pages/PlayerProfile";
 import Lineup from "./pages/Lineup";
 import { TeamProvider } from "./context/TeamContext";
@@ -28,6 +29,7 @@ const router = createBrowserRouter(
       <Route path="/player/:playerId" element={<PlayerProfile />} />
       <Route path="/recruitment" element={<Recruitment />} />
       <Route path="/finances" element={<Finances />} />
+      <Route path="/facilities" element={<Facilities />} />
       <Route path="/lineup" element={<Lineup />} />
       <Route path="/buiha-overview" element={<BuihaOverview />} />
       <Route path="/play-game" element={<PlayGame />} />

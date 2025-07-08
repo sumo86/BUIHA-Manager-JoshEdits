@@ -17,6 +17,7 @@ interface TeamContextType {
     discardRecruit: (playerId: string) => void;
     updateBudgetAllocations: (newAllocations: BudgetAllocations) => void;
     runStudentLifeInitiative: () => void;
+    startFacilityProject: (projectId: string) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -166,6 +167,45 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const startFacilityProject = (projectId: string) => {
+        const project = userTeam.facilities.find(f => f.id === projectId);
+        if (!project) {
+            toast.error("Project not found.");
+            return;
+        }
+
+        const facilitiesBudget = userTeam.financials.budgetAllocations.Facilities;
+        if (facilitiesBudget < project.cost) {
+            toast.error("Insufficient Facilities Budget", {
+                description: `You need £${project.cost.toLocaleString()} but only have £${facilitiesBudget.toLocaleString()} available.`,
+            });
+            return;
+        }
+
+        const newBudgetAllocations = {
+            ...userTeam.financials.budgetAllocations,
+            Facilities: facilitiesBudget - project.cost,
+        };
+
+        const newFacilities = userTeam.facilities.map(f => 
+            f.id === projectId ? { ...f, status: 'Completed' as const } : f
+        );
+
+        const updatedTeam = {
+            ...userTeam,
+            financials: {
+                ...userTeam.financials,
+                budgetAllocations: newBudgetAllocations,
+            },
+            facilities: newFacilities,
+        };
+
+        updateTeam(updatedTeam);
+        toast.success(`${project.name} project started!`, {
+            description: `Cost: £${project.cost.toLocaleString()}. Remaining budget: £${(facilitiesBudget - project.cost).toLocaleString()}`,
+        });
+    };
+
     return (
         <TeamContext.Provider value={{ 
             teams, 
@@ -179,7 +219,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
             assignPlayerToRoster,
             discardRecruit,
             updateBudgetAllocations,
-            runStudentLifeInitiative
+            runStudentLifeInitiative,
+            startFacilityProject
         }}>
             {children}
         </TeamContext.Provider>
