@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, Users, BarChart, Shield, DollarSign, ClipboardList, Globe } from "lucide-react";
+import { Home, Users, BarChart, Shield, DollarSign, ClipboardList, Globe, Gamepad2 } from "lucide-react";
 
 const navItems = [
   { to: "/", icon: Home, label: "Dashboard" },
@@ -7,6 +7,7 @@ const navItems = [
   { to: "/roster", icon: Users, label: "Roster" },
   { to: "/lineup", icon: ClipboardList, label: "Lineup" },
   { to: "/buiha-overview", icon: Globe, label: "BUIHA Overview" },
+  { to: "/play-game", icon: Gamepad2, label: "Play a Game" },
   { to: "/recruitment", icon: Shield, label: "Recruitment" },
   { to: "/finances", icon: DollarSign, label: "Finances" },
 ];

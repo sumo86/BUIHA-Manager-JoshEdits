@@ -158,3 +158,18 @@ export interface Team {
   lineup: Lineup;
   tactics: TacticsSelection;
 }
+
+export interface GameEvent {
+  time: string;
+  period: number;
+  team?: string;
+  description: string;
+}
+
+export interface GameState {
+  userScore: number;
+  opponentScore: number;
+  period: number;
+  gameLog: GameEvent[];
+  isGameOver: boolean;
+}
