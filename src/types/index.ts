@@ -125,6 +125,8 @@ export interface Player {
   roleSuitability: { [key: string]: number };
   yearsLeftInProgram?: number;
   history?: PlayerSeasonStats[];
+  source?: 'Local' | 'Transfer' | 'International';
+  estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced';
 }
 
 export interface Tactic {

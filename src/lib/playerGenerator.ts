@@ -295,7 +295,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
       case "UG Year 2": numPriorSeasons = 1; break;
       case "UG Year 3": numPriorSeasons = 2; break;
       case "UG Year 4": numPriorSeasons = 3; break;
-      case "Staff": numPriorSeasons = Math.floor(Math.random() * 5) + 1; break; // 1 to 5 seasons
+      case "Staff": numPriorSeasons = Math.floor(Math.random() * 5) + 1; break;
       default: numPriorSeasons = 0; break;
   }
 
@@ -321,7 +321,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     role,
     roleSuitability,
     yearsLeftInProgram,
-    history, // Add generated history
+    history,
   };
 };
 
@@ -330,7 +330,6 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
   const usedJerseyNumbers = new Set<number>();
   const nonStaffEligibilities = eligibilities.filter(e => e !== 'Staff');
 
-  // Generate core non-staff players to meet minimums
   roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, teamName, nonStaffEligibilities));
   roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, teamName, nonStaffEligibilities));
   for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision, teamName, nonStaffEligibilities));
@@ -339,7 +338,6 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
   for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision, teamName, nonStaffEligibilities));
   for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision, teamName, nonStaffEligibilities));
 
-  // Generate remaining players for the full roster (can be staff)
   roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision, teamName));
   roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision, teamName));
   roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision, teamName));
@@ -347,4 +345,55 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
   roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision, teamName));
 
   return roster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+};
+
+export const generateRecruits = (leagueDivision: string, allTeamNames: string[]): Player[] => {
+    const recruits: Player[] = [];
+    const usedJerseyNumbers = new Set<number>();
+    const numRecruits = 30 + Math.floor(Math.random() * 21); // 30-50 recruits
+
+    for (let i = 0; i < numRecruits; i++) {
+        const eligibility: Player['eligibility'] = Math.random() < 0.85 ? "UG Year 1" : getRandomItem(["UG Year 2", "Masters"]);
+
+        const sourceRoll = Math.random();
+        const source: Player['source'] = sourceRoll < 0.6 ? 'Local' : (sourceRoll < 0.9 ? 'International' : 'Transfer');
+
+        const qualityRoll = Math.random();
+        const estimatedQuality: Player['estimatedQuality'] = 
+            qualityRoll < 0.5 ? 'Beginner' :
+            qualityRoll < 0.8 ? 'Moderate' :
+            qualityRoll < 0.95 ? 'Intermediate' : 'Experienced';
+
+        const allPossiblePositions: Position[] = [...skaterPositions, 'G'];
+        const position = getRandomItem(allPossiblePositions);
+        const player = generatePlayer(usedJerseyNumbers, position, leagueDivision, "Unattached", [eligibility]);
+
+        player.source = source;
+        player.estimatedQuality = estimatedQuality;
+        player.jerseyNumber = 0;
+        player.morale = "Content";
+        player.role = undefined;
+
+        const potentialBonusMap = { 'Beginner': -50, 'Moderate': 0, 'Intermediate': 50, 'Experienced': 100 };
+        player.potentialAbility += potentialBonusMap[estimatedQuality];
+        player.potentialAbility = Math.max(player.potentialAbility, player.currentAbility);
+
+        if (source === 'Transfer' && eligibility !== 'UG Year 1') {
+            const otherTeamName = getRandomItem(allTeamNames);
+            const history: PlayerSeasonStats[] = [];
+            const currentYear = new Date().getFullYear();
+            let numPriorSeasons = eligibility === "UG Year 2" ? 1 : (Math.random() < 0.5 ? 1 : 2);
+            
+            for (let j = 0; j < numPriorSeasons; j++) {
+                history.push(generateRandomSeasonStats(player.positions[0] !== 'G', otherTeamName, leagueDivision, currentYear - (numPriorSeasons - j)));
+            }
+            player.history = history;
+        } else {
+            player.history = [];
+        }
+
+        recruits.push(player);
+    }
+
+    return recruits;
 };
