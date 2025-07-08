@@ -202,7 +202,7 @@ const Game = () => {
                     <TabsTrigger value="instructions">Instructions</TabsTrigger>
                   </TabsList>
                   <TabsContent value="tactics" className="mt-4">
-                    <TacticsManager currentTactics={gameUserTeam.tactics} onTacticChange={handleTacticChange} />
+                    <TacticsManager currentTactics={gameUserTeam.tactics} onTacticChange={handleTacticChange} roster={gameUserTeam.roster} />
                   </TabsContent>
                   <TabsContent value="lines" className="mt-4">
                     <LineupManager 

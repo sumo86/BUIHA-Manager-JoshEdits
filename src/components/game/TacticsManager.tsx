@@ -1,16 +1,18 @@
-import { Tactic, TacticsSelection } from '@/types';
+import { Tactic, TacticsSelection, Player } from '@/types';
 import { tactics } from '@/data/tactics';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMemo } from 'react';
+import { calculateTacticSuitability } from '@/lib/tactics'; // Import the actual calculation
 
 interface TacticsManagerProps {
   currentTactics: TacticsSelection;
   onTacticChange: (category: string, tactic: string) => void;
+  roster: Player[]; // Add roster prop
 }
 
-export const TacticsManager = ({ currentTactics, onTacticChange }: TacticsManagerProps) => {
+export const TacticsManager = ({ currentTactics, onTacticChange, roster }: TacticsManagerProps) => {
   const groupedTactics = useMemo(() => {
     return tactics.reduce((acc, tactic) => {
       const phase = tactic.phase;
@@ -26,17 +28,10 @@ export const TacticsManager = ({ currentTactics, onTacticChange }: TacticsManage
     }, {} as Record<string, Record<string, Tactic[]>>);
   }, []);
 
-  // Placeholder for suitability calculation
-  const getSuitability = (tacticName: string) => {
-    // In a real scenario, this would be a complex calculation based on roster attributes.
-    // For now, we'll use a seeded random number for consistent-looking placeholders.
-    let hash = 0;
-    for (let i = 0; i < tacticName.length; i++) {
-      const char = tacticName.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash |= 0; // Convert to 32bit integer
-    }
-    return (Math.abs(hash) % 10) + 8; // Returns a value between 8 and 17
+  // Use the actual suitability calculation
+  const getSuitability = (tactic: Tactic) => {
+    const { score } = calculateTacticSuitability(tactic, roster);
+    return score * 4; // Scale 1-5 score to 4-20 (1*4=4, 5*4=20)
   };
 
   return (
@@ -62,7 +57,7 @@ export const TacticsManager = ({ currentTactics, onTacticChange }: TacticsManage
                           <div className="flex justify-between w-full pr-2">
                             <span>{tactic.tactic}</span>
                             <span className="text-muted-foreground text-sm">
-                              Suitability: {getSuitability(tactic.tactic)}/20
+                              Suitability: {getSuitability(tactic)}/20
                             </span>
                           </div>
                         </SelectItem>
