@@ -185,9 +185,9 @@ const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDi
         penaltyMinutes = Math.floor(Math.random() * 30) + 5; // 5-35 PIM
         
         const captaincyRoll = Math.random();
-        if (captaincyRoll < 0.05) { // 5% chance of being captain
+        if (captaincyRoll < 0.15) { // Increased to 15% chance of being captain
             captaincy = 'C';
-        } else if (captaincyRoll < 0.15) { // 10% chance of being alternate
+        } else if (captaincyRoll < 0.40) { // Increased to 25% chance of being alternate (0.15 to 0.40)
             captaincy = 'A';
         }
     } else { // Goalie
