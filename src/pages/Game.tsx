@@ -1,18 +1,21 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTeam } from '@/context/TeamContext';
-import { GameState, CoachingDecision } from '@/types';
+import { GameState, Team, Lineup } from '@/types';
 import { simulateTick } from '@/lib/gameEngine';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Trophy, Pause, Play } from 'lucide-react';
+import { Trophy, Pause, Play, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RosterDisplay } from '@/components/game/RosterDisplay';
 import { LineupDisplay } from '@/components/game/LineupDisplay';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { TacticsManager } from '@/components/game/TacticsManager';
+import { LineupManager } from '@/components/game/LineupManager';
+import { InstructionsManager } from '@/components/game/InstructionsManager';
 
 const formatClockTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -22,8 +25,10 @@ const formatClockTime = (seconds: number) => {
 
 const Game = () => {
   const { opponentName } = useParams<{ opponentName: string }>();
-  const { teams, userTeam } = useTeam();
+  const { teams, userTeam, updateTeam } = useTeam();
   const opponentTeam = useMemo(() => teams.find(t => t.name === decodeURIComponent(opponentName || '')), [teams, opponentName]);
+
+  const [gameUserTeam, setGameUserTeam] = useState<Team>(() => JSON.parse(JSON.stringify(userTeam)));
 
   const [gameState, setGameState] = useState<GameState>({
     userScore: 0,
@@ -33,8 +38,6 @@ const Game = () => {
     gameLog: [],
     isGameOver: false,
     isPaused: true,
-    currentDecision: null,
-    lastDecisionTime: -Infinity, // Initialize to a very low number
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -43,15 +46,15 @@ const Game = () => {
     if (!gameState.isPaused && !gameState.isGameOver) {
       intervalRef.current = setInterval(() => {
         if (!opponentTeam) return;
-        setGameState(prev => simulateTick(prev, userTeam, opponentTeam));
-      }, 37.5); // 1 game second every 37.5ms -> ~1 game minute every 2.25 seconds, period ~45 seconds
+        setGameState(prev => simulateTick(prev, gameUserTeam, opponentTeam));
+      }, 37.5);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [gameState.isPaused, gameState.isGameOver, opponentTeam, userTeam]);
+  }, [gameState.isPaused, gameState.isGameOver, opponentTeam, gameUserTeam]);
 
   const handlePauseResume = () => {
     if (gameState.isGameOver) return;
@@ -65,25 +68,33 @@ const Game = () => {
       time: 0,
       isPaused: true,
       gameLog: [{ time: "00:00", period: prev.period + 1, description: `Start of Period ${prev.period + 1}` }, ...prev.gameLog],
-      lastDecisionTime: -Infinity, // Reset cooldown for new period
     }));
   };
 
-  const handleDecision = (decision: CoachingDecision, optionIndex: number) => {
-    // In a real scenario, the option.effect would be processed here.
-    // For now, we just log it and resume the game.
+  const handleTacticChange = (category: string, tactic: string) => {
+    const newTactics = { ...gameUserTeam.tactics, [category]: tactic };
+    setGameUserTeam(prev => ({ ...prev, tactics: newTactics }));
+  };
+
+  const handleLineupChange = (newLineup: Lineup) => {
+    setGameUserTeam(prev => ({ ...prev, lineup: newLineup }));
+  };
+
+  const handleGiveInstruction = (target: string, instruction: string) => {
+    const targetName = gameUserTeam.roster.find(p => p.id === target)?.name || target;
     const newLogEntry = {
       time: formatClockTime(1200 - gameState.time),
       period: gameState.period,
-      description: `Coach decision: ${decision.options[optionIndex].text}`
+      description: `Instruction to ${targetName}: ${instruction}`
     };
     setGameState(prev => ({
       ...prev,
-      currentDecision: null,
-      isPaused: false,
       gameLog: [newLogEntry, ...prev.gameLog],
-      lastDecisionTime: prev.time, // Update last decision time
     }));
+  };
+
+  const handleSaveChanges = () => {
+    updateTeam(gameUserTeam);
   };
 
   if (!opponentTeam) return <div>Opponent not found.</div>;
@@ -134,9 +145,9 @@ const Game = () => {
                 ))}
               </ScrollArea>
             </TabsContent>
-            <TabsContent value="my-roster"><RosterDisplay players={userTeam.roster} /></TabsContent>
+            <TabsContent value="my-roster"><RosterDisplay players={gameUserTeam.roster} /></TabsContent>
             <TabsContent value="opp-roster"><RosterDisplay players={opponentTeam.roster} /></TabsContent>
-            <TabsContent value="my-lines"><LineupDisplay lineup={userTeam.lineup} roster={userTeam.roster} /></TabsContent>
+            <TabsContent value="my-lines"><LineupDisplay lineup={gameUserTeam.lineup} roster={gameUserTeam.roster} /></TabsContent>
             <TabsContent value="opp-lines"><LineupDisplay lineup={opponentTeam.lineup} roster={opponentTeam.roster} /></TabsContent>
           </CardContent>
         </Card>
@@ -154,27 +165,47 @@ const Game = () => {
             {gameState.isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
             {gameState.isPaused ? 'Resume' : 'Pause'}
           </Button>
+          {gameState.isPaused && !isEndOfPeriod && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="lg" variant="secondary">
+                  <Settings className="mr-2 h-5 w-5" />
+                  Manage Team
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>Team Management</DialogTitle>
+                </DialogHeader>
+                <Tabs defaultValue="tactics" className="mt-4">
+                  <TabsList>
+                    <TabsTrigger value="tactics">Tactics</TabsTrigger>
+                    <TabsTrigger value="lines">Lines</TabsTrigger>
+                    <TabsTrigger value="instructions">Instructions</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="tactics" className="mt-4">
+                    <TacticsManager currentTactics={gameUserTeam.tactics} onTacticChange={handleTacticChange} />
+                  </TabsContent>
+                  <TabsContent value="lines" className="mt-4">
+                    <LineupManager lineup={gameUserTeam.lineup} roster={gameUserTeam.roster} onLineupChange={handleLineupChange} />
+                  </TabsContent>
+                  <TabsContent value="instructions" className="mt-4">
+                    <InstructionsManager roster={gameUserTeam.roster} onGiveInstruction={handleGiveInstruction} />
+                  </TabsContent>
+                </Tabs>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button onClick={handleSaveChanges}>Save and Close</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
           {isEndOfPeriod && gameState.period < 3 && (
             <Button size="lg" onClick={handleNextPeriod}>Start Period {gameState.period + 1}</Button>
           )}
         </div>
       )}
-
-      <Dialog open={!!gameState.currentDecision} onOpenChange={() => { /* Prevent closing by clicking outside */ }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Coach's Decision</DialogTitle>
-            <DialogDescription>{gameState.currentDecision?.prompt}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col space-y-2 sm:flex-col sm:space-y-2">
-            {gameState.currentDecision?.options.map((option, index) => (
-              <Button key={index} onClick={() => handleDecision(gameState.currentDecision!, index)}>
-                {option.text}
-              </Button>
-            ))}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
