@@ -74,7 +74,7 @@ const generateCoachingDecision = (gameState: GameState, userTeam: Team, opponent
     }
 
     // Low chance to trigger a decision on any given tick (aiming for 1-3 per game)
-    if (Math.random() > 0.9995) return null;
+    if (Math.random() > 0.9997) return null; // Further reduced probability
 
     const contexts = getContexts(gameState, userTeam, opponentTeam);
     
