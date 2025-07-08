@@ -166,10 +166,26 @@ export interface GameEvent {
   description: string;
 }
 
+export interface CoachingDecision {
+  id: string;
+  prompt: string;
+  options: {
+    text: string;
+    effect: {
+      type: 'TACTIC_MODIFIER' | 'MORALE_BOOST' | 'FATIGUE_REDUCTION';
+      value: number;
+      duration: number; // in game seconds
+    };
+  }[];
+}
+
 export interface GameState {
   userScore: number;
   opponentScore: number;
   period: number;
+  time: number; // Added
   gameLog: GameEvent[];
   isGameOver: boolean;
+  isPaused: boolean; // Added
+  currentDecision: CoachingDecision | null; // Added
 }
