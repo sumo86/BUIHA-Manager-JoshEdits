@@ -1,6 +1,7 @@
 import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes, PlayerSeasonStats } from "@/types";
 import { archetypes } from "@/data/archetypes";
 import { roles } from "@/data/roles";
+import { teams as allTeamsData } from "@/data/teams"; // Import all teams data
 
 const firstNames = ["James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Charles", "Christopher", "Daniel", "Matthew", "Anthony", "Mark", "Donald", "Steven", "Paul", "Andrew", "Joshua", "Emily", "Hannah", "Megan", "Lauren", "Jessica", "Sophie", "Olivia", "Charlotte", "Chloe", "Amy"];
 const lastNames = ["Smith", "Jones", "Williams", "Brown", "Taylor", "Davies", "Wilson", "Evans", "Thomas", "Johnson", "Roberts", "Walker", "Wright", "Thompson", "White", "Green", "Hall", "Wood", "Harris", "Martin"];
@@ -348,6 +349,9 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
   return roster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 };
 
+// Create a map for quick lookup of team's league division
+const teamDivisionMap = new Map(allTeamsData.map(team => [team.name, team.leagueDivision]));
+
 export const generateRecruits = (userLeagueDivision: string, allTeamNames: string[]): Player[] => {
     const recruits: Player[] = [];
     const usedJerseyNumbers = new Set<number>();
@@ -422,12 +426,16 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
 
         if (source === 'Transfer' && eligibility !== 'UG Year 1') {
             const otherTeamName = getRandomItem(allTeamNames);
+            // Get the actual league division of the other team
+            const otherTeamLeagueDivision = teamDivisionMap.get(otherTeamName) || userLeagueDivision; // Fallback to user's league if not found
+            
             const history: PlayerSeasonStats[] = [];
             const currentYear = new Date().getFullYear();
             let numPriorSeasons = eligibility === "UG Year 2" ? 1 : (Math.random() < 0.5 ? 1 : 2);
             
             for (let j = 0; j < numPriorSeasons; j++) {
-                history.push(generateRandomSeasonStats(player.positions[0] !== 'G', otherTeamName, userLeagueDivision, currentYear - (numPriorSeasons - j)));
+                // Use the otherTeamLeagueDivision for generating history stats
+                history.push(generateRandomSeasonStats(player.positions[0] !== 'G', otherTeamName, otherTeamLeagueDivision, currentYear - (numPriorSeasons - j)));
             }
             player.history = history;
         } else {
