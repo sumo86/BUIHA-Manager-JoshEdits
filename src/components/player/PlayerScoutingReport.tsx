@@ -26,13 +26,39 @@ const getAttributeDescription = (key: string, value: number): string => {
     return '';
 };
 
+// Helper to calculate star rating for a given ability and division
+const calculateStarRatingForAbility = (ability: number, isSkater: boolean, targetLeagueDivision: string): number => {
+    const tierKey = Object.keys(divisionTiers).find(key => targetLeagueDivision.includes(key)) || 'Non-Checking 3';
+    const tier = divisionTiers[tierKey];
+    
+    const avgAbility = isSkater ? tier.skater : tier.goalie;
+    const step = isSkater ? tier.step.skater : tier.step.goalie;
+    
+    const diff = ability - avgAbility;
+
+    if (diff > step * 1.75) return 5;
+    if (diff > step * 1.25) return 4.5;
+    if (diff > step * 0.75) return 4;
+    if (diff > step * 0.25) return 3.5;
+    if (diff > -0.25 * step) return 3;
+    if (diff > -0.75 * step) return 2.5;
+    if (diff > -1.25 * step) return 2;
+    if (diff > -1.75 * step) return 1.5;
+    return 1;
+};
+
 const generateReport = (player: Player, team: Team) => {
   const firstName = player.name.split(' ')[0];
   const isSkater = player.positions[0] !== 'G';
-  const { attributes, starRating } = player;
+  const { attributes, starRating, potentialAbility } = player;
   const { leagueDivision } = team;
 
-  const summary = `${firstName} is ${getSkillTierDescription(starRating)} in ${leagueDivision}.`;
+  const summaryPhrases = [
+    `${firstName} is ${getSkillTierDescription(starRating)} in ${leagueDivision}.`,
+    `${firstName} currently performs as ${getSkillTierDescription(starRating)} at the ${leagueDivision} level.`,
+    `At the ${leagueDivision} level, ${firstName} is considered ${getSkillTierDescription(starRating)}.`
+  ];
+  const summary = summaryPhrases[Math.floor(Math.random() * summaryPhrases.length)];
 
   const strengths: string[] = [];
   const weaknesses: string[] = [];
@@ -55,17 +81,37 @@ const generateReport = (player: Player, team: Team) => {
 
   let pros = '';
   if (strengths.length > 0) {
-    pros = `A key strength is ${firstName}'s ${strengths[0]}.`;
+    const proPhrases = [
+      `A key strength is ${firstName}'s ${strengths[0]}.`,
+      `${firstName} excels in areas like ${strengths[0]}.`,
+      `One notable positive is ${firstName}'s ${strengths[0]}.`
+    ];
+    pros = proPhrases[Math.floor(Math.random() * proPhrases.length)];
     if (strengths.length > 1) {
-      pros += ` ${firstName} also shows strong ${strengths[1]}.`;
+      const additionalProPhrases = [
+        ` ${firstName} also shows strong ${strengths[1]}.`,
+        ` Additionally, ${firstName} is strong in ${strengths[1]}.`,
+        ` Another asset is ${firstName}'s ${strengths[1]}.`
+      ];
+      pros += additionalProPhrases[Math.floor(Math.random() * additionalProPhrases.length)];
     }
   }
 
   let cons = '';
   if (weaknesses.length > 0) {
-    cons = `However, ${firstName} struggles with ${weaknesses[0]}.`;
+    const conPhrases = [
+      `However, ${firstName} struggles with ${weaknesses[0]}.`,
+      `A notable area for improvement is ${firstName}'s ${weaknesses[0]}.`,
+      `On the other hand, ${firstName} shows weakness in ${weaknesses[0]}.`
+    ];
+    cons = conPhrases[Math.floor(Math.random() * conPhrases.length)];
     if (weaknesses.length > 1) {
-      cons += ` Additionally, ${firstName} has weak ${weaknesses[1]}.`;
+      const additionalConPhrases = [
+        ` Additionally, ${firstName} has weak ${weaknesses[1]}.`,
+        ` ${firstName} also needs to improve ${weaknesses[1]}.`,
+        ` Another concern is ${firstName}'s ${weaknesses[1]}.`
+      ];
+      cons += additionalConPhrases[Math.floor(Math.random() * additionalConPhrases.length)];
     }
   }
 
@@ -138,7 +184,33 @@ const generateReport = (player: Player, team: Team) => {
     hiddenHints.push(`${firstName} has a history of off-ice incidents that could be a distraction.`);
   }
 
-  return [summary, pros, cons, ...hiddenHints].filter(Boolean).join(' ');
+  // Potential Assessment
+  let potentialAssessment = '';
+  const potentialDivisions = Object.keys(divisionTiers);
+  let bestFitDivision = leagueDivision; // Start with current division
+
+  // Find the highest division where potentialAbility is at least "average" (3 stars)
+  for (let i = potentialDivisions.length - 1; i >= 0; i--) {
+    const div = potentialDivisions[i];
+    const potentialStar = calculateStarRatingForAbility(potentialAbility, isSkater, div);
+    if (potentialStar >= 3) {
+      bestFitDivision = div;
+      break;
+    }
+  }
+
+  const potentialStarRating = calculateStarRatingForAbility(potentialAbility, isSkater, bestFitDivision);
+  const potentialSkillDescription = getSkillTierDescription(potentialStarRating);
+
+  const potentialPhrases = [
+    `${firstName} may have the potential to become ${potentialSkillDescription} in ${bestFitDivision}.`,
+    `With proper development, ${firstName} could grow into ${potentialSkillDescription} at the ${bestFitDivision} level.`,
+    `Scouts project ${firstName} to potentially develop into ${potentialSkillDescription} in ${bestFitDivision}.`
+  ];
+  potentialAssessment = potentialPhrases[Math.floor(Math.random() * potentialPhrases.length)];
+
+
+  return [summary, pros, cons, ...hiddenHints, potentialAssessment].filter(Boolean).join(' ');
 };
 
 export const PlayerScoutingReport = ({ player, team }: PlayerScoutingReportProps) => {
