@@ -1,11 +1,10 @@
 import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes, PlayerSeasonStats } from "@/types";
 import { archetypes } from "@/data/archetypes";
 import { roles } from "@/data/roles";
-import { teams as allTeamsData } from "@/data/teams"; // Import all teams data
+import { teams as allTeamsData } from "@/data/teams";
+import { getRandomNationality } from "@/data/nationalityDistributions";
+import { getRandomNameForNationality } from "@/data/names";
 
-const firstNames = ["James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Charles", "Christopher", "Daniel", "Matthew", "Anthony", "Mark", "Donald", "Steven", "Paul", "Andrew", "Joshua", "Emily", "Hannah", "Megan", "Lauren", "Jessica", "Sophie", "Olivia", "Charlotte", "Chloe", "Amy"];
-const lastNames = ["Smith", "Jones", "Williams", "Brown", "Taylor", "Davies", "Wilson", "Evans", "Thomas", "Johnson", "Roberts", "Walker", "Wright", "Thompson", "White", "Green", "Hall", "Wood", "Harris", "Martin"];
-const nationalities = ["British", "Canadian", "American", "Swedish", "Finnish", "Czech", "Slovak", "German", "Swiss", "Latvian"];
 const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
 const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
 
@@ -305,12 +304,15 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
       history.push(generateRandomSeasonStats(isSkater, teamName, leagueDivision, currentYear - (numPriorSeasons - i)));
   }
 
+  const nationality = getRandomNationality();
+  const name = getRandomNameForNationality(nationality);
+
   return {
     id: crypto.randomUUID(),
     jerseyNumber,
-    name: `${getRandomItem(firstNames)} ${getRandomItem(lastNames)}`,
+    name,
     age,
-    nationality: getRandomItem(nationalities),
+    nationality,
     positions,
     starRating,
     morale: "Content",
@@ -354,7 +356,6 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
     const usedJerseyNumbers = new Set<number>();
     const numRecruits = 30 + Math.floor(Math.random() * 21); // 30-50 recruits
 
-    // Create a map for quick lookup of team's league division inside the function
     const teamDivisionMap = new Map(allTeamsData.map(team => [team.name, team.leagueDivision]));
 
     for (let i = 0; i < numRecruits; i++) {
@@ -363,11 +364,9 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         const source: Player['source'] = sourceRoll < 0.6 ? 'Local' : (sourceRoll < 0.9 ? 'International' : 'Transfer');
 
         if (source === 'Transfer') {
-            // Ensure transfer students are not UG Year 1
             const eligibilityOptionsForTransfers: Player['eligibility'][] = ["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"];
             eligibility = getRandomItem(eligibilityOptionsForTransfers);
         } else {
-            // For Local/International, UG Year 1 is common
             eligibility = Math.random() < 0.85 ? "UG Year 1" : getRandomItem(["UG Year 2", "Masters"]);
         }
 
@@ -380,11 +379,9 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         const allPossiblePositions: Position[] = [...skaterPositions, 'G'];
         const position = getRandomItem(allPossiblePositions);
         
-        // Generate player with a generic base ability, then adjust
         const genericDivisionForBaseGeneration = 'Non-Checking 3'; 
         const player = generatePlayer(usedJerseyNumbers, position, genericDivisionForBaseGeneration, "Unattached", [eligibility]);
 
-        // Now, adjust currentAbility and potentialAbility based on estimatedQuality
         let targetCurrentAbilityMin: number;
         let targetCurrentAbilityMax: number;
 
@@ -404,18 +401,14 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
             targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
         }
 
-        // Set currentAbility within the target range
         player.currentAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);
         
-        // Recalculate potential ability based on the new current ability and age
         const potentialBonus = Math.floor(Math.random() * 150) * ((30 - player.age) / 12);
         player.potentialAbility = Math.round(player.currentAbility + potentialBonus);
-        const maxAbility = isSkater ? 560 : 260; // Max possible ability
+        const maxAbility = isSkater ? 560 : 260;
         if (player.potentialAbility > maxAbility) player.potentialAbility = maxAbility;
         if (player.potentialAbility < player.currentAbility) player.potentialAbility = player.currentAbility;
 
-
-        // Recalculate star rating based on the *user's* league division
         player.starRating = calculateStarRating(player.currentAbility, isSkater, userLeagueDivision);
 
         player.source = source;
@@ -426,15 +419,13 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
 
         if (source === 'Transfer' && eligibility !== 'UG Year 1') {
             const otherTeamName = getRandomItem(allTeamNames);
-            // Get the actual league division of the other team
-            const otherTeamLeagueDivision = teamDivisionMap.get(otherTeamName) || userLeagueDivision; // Fallback to user's league if not found
+            const otherTeamLeagueDivision = teamDivisionMap.get(otherTeamName) || userLeagueDivision;
             
             const history: PlayerSeasonStats[] = [];
             const currentYear = new Date().getFullYear();
             let numPriorSeasons = eligibility === "UG Year 2" ? 1 : (Math.random() < 0.5 ? 1 : 2);
             
             for (let j = 0; j < numPriorSeasons; j++) {
-                // Use the otherTeamLeagueDivision for generating history stats
                 history.push(generateRandomSeasonStats(player.positions[0] !== 'G', otherTeamName, otherTeamLeagueDivision, currentYear - (numPriorSeasons - j)));
             }
             player.history = history;
