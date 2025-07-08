@@ -62,5 +62,5 @@ const teamData = [
 
 export const teams: Team[] = teamData.map(team => ({
     ...team,
-    roster: generateRoster(),
+    roster: generateRoster(team.leagueDivision),
 }));

@@ -3,7 +3,7 @@ import { teams } from '@/data/teams';
 import { Player, SkaterAttributes, GoalieAttributes } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Star, User, MapPin, Shield, HeartPulse, GraduationCap } from 'lucide-react';
+import { Star, User, MapPin, Shield, HeartPulse, GraduationCap, Zap, TrendingUp, StarHalf } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 const PlayerProfile = () => {
@@ -15,18 +15,27 @@ const PlayerProfile = () => {
         return <div className="text-center p-10">Player not found.</div>;
     }
 
-    // Correctly determine if the player is a skater by checking for a skater-specific attribute
     const isSkater = 'acceleration' in player.attributes;
     const skaterAttrs = player.attributes as SkaterAttributes;
     const goalieAttrs = player.attributes as GoalieAttributes;
 
-    const renderStars = (rating: number) => (
-      <div className="flex">
-        {[...Array(5)].map((_, i) => (
-          <Star key={i} className={`h-5 w-5 ${i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />
-        ))}
-      </div>
-    );
+    const renderStars = (rating: number) => {
+        const fullStars = Math.floor(rating);
+        const halfStar = rating % 1 !== 0;
+        const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+        
+        return (
+          <div className="flex">
+            {[...Array(fullStars)].map((_, i) => (
+              <Star key={`full-${i}`} className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+            ))}
+            {halfStar && <StarHalf key="half" className="h-5 w-5 text-yellow-400 fill-yellow-400" />}
+            {[...Array(emptyStars)].map((_, i) => (
+              <Star key={`empty-${i}`} className="h-5 w-5 text-gray-300" />
+            ))}
+          </div>
+        );
+    };
 
     const AttributeItem = ({ label, value }: { label: string, value: number }) => (
         <div className="flex justify-between items-center py-1">
@@ -56,7 +65,11 @@ const PlayerProfile = () => {
                     <CardContent className="space-y-4">
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><User size={16} /> Age</span> <span>{player.age}</span></div>
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><MapPin size={16} /> Nationality</span> <span>{player.nationality}</span></div>
-                        <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><Star size={16} /> Rating</span> <span className="flex">{renderStars(player.starRating)}</span></div>
+                        <Separator />
+                        <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><Star size={16} /> Division Rating</span> <span className="flex">{renderStars(player.starRating)}</span></div>
+                        <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><Zap size={16} /> Current Ability</span> <span>{player.currentAbility}</span></div>
+                        <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><TrendingUp size={16} /> Potential Ability</span> <span>{player.potentialAbility}</span></div>
+                        <Separator />
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><Shield size={16} /> Morale</span> <Badge variant="outline">{player.morale}</Badge></div>
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><HeartPulse size={16} /> Status</span> <Badge variant={player.healthStatus === 'Healthy' ? 'secondary' : 'destructive'}>{player.healthStatus}</Badge></div>
                         <div className="flex items-center justify-between"><span className="flex items-center gap-2 text-muted-foreground"><GraduationCap size={16} /> Eligibility</span> <span>{player.eligibility}</span></div>

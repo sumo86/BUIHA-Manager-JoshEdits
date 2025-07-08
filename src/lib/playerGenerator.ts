@@ -80,8 +80,46 @@ const generateAttributes = (archetype: PlayerArchetype): SkaterAttributes | Goal
     return attrs;
 };
 
+const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAttributes, isSkater: boolean): number => {
+    const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament', 'gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
+    const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
+    
+    if (isSkater) {
+        return visibleSkaterKeys.reduce((sum, key) => sum + (attributes as SkaterAttributes)[key], 0);
+    } else {
+        return visibleGoalieKeys.reduce((sum, key) => sum + (attributes as GoalieAttributes)[key], 0);
+    }
+};
 
-const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position): Player => {
+const divisionTiers: { [key: string]: { skater: number, goalie: number, step: { skater: number, goalie: number } } } = {
+    'Checking 1': { skater: 420, goalie: 190, step: { skater: 30, goalie: 15 } },
+    'Checking 2': { skater: 360, goalie: 160, step: { skater: 30, goalie: 15 } },
+    'Non-Checking 1': { skater: 320, goalie: 140, step: { skater: 28, goalie: 13 } },
+    'Non-Checking 2': { skater: 280, goalie: 120, step: { skater: 28, goalie: 13 } },
+    'Non-Checking 3': { skater: 240, goalie: 100, step: { skater: 25, goalie: 12 } },
+};
+
+const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDivision: string): number => {
+    const tierKey = Object.keys(divisionTiers).find(key => leagueDivision.includes(key)) || 'Non-Checking 3';
+    const tier = divisionTiers[tierKey];
+    
+    const avgAbility = isSkater ? tier.skater : tier.goalie;
+    const step = isSkater ? tier.step.skater : tier.step.goalie;
+    
+    const diff = currentAbility - avgAbility;
+
+    if (diff > step * 1.75) return 5;
+    if (diff > step * 1.25) return 4.5;
+    if (diff > step * 0.75) return 4;
+    if (diff > step * 0.25) return 3.5;
+    if (diff > -0.25 * step) return 3;
+    if (diff > -0.75 * step) return 2.5;
+    if (diff > -1.25 * step) return 2;
+    if (diff > -1.75 * step) return 1.5;
+    return 1;
+};
+
+const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string): Player => {
   let jerseyNumber: number;
   do {
     jerseyNumber = Math.floor(Math.random() * 98) + 1;
@@ -90,8 +128,9 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position): Pla
 
   const primaryPosition = position;
   const positions: Position[] = [primaryPosition];
+  const isSkater = primaryPosition !== 'G';
 
-  if (primaryPosition !== 'G') {
+  if (isSkater) {
     if (Math.random() > 0.5) {
       let secondaryPosition: Position;
       do {
@@ -110,36 +149,49 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position): Pla
 
   const archetype = getArchetypeForPosition(position);
   const attributes = generateAttributes(archetype);
+  const age = Math.floor(Math.random() * (28 - 18 + 1)) + 18;
+  
+  const currentAbility = calculateCurrentAbility(attributes, isSkater);
+  
+  const potentialBonus = Math.floor(Math.random() * 150) * ((30 - age) / 12);
+  const maxAbility = isSkater ? 560 : 260;
+  let potentialAbility = Math.round(currentAbility + potentialBonus);
+  if (potentialAbility > maxAbility) potentialAbility = maxAbility;
+  if (potentialAbility < currentAbility) potentialAbility = currentAbility;
+
+  const starRating = calculateStarRating(currentAbility, isSkater, leagueDivision);
 
   return {
     id: crypto.randomUUID(),
     jerseyNumber,
     name: `${getRandomItem(firstNames)} ${getRandomItem(lastNames)}`,
-    age: Math.floor(Math.random() * (28 - 18 + 1)) + 18,
+    age,
     nationality: getRandomItem(nationalities),
     positions,
-    starRating: Math.floor(Math.random() * 5) + 1,
+    starRating,
     morale: "Content",
     healthStatus: "Healthy",
     eligibility: getRandomItem(eligibilities),
     archetype,
     attributes,
+    currentAbility,
+    potentialAbility,
   };
 };
 
-export const generateRoster = (): Player[] => {
+export const generateRoster = (leagueDivision: string): Player[] => {
   const roster: Player[] = [];
   const usedJerseyNumbers = new Set<number>();
 
-  roster.push(generatePlayer(usedJerseyNumbers, "G"));
-  roster.push(generatePlayer(usedJerseyNumbers, "G"));
+  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision));
+  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision));
 
-  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LD"));
-  for (let i = 0; i < 4; i++) roster.push(generatePlayer(usedJerseyNumbers, "RD"));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision));
+  for (let i = 0; i < 4; i++) roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision));
   
-  for (let i = 0; i < 4; i++) roster.push(generatePlayer(usedJerseyNumbers, "C"));
-  for (let i = 0; i < 4; i++) roster.push(generatePlayer(usedJerseyNumbers, "LW"));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RW"));
+  for (let i = 0; i < 4; i++) roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision));
+  for (let i = 0; i < 4; i++) roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision));
 
   return roster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 };

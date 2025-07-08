@@ -108,6 +108,8 @@ export interface Player {
   eligibility: "UG Year 1" | "UG Year 2" | "UG Year 3" | "UG Year 4 (Masters)" | "PhD" | "Alumni";
   archetype: PlayerArchetype;
   attributes: SkaterAttributes | GoalieAttributes;
+  currentAbility: number;
+  potentialAbility: number;
 }
 
 export interface Team {
