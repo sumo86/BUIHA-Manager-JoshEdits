@@ -13,10 +13,11 @@ const PlayerCard = ({ playerId, roster, slotPosition }: { playerId: string | nul
     return <div className="border rounded-lg p-2 text-center bg-muted/50 h-[60px] flex items-center justify-center text-muted-foreground text-sm">Empty</div>;
   }
 
-  const isOutOfPosition = !player.positions.includes(slotPosition);
+  // Check if the player's primary position is different from the slot position
+  const isOutOfPrimaryPosition = player.positions[0] !== slotPosition;
   let displayRating = player.starRating;
 
-  if (isOutOfPosition) {
+  if (isOutOfPrimaryPosition) {
     const penalty = Math.random() * 1.5 + 1; // Random penalty between 1.0 and 2.5
     displayRating = Math.max(0.5, player.starRating - penalty);
   }
