@@ -176,7 +176,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const workEthicFactor = (attributes.professionalism + attributes.determination) / 80; // Range ~0.025 to 0.5
                     const ageFactor = Math.max(0, (25 - player.age) / 50); // Range 0 to ~0.14 for young players
                     improvementAmount = 0.1 + workEthicFactor + ageFactor + (Math.random() * 0.1); // Assigned here
-                    improvementAmount = Math.max(0.2, Math.min(0.5, improvementAmount));
+                    improvementAmount = Math.max(0.2, Math.min(0.8, improvementAmount));
 
                     let possibleAttrsToImprove: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
                     
@@ -285,32 +285,39 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const autoAssignTrainingFocuses = () => {
         const newRoster = userTeam.roster.map(player => {
-            if (!player.role) return player;
-
-            const playerRole = roles.find(r => r.name === player.role);
-            if (!playerRole) return player;
-
-            const keyAttributes = playerRole.keyAttributes;
-            let bestFocus: TrainingFocus = null;
-            let maxMatch = 0;
-
-            const applicableFocuses = player.positions.includes('G') ? goalieFocuses : skaterFocuses;
+            const isSkater = !player.positions.includes('G');
+            const applicableFocuses = isSkater ? skaterFocuses : goalieFocuses;
+            
+            let weakestFocus: TrainingFocus = null;
+            let lowestAverage = Infinity;
 
             for (const focus of applicableFocuses) {
                 if (!focus) continue;
-                const focusAttributes = trainingFocusesMap[focus];
-                const matchCount = focusAttributes.filter(attr => keyAttributes.includes(attr as any)).length;
 
-                if (matchCount > maxMatch) {
-                    maxMatch = matchCount;
-                    bestFocus = focus;
+                const focusAttributes = trainingFocusesMap[focus];
+                
+                // Filter for attributes that are actually on the player object
+                const relevantPlayerAttributes = focusAttributes.filter(attr => player.attributes.hasOwnProperty(attr));
+
+                if (relevantPlayerAttributes.length === 0) continue;
+
+                const totalValue = relevantPlayerAttributes.reduce((sum, attr) => {
+                    return sum + (player.attributes[attr as keyof typeof player.attributes] as number);
+                }, 0);
+
+                const averageValue = totalValue / relevantPlayerAttributes.length;
+
+                if (averageValue < lowestAverage) {
+                    lowestAverage = averageValue;
+                    weakestFocus = focus;
                 }
             }
-            return { ...player, trainingFocus: bestFocus };
+
+            return { ...player, trainingFocus: weakestFocus };
         });
 
         updateTeam({ ...userTeam, roster: newRoster });
-        toast.success("Training focuses have been auto-assigned based on player roles.");
+        toast.success("Training focuses have been auto-assigned based on players' weakest areas.");
     };
 
     const generateScoutingPool = () => {
