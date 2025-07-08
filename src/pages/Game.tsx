@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useBlocker } from 'react-router-dom';
 import { useTeam } from '@/context/TeamContext';
 import { GameState, Team, Lineup } from '@/types';
 import { simulateTick } from '@/lib/gameEngine';
@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { TacticsManager } from '@/components/game/TacticsManager';
 import { LineupManager } from '@/components/game/LineupManager';
 import { InstructionsManager } from '@/components/game/InstructionsManager';
+import { GameSummary } from '@/components/game/GameSummary';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const formatClockTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -41,6 +43,7 @@ const Game = () => {
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const blocker = useBlocker(!gameState.isGameOver);
 
   useEffect(() => {
     if (!gameState.isPaused && !gameState.isGameOver) {
@@ -134,8 +137,9 @@ const Game = () => {
       </Card>
 
       <Tabs defaultValue="log">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="log">Game Log</TabsTrigger>
+          <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="my-roster">Your Roster</TabsTrigger>
           <TabsTrigger value="opp-roster">Opponent Roster</TabsTrigger>
           <TabsTrigger value="my-lines">Your Lines</TabsTrigger>
@@ -152,6 +156,11 @@ const Game = () => {
                     {index < gameState.gameLog.length - 1 && <Separator className="my-2" />}
                   </div>
                 ))}
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="summary">
+              <ScrollArea className="h-[450px] w-full">
+                <GameSummary gameLog={gameState.gameLog} userTeam={gameUserTeam} opponentTeam={opponentTeam} />
               </ScrollArea>
             </TabsContent>
             <TabsContent value="my-roster"><RosterDisplay players={gameUserTeam.roster} /></TabsContent>
@@ -223,6 +232,27 @@ const Game = () => {
             <Button size="lg" onClick={handleNextPeriod}>Start Period {gameState.period + 1}</Button>
           )}
         </div>
+      )}
+
+      {blocker.state === "blocked" && (
+        <AlertDialog open onOpenChange={(open) => { if (!open) blocker.reset?.(); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to leave?</AlertDialogTitle>
+              <AlertDialogDescription>
+                The current game will be abandoned and the result will be a loss. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => blocker.reset?.()}>
+                Stay
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={() => blocker.proceed?.()}>
+                Abandon Game
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
