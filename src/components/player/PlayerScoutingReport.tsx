@@ -37,8 +37,15 @@ const generateReport = (player: Player, team: Team) => {
   const strengths: string[] = [];
   const weaknesses: string[] = [];
 
-  Object.entries(attributes).forEach(([key, value]) => {
-    const desc = getAttributeDescription(key, value as number);
+  // Define visible attributes to consider for general strengths/weaknesses
+  const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
+  const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
+  
+  const attributesToConsider = isSkater ? visibleSkaterKeys : visibleGoalieKeys;
+
+  attributesToConsider.forEach(key => {
+    const value = attributes[key as keyof typeof attributes] as number;
+    const desc = getAttributeDescription(key as string, value);
     if (desc.includes('elite') || desc.includes('strong')) {
       strengths.push(desc);
     } else if (desc.includes('weak')) {
@@ -46,8 +53,21 @@ const generateReport = (player: Player, team: Team) => {
     }
   });
 
-  let pros = strengths.length > 0 ? `Strengths include ${firstName}'s ${strengths.slice(0, 3).join(', ')}.` : '';
-  let cons = weaknesses.length > 0 ? `Weaknesses include ${firstName}'s ${weaknesses.slice(0, 3).join(', ')}.` : '';
+  let pros = '';
+  if (strengths.length > 0) {
+    pros = `A key strength is ${firstName}'s ${strengths[0]}.`;
+    if (strengths.length > 1) {
+      pros += ` ${firstName} also shows strong ${strengths[1]}.`;
+    }
+  }
+
+  let cons = '';
+  if (weaknesses.length > 0) {
+    cons = `However, ${firstName} struggles with ${weaknesses[0]}.`;
+    if (weaknesses.length > 1) {
+      cons += ` Additionally, ${firstName} has weak ${weaknesses[1]}.`;
+    }
+  }
 
   // Hints for hidden attributes
   const hiddenHints: string[] = [];
@@ -72,7 +92,7 @@ const generateReport = (player: Player, team: Team) => {
   } else if (hidden.leadership >= 15) {
     hiddenHints.push(`${firstName} is a natural leader in the locker room, guiding teammates by example.`);
   } else if (hidden.leadership <= 7) {
-    hiddenHints.push(`${firstName} tends to keep to ${firstName}self and is not a vocal presence.`);
+    hiddenHints.push(`${firstName} tends to keep to themself and is not a vocal presence.`);
   }
 
   // Injury Proneness
@@ -102,6 +122,20 @@ const generateReport = (player: Player, team: Team) => {
     hiddenHints.push(`${firstName} can be a bit hot-headed and occasionally takes unnecessary penalties.`);
   } else if (hidden.temperament >= 15) {
     hiddenHints.push(`${firstName} maintains excellent composure under pressure and rarely takes a bad penalty.`);
+  }
+
+  // Greed
+  if (hidden.greed <= 5) {
+    hiddenHints.push(`${firstName} is known for being selfless and team-oriented.`);
+  } else if (hidden.greed >= 15) {
+    hiddenHints.push(`${firstName} has a reputation for being overly focused on personal gain.`);
+  }
+
+  // Controversy
+  if (hidden.controversy <= 5) {
+    hiddenHints.push(`${firstName} maintains a clean public image and avoids off-ice distractions.`);
+  } else if (hidden.controversy >= 15) {
+    hiddenHints.push(`${firstName} has a history of off-ice incidents that could be a distraction.`);
   }
 
   return [summary, pros, cons, ...hiddenHints].filter(Boolean).join(' ');
