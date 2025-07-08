@@ -36,7 +36,7 @@ export const roles: Role[] = [
         description: "Uses size and strength to create space and score.",
         positions: ['Forward'],
         keyAttributes: ['strength', 'hitting', 'balance', 'screening', 'aggression'],
-        type: 'Physical',
+        type: 'Offensive', // Corrected from 'Physical'
     },
     {
         name: "Speedy Forward",
@@ -64,7 +64,7 @@ export const roles: Role[] = [
         description: "A defensive forward with a strong physical tendency.",
         positions: ['Forward'],
         keyAttributes: ['hitting', 'strength', 'stamina', 'determination', 'checking', 'bravery'],
-        type: 'Defensive', // Corrected from 'Physical'
+        type: 'Defensive',
     },
     {
         name: "Agitator",
