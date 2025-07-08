@@ -64,7 +64,7 @@ export const roles: Role[] = [
         description: "A defensive forward with a strong physical tendency.",
         positions: ['Forward'],
         keyAttributes: ['hitting', 'strength', 'stamina', 'determination', 'checking', 'bravery'],
-        type: 'Physical',
+        type: 'Defensive', // Corrected from 'Physical'
     },
     {
         name: "Agitator",

@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Added this import
 import { roles } from "@/data/roles";
 import { useTeam } from "@/context/TeamContext";
 import { Player, Position } from "@/types";
@@ -33,6 +33,8 @@ const Roster = () => {
     Physical: 'bg-purple-500',
     Specialist: 'bg-gray-500',
   };
+
+  const roleTypeOrder = ['Offensive', 'Two-Way', 'Defensive', 'Physical', 'Specialist'];
 
   const handlePlayerClick = (playerId: string) => {
     navigate(`/player/${playerId}`);
@@ -107,15 +109,24 @@ const Roster = () => {
     const isForward = forwardPositions.some(p => player.positions.includes(p));
     const isDefenceman = defencePositions.some(p => player.positions.includes(p));
 
+    let filteredRoles = [];
     if (isForward && isDefenceman) {
-        return roles; 
+        filteredRoles = roles; 
     } else if (isForward) {
-        return roles.filter(r => r.positions.includes('Forward'));
+        filteredRoles = roles.filter(r => r.positions.includes('Forward'));
     } else if (isDefenceman) {
-        return roles.filter(r => r.positions.includes('Defenceman'));
+        filteredRoles = roles.filter(r => r.positions.includes('Defenceman'));
     }
 
-    return [];
+    // Sort roles by type order
+    return [...filteredRoles].sort((a, b) => {
+        const typeA = roleTypeOrder.indexOf(a.type);
+        const typeB = roleTypeOrder.indexOf(b.type);
+        if (typeA === typeB) {
+            return a.name.localeCompare(b.name); // Secondary sort by name
+        }
+        return typeA - typeB;
+    });
   };
 
   const renderEligibility = (player: Player) => {
@@ -231,7 +242,7 @@ const Roster = () => {
                 const applicableRoles = getApplicableRoles(player);
                 const selectedRole = applicableRoles.find(r => r.name === player.role);
                 const currentRoleSuitability = player.role ? player.roleSuitability[player.role] : 0;
-                const roleColorClass = getAttributeColorClass(currentRoleSuitability);
+                
                 return (
                   <TableRow 
                     key={player.id} 
@@ -255,7 +266,7 @@ const Roster = () => {
                           value={player.role}
                           onValueChange={(newRole) => handleRoleChange(player.id, newRole)}
                         >
-                          <SelectTrigger className={`w-[220px] font-bold ${roleColorClass}`}>
+                          <SelectTrigger className="w-[220px]"> {/* Removed font-bold and roleColorClass */}
                             <div className="flex items-center w-full">
                                 {selectedRole && <span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[selectedRole.type]}`}></span>}
                                 <SelectValue placeholder="Select a role" />
