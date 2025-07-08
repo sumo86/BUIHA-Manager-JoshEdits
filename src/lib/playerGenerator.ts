@@ -182,17 +182,19 @@ const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDi
         let captaincy: 'C' | 'A' | null = null;
         
         if (previousCaptaincy === 'A') {
-            if (Math.random() < 0.8) captaincy = 'A';
-            else if (Math.random() < 0.1) captaincy = 'C';
-            else captaincy = null;
+            const roll = Math.random();
+            if (roll < 0.75) captaincy = 'A'; // 75% chance to stay A
+            else if (roll < 0.90) captaincy = 'C'; // 15% chance to become C
+            else captaincy = null; // 10% chance to lose captaincy
         } else if (previousCaptaincy === 'C') {
-            if (Math.random() < 0.9) captaincy = 'C';
-            else if (Math.random() < 0.5) captaincy = 'A';
-            else captaincy = null;
-        } else {
+            const roll = Math.random();
+            if (roll < 0.95) captaincy = 'C'; // 95% chance to stay C
+            else if (roll < 0.99) captaincy = 'A'; // 4% chance to become A
+            else captaincy = null; // 1% chance to lose captaincy
+        } else { // previousCaptaincy is null
             const captaincyRoll = Math.random();
-            if (captaincyRoll < 0.15) captaincy = 'C';
-            else if (captaincyRoll < 0.40) captaincy = 'A';
+            if (captaincyRoll < 0.02) captaincy = 'C'; // 2% chance to become C
+            else if (captaincyRoll < 0.07) captaincy = 'A'; // 5% chance to become A
         }
 
         return {
