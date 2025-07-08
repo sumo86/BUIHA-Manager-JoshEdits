@@ -476,9 +476,15 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         } else if (estimatedQuality === 'Intermediate') {
             targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 1'].skater : divisionTiers['Non-Checking 1'].goalie;
             targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
+            // Apply boost for Intermediate
+            targetCurrentAbilityMin += isSkater ? 10 : 5;
+            targetCurrentAbilityMax += isSkater ? 10 : 5;
         } else { // Experienced
             targetCurrentAbilityMin = isSkater ? divisionTiers['Checking 2'].skater : divisionTiers['Checking 2'].goalie;
             targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
+            // Apply boost for Experienced
+            targetCurrentAbilityMin += isSkater ? 15 : 8;
+            targetCurrentAbilityMax += isSkater ? 15 : 8;
         }
 
         player.currentAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);
