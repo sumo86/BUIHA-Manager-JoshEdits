@@ -5,12 +5,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { roles } from "@/data/roles";
 import { useTeam } from "@/context/TeamContext";
 import { Player, Position } from "@/types";
-import { Star, StarHalf } from "lucide-react";
+import { Star, StarHalf, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -199,7 +206,6 @@ const Roster = () => {
               <TableRow>
                 <TableHead className="w-[50px]">#</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Captaincy</TableHead>
                 <TableHead>Position(s)</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Age</TableHead>
@@ -208,6 +214,7 @@ const Roster = () => {
                 <TableHead>Morale</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Eligibility</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -220,24 +227,13 @@ const Roster = () => {
                     className="cursor-pointer hover:bg-muted/50"
                   >
                     <TableCell className="font-bold">{player.jerseyNumber}</TableCell>
-                    <TableCell>{player.name}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                        {player.positions[0] !== 'G' ? (
-                            <Select
-                                value={player.captaincy || 'None'}
-                                onValueChange={(newRole) => handleCaptaincyChange(player.id, newRole as any)}
-                            >
-                                <SelectTrigger className="w-[120px]">
-                                    <SelectValue placeholder="-" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="None">None</SelectItem>
-                                    <SelectItem value="C">Captain (C)</SelectItem>
-                                    <SelectItem value="A">Alternate (A)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            'N/A'
+                    <TableCell>
+                        {player.name}
+                        {player.captaincy === 'C' && (
+                            <span className="ml-2 font-bold text-yellow-700">C</span>
+                        )}
+                        {player.captaincy === 'A' && (
+                            <span className="ml-2 font-medium text-yellow-500">A</span>
                         )}
                     </TableCell>
                     <TableCell>{player.positions.join(", ")}</TableCell>
@@ -279,6 +275,29 @@ const Roster = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>{renderEligibility(player)}</TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        {player.positions[0] !== 'G' && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'C')}>
+                                        Assign Captain (C)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'A')}>
+                                        Assign Alternate (A)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'None')}>
+                                        Remove Captaincy
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </TableCell>
                   </TableRow>
                 )
               })}
