@@ -136,7 +136,7 @@ const populateLineup = (roster: Player[]): Lineup => {
 };
 
 export const teams: Team[] = teamData.map(team => {
-    const roster = generateRoster(team.leagueDivision);
+    const roster = generateRoster(team.leagueDivision, team.name);
     const lineup = populateLineup(roster);
     return {
         ...team,

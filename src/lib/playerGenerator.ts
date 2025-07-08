@@ -1,4 +1,4 @@
-import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes } from "@/types";
+import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes, PlayerSeasonStats } from "@/types";
 import { archetypes } from "@/data/archetypes";
 import { roles } from "@/data/roles";
 
@@ -171,7 +171,35 @@ const eligibilityAgeRanges: Record<Player['eligibility'], { min: number, max: nu
     "Staff": { min: 25, max: 40 },
 };
 
-const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, allowedEligibilities?: Player['eligibility'][]): Player => {
+const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDivision: string, seasonYear: number): PlayerSeasonStats => {
+    const gamesPlayed = Math.floor(Math.random() * 11) + 15; // 15-25 games
+    let goals = 0;
+    let assists = 0;
+    let penaltyMinutes = 0;
+
+    if (isSkater) {
+        goals = Math.floor(Math.random() * 10) + 1; // 1-10 goals
+        assists = Math.floor(Math.random() * 15) + 1; // 1-15 assists
+        penaltyMinutes = Math.floor(Math.random() * 30) + 5; // 5-35 PIM
+    } else { // Goalie
+        goals = 0;
+        assists = Math.random() < 0.1 ? 1 : 0; // 10% chance of 1 assist
+        penaltyMinutes = Math.random() < 0.2 ? 2 : 0; // 20% chance of 2 PIM
+    }
+
+    return {
+        season: `${seasonYear}-${seasonYear + 1}`,
+        team: teamName,
+        league: leagueDivision,
+        gamesPlayed,
+        goals,
+        assists,
+        points: goals + assists,
+        penaltyMinutes,
+    };
+};
+
+const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, teamName: string, allowedEligibilities?: Player['eligibility'][]): Player => {
   let jerseyNumber: number;
   do {
     jerseyNumber = Math.floor(Math.random() * 98) + 1;
@@ -259,6 +287,22 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
       role = bestRoleOverall;
   }
 
+  const history: PlayerSeasonStats[] = [];
+  const currentYear = new Date().getFullYear();
+  let numPriorSeasons = 0;
+
+  switch (eligibility) {
+      case "UG Year 2": numPriorSeasons = 1; break;
+      case "UG Year 3": numPriorSeasons = 2; break;
+      case "UG Year 4": numPriorSeasons = 3; break;
+      case "Staff": numPriorSeasons = Math.floor(Math.random() * 5) + 1; break; // 1 to 5 seasons
+      default: numPriorSeasons = 0; break;
+  }
+
+  for (let i = 0; i < numPriorSeasons; i++) {
+      history.push(generateRandomSeasonStats(isSkater, teamName, leagueDivision, currentYear - (numPriorSeasons - i)));
+  }
+
   return {
     id: crypto.randomUUID(),
     jerseyNumber,
@@ -277,29 +321,30 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     role,
     roleSuitability,
     yearsLeftInProgram,
+    history, // Add generated history
   };
 };
 
-export const generateRoster = (leagueDivision: string): Player[] => {
+export const generateRoster = (leagueDivision: string, teamName: string): Player[] => {
   const roster: Player[] = [];
   const usedJerseyNumbers = new Set<number>();
   const nonStaffEligibilities = eligibilities.filter(e => e !== 'Staff');
 
   // Generate core non-staff players to meet minimums
-  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, nonStaffEligibilities));
-  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision, nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision, nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision, nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision, nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision, nonStaffEligibilities));
+  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, teamName, nonStaffEligibilities));
+  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision, teamName, nonStaffEligibilities));
 
   // Generate remaining players for the full roster (can be staff)
-  roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision));
-  roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision));
-  roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision));
-  roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision));
-  roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision));
+  roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision, teamName));
+  roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision, teamName));
+  roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision, teamName));
+  roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision, teamName));
+  roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision, teamName));
 
   return roster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 };
