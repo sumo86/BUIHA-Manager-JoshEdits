@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { roles } from "@/data/roles";
-import { teams } from "@/data/teams";
+import { useTeam } from "@/context/TeamContext";
 import { Player, Position } from "@/types";
 import { Star, StarHalf } from "lucide-react";
 import { useState } from "react";
@@ -13,7 +13,7 @@ import { Slider } from "@/components/ui/slider";
 
 const Roster = () => {
   const navigate = useNavigate();
-  const [team, setTeam] = useState(() => teams[0]);
+  const { userTeam: team, updateTeam } = useTeam();
   const [positionFilter, setPositionFilter] = useState('All');
   const [eligibilityFilter, setEligibilityFilter] = useState('All');
   const [starRatingFilter, setStarRatingFilter] = useState([0.5]);
@@ -23,12 +23,10 @@ const Roster = () => {
   };
 
   const handleRoleChange = (playerId: string, newRole: string) => {
-    setTeam(prevTeam => ({
-      ...prevTeam,
-      roster: prevTeam.roster.map(p => 
-        p.id === playerId ? { ...p, role: newRole } : p
-      )
-    }));
+    const newRoster = team.roster.map(p => 
+      p.id === playerId ? { ...p, role: newRole } : p
+    );
+    updateTeam({ ...team, roster: newRoster });
   };
 
   const renderStars = (rating: number) => {

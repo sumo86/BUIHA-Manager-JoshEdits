@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, ReactNode } from 'react';
+import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Team, Player } from '@/types';
 import { teams as initialTeams } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
@@ -9,6 +9,7 @@ interface TeamContextType {
     userTeam: Team;
     scoutingPool: Player[];
     recruitedPool: Player[];
+    fairHosted: boolean;
     generateScoutingPool: () => void;
     recruitPlayer: (playerId: string) => void;
     assignPlayerToRoster: (playerId: string) => void;
@@ -19,8 +20,48 @@ const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
 export const TeamProvider = ({ children }: { children: ReactNode }) => {
     const [teams, setTeams] = useState<Team[]>(initialTeams);
-    const [scoutingPool, setScoutingPool] = useState<Player[]>([]);
-    const [recruitedPool, setRecruitedPool] = useState<Player[]>([]);
+    
+    const [scoutingPool, setScoutingPool] = useState<Player[]>(() => {
+        try {
+            const saved = localStorage.getItem('scoutingPool');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error("Failed to parse scoutingPool from localStorage", error);
+            return [];
+        }
+    });
+
+    const [recruitedPool, setRecruitedPool] = useState<Player[]>(() => {
+        try {
+            const saved = localStorage.getItem('recruitedPool');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error("Failed to parse recruitedPool from localStorage", error);
+            return [];
+        }
+    });
+
+    const [fairHosted, setFairHosted] = useState<boolean>(() => {
+        try {
+            const saved = localStorage.getItem('fairHosted');
+            return saved ? JSON.parse(saved) : false;
+        } catch (error) {
+            console.error("Failed to parse fairHosted from localStorage", error);
+            return false;
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('scoutingPool', JSON.stringify(scoutingPool));
+    }, [scoutingPool]);
+
+    useEffect(() => {
+        localStorage.setItem('recruitedPool', JSON.stringify(recruitedPool));
+    }, [recruitedPool]);
+
+    useEffect(() => {
+        localStorage.setItem('fairHosted', JSON.stringify(fairHosted));
+    }, [fairHosted]);
 
     const updateTeam = (updatedTeam: Team) => {
         setTeams(currentTeams =>
@@ -34,6 +75,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
         const allTeamNames = teams.map(t => t.name).filter(name => name !== userTeam.name);
         const newRecruits = generateRecruits(userTeam.leagueDivision, allTeamNames);
         setScoutingPool(newRecruits);
+        setFairHosted(true);
     };
 
     const recruitPlayer = (playerId: string) => {
@@ -72,6 +114,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
             userTeam, 
             scoutingPool, 
             recruitedPool, 
+            fairHosted,
             generateScoutingPool, 
             recruitPlayer, 
             assignPlayerToRoster,

@@ -1,20 +1,17 @@
-import { useState } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 const Dashboard = () => {
-  const { generateScoutingPool, scoutingPool } = useTeam();
-  const [fairHosted, setFairHosted] = useState(false);
+  const { generateScoutingPool, scoutingPool, recruitedPool, fairHosted } = useTeam();
 
   const handleHostFair = () => {
     generateScoutingPool();
-    setFairHosted(true);
   };
 
   return (
     <div>
-      {scoutingPool.length === 0 && !fairHosted && (
+      {scoutingPool.length === 0 && recruitedPool.length === 0 && !fairHosted && (
         <Card className="mb-6 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
           <CardHeader>
             <CardTitle>New Season Recruitment Drive!</CardTitle>
