@@ -20,9 +20,32 @@ const getArchetypeForPosition = (position: Position): PlayerArchetype => {
     return getRandomItem(possibleArchetypes);
 };
 
-const generateAttributes = (archetype: PlayerArchetype): SkaterAttributes | GoalieAttributes => {
-    const base = () => 1 + Math.floor(Math.random() * 10); // 1-10 base
+const divisionTiers: { [key: string]: { skater: number, goalie: number, step: { skater: number, goalie: number } } } = {
+    'Checking 1': { skater: 420, goalie: 190, step: { skater: 30, goalie: 15 } },
+    'Checking 2': { skater: 360, goalie: 160, step: { skater: 30, goalie: 15 } },
+    'Non-Checking 1': { skater: 320, goalie: 140, step: { skater: 28, goalie: 13 } },
+    'Non-Checking 2': { skater: 280, goalie: 120, step: { skater: 28, goalie: 13 } },
+    'Non-Checking 3': { skater: 240, goalie: 100, step: { skater: 25, goalie: 12 } },
+};
+
+const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string): SkaterAttributes | GoalieAttributes => {
     const clamp = (value: number) => Math.max(1, Math.min(20, Math.round(value)));
+
+    const tierKey = Object.keys(divisionTiers).find(key => leagueDivision.includes(key)) || 'Non-Checking 3';
+    const tier = divisionTiers[tierKey];
+
+    const isSkater = archetype.position !== 'Goaltender';
+    const numVisibleSkaterAttrs = 28;
+    const numVisibleGoalieAttrs = 13;
+
+    const avgAbilityForDivision = isSkater ? tier.skater : tier.goalie;
+    const numVisibleAttrs = isSkater ? numVisibleSkaterAttrs : numVisibleGoalieAttrs;
+    const targetAvgPerAttr = avgAbilityForDivision / numVisibleAttrs;
+
+    const base = () => {
+        // Generate a random value around the targetAvgPerAttr, with a range of +/- 5
+        return targetAvgPerAttr + (Math.random() * 10 - 5);
+    };
 
     const generateHidden = () => ({
         aging: base(), ambition: base(), bigGames: base(), coachability: base(),
@@ -91,14 +114,6 @@ const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAttributes
     }
 };
 
-const divisionTiers: { [key: string]: { skater: number, goalie: number, step: { skater: number, goalie: number } } } = {
-    'Checking 1': { skater: 420, goalie: 190, step: { skater: 30, goalie: 15 } },
-    'Checking 2': { skater: 360, goalie: 160, step: { skater: 30, goalie: 15 } },
-    'Non-Checking 1': { skater: 320, goalie: 140, step: { skater: 28, goalie: 13 } },
-    'Non-Checking 2': { skater: 280, goalie: 120, step: { skater: 28, goalie: 13 } },
-    'Non-Checking 3': { skater: 240, goalie: 100, step: { skater: 25, goalie: 12 } },
-};
-
 const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDivision: string): number => {
     const tierKey = Object.keys(divisionTiers).find(key => leagueDivision.includes(key)) || 'Non-Checking 3';
     const tier = divisionTiers[tierKey];
@@ -148,7 +163,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   }
 
   const archetype = getArchetypeForPosition(position);
-  const attributes = generateAttributes(archetype);
+  const attributes = generateAttributes(archetype, leagueDivision); // Pass leagueDivision here
   const age = Math.floor(Math.random() * (28 - 18 + 1)) + 18;
   
   const currentAbility = calculateCurrentAbility(attributes, isSkater);
