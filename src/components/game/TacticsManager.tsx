@@ -3,6 +3,7 @@ import { tactics } from '@/data/tactics';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useMemo } from 'react';
 
 interface TacticsManagerProps {
   currentTactics: TacticsSelection;
@@ -10,18 +11,33 @@ interface TacticsManagerProps {
 }
 
 export const TacticsManager = ({ currentTactics, onTacticChange }: TacticsManagerProps) => {
-  const groupedTactics = tactics.reduce((acc, tactic) => {
-    const phase = tactic.phase;
-    if (!acc[phase]) {
-      acc[phase] = {};
+  const groupedTactics = useMemo(() => {
+    return tactics.reduce((acc, tactic) => {
+      const phase = tactic.phase;
+      if (!acc[phase]) {
+        acc[phase] = {};
+      }
+      const category = tactic.category;
+      if (!acc[phase][category]) {
+        acc[phase][category] = [];
+      }
+      acc[phase][category].push(tactic);
+      return acc;
+    }, {} as Record<string, Record<string, Tactic[]>>);
+  }, []);
+
+  // Placeholder for suitability calculation
+  const getSuitability = (tacticName: string) => {
+    // In a real scenario, this would be a complex calculation based on roster attributes.
+    // For now, we'll use a seeded random number for consistent-looking placeholders.
+    let hash = 0;
+    for (let i = 0; i < tacticName.length; i++) {
+      const char = tacticName.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0; // Convert to 32bit integer
     }
-    const category = tactic.category;
-    if (!acc[phase][category]) {
-      acc[phase][category] = [];
-    }
-    acc[phase][category].push(tactic);
-    return acc;
-  }, {} as Record<string, Record<string, Tactic[]>>);
+    return (Math.abs(hash) % 10) + 8; // Returns a value between 8 and 17
+  };
 
   return (
     <ScrollArea className="h-[60vh] pr-4">
@@ -43,7 +59,12 @@ export const TacticsManager = ({ currentTactics, onTacticChange }: TacticsManage
                     <SelectContent>
                       {tacticList.map((tactic) => (
                         <SelectItem key={tactic.tactic} value={tactic.tactic}>
-                          {tactic.tactic}
+                          <div className="flex justify-between w-full pr-2">
+                            <span>{tactic.tactic}</span>
+                            <span className="text-muted-foreground text-sm">
+                              Suitability: {getSuitability(tactic.tactic)}/20
+                            </span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -79,6 +79,15 @@ const Game = () => {
   const handleLineupChange = (newLineup: Lineup) => {
     setGameUserTeam(prev => ({ ...prev, lineup: newLineup }));
   };
+  
+  const handleRoleChange = (playerId: string, newRole: string) => {
+    setGameUserTeam(prev => ({
+        ...prev,
+        roster: prev.roster.map(p => 
+            p.id === playerId ? { ...p, role: newRole } : p
+        )
+    }));
+  };
 
   const handleGiveInstruction = (target: string, instruction: string) => {
     const targetName = gameUserTeam.roster.find(p => p.id === target)?.name || target;
@@ -187,10 +196,19 @@ const Game = () => {
                     <TacticsManager currentTactics={gameUserTeam.tactics} onTacticChange={handleTacticChange} />
                   </TabsContent>
                   <TabsContent value="lines" className="mt-4">
-                    <LineupManager lineup={gameUserTeam.lineup} roster={gameUserTeam.roster} onLineupChange={handleLineupChange} />
+                    <LineupManager 
+                      lineup={gameUserTeam.lineup} 
+                      roster={gameUserTeam.roster} 
+                      onLineupChange={handleLineupChange}
+                      onRoleChange={handleRoleChange}
+                    />
                   </TabsContent>
                   <TabsContent value="instructions" className="mt-4">
-                    <InstructionsManager roster={gameUserTeam.roster} onGiveInstruction={handleGiveInstruction} />
+                    <InstructionsManager 
+                      roster={gameUserTeam.roster} 
+                      lineup={gameUserTeam.lineup}
+                      onGiveInstruction={handleGiveInstruction} 
+                    />
                   </TabsContent>
                 </Tabs>
                 <DialogFooter>
