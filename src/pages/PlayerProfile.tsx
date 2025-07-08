@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PlayerEditForm } from "@/components/player/PlayerEditForm";
+import { PlayerScoutingReport } from "@/components/player/PlayerScoutingReport";
 import { useState, useMemo } from "react";
 
 const PlayerProfile = () => {
@@ -33,7 +34,7 @@ const PlayerProfile = () => {
 
   const isUserPlayer = player && team?.name === userTeam.name;
 
-  if (!player) {
+  if (!player || !team) {
     return <div>Player not found</div>;
   }
 
@@ -130,6 +131,8 @@ const PlayerProfile = () => {
           )}
         </CardHeader>
       </Card>
+
+      {isUserPlayer && <PlayerScoutingReport player={player} team={team} />}
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {isSkater ? (

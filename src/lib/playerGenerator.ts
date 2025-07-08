@@ -4,6 +4,7 @@ import { roles } from "@/data/roles";
 import { teams as allTeamsData } from "@/data/teams";
 import { getRandomNationality } from "@/data/nationalityDistributions";
 import { getRandomNameForNationality } from "@/data/names";
+import { divisionTiers } from "./leagueUtils";
 
 const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
 const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
@@ -20,14 +21,6 @@ const getArchetypeForPosition = (position: Position): PlayerArchetype => {
 
     const possibleArchetypes = archetypes.filter(a => a.position === positionGroup);
     return getRandomItem(possibleArchetypes);
-};
-
-const divisionTiers: { [key: string]: { skater: number, goalie: number, step: { skater: number, goalie: number } } } = {
-    'Checking 1': { skater: 420, goalie: 190, step: { skater: 30, goalie: 15 } },
-    'Checking 2': { skater: 360, goalie: 160, step: { skater: 30, goalie: 15 } },
-    'Non-Checking 1': { skater: 320, goalie: 140, step: { skater: 28, goalie: 13 } },
-    'Non-Checking 2': { skater: 280, goalie: 120, step: { skater: 28, goalie: 13 } },
-    'Non-Checking 3': { skater: 240, goalie: 100, step: { skater: 25, goalie: 12 } },
 };
 
 const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string): SkaterAttributes | GoalieAttributes => {
