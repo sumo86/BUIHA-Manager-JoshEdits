@@ -13,6 +13,7 @@ import Finances from "./pages/Finances";
 import PlayerProfile from "./pages/PlayerProfile";
 import Lineup from "./pages/Lineup";
 import { TeamProvider } from "./context/TeamContext";
+import BuihaOverview from "./pages/BuihaOverview";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/recruitment" element={<Recruitment />} />
               <Route path="/finances" element={<Finances />} />
               <Route path="/lineup" element={<Lineup />} />
+              <Route path="/buiha-overview" element={<BuihaOverview />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
