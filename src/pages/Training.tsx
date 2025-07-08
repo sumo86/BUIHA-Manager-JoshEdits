@@ -4,9 +4,14 @@ import { useTeam } from "@/context/TeamContext";
 import { TrendingUp } from "lucide-react";
 import { DevelopmentLogTable } from "@/components/training/DevelopmentLogTable";
 import { PlayerFocusTable } from "@/components/training/PlayerFocusTable";
+import { Button } from "@/components/ui/button";
 
 const Training = () => {
-  const { userTeam, currentDate, developmentHistory, updatePlayerTrainingFocus } = useTeam();
+  const { userTeam, currentDate, developmentHistory, updatePlayerTrainingFocus, autoAssignTrainingFocuses } = useTeam();
+
+  const handleAutoAssign = () => {
+    autoAssignTrainingFocuses();
+  };
 
   return (
     <div className="space-y-6">
@@ -49,8 +54,9 @@ const Training = () => {
         </TabsContent>
         <TabsContent value="focuses">
             <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Set Training Focuses</CardTitle>
+                    <Button onClick={handleAutoAssign}>Auto-Assign All</Button>
                 </CardHeader>
                 <CardContent>
                     <PlayerFocusTable players={userTeam.roster} onFocusChange={updatePlayerTrainingFocus} />

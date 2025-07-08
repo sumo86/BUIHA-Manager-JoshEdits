@@ -5,6 +5,7 @@ export interface Role {
     description: string;
     positions: ('Forward' | 'Defenceman')[];
     keyAttributes: (keyof SkaterAttributes)[];
+    type: 'Offensive' | 'Defensive' | 'Two-Way' | 'Physical' | 'Specialist';
 }
 
 export const roles: Role[] = [
@@ -14,60 +15,70 @@ export const roles: Role[] = [
         description: "A balanced forward expected to contribute offensively.",
         positions: ['Forward'],
         keyAttributes: ['offensiveRead', 'puckhandling', 'shootingAccuracy', 'passing', 'gettingOpen'],
+        type: 'Offensive',
     },
     {
         name: "Playmaker",
         description: "Creates scoring chances for teammates.",
         positions: ['Forward'],
         keyAttributes: ['passing', 'offensiveRead', 'puckhandling', 'teamPlayer'],
+        type: 'Offensive',
     },
     {
         name: "Goalscorer",
         description: "Gets into position to shoot and score.",
         positions: ['Forward'],
         keyAttributes: ['shootingAccuracy', 'shootingRange', 'gettingOpen', 'offensiveRead'],
+        type: 'Offensive',
     },
     {
         name: "Power Forward",
         description: "Uses size and strength to create space and score.",
         positions: ['Forward'],
         keyAttributes: ['strength', 'hitting', 'balance', 'screening', 'aggression'],
+        type: 'Physical',
     },
     {
         name: "Speedy Forward",
         description: "Uses superior skating to fly past opponents.",
         positions: ['Forward'],
         keyAttributes: ['speed', 'acceleration', 'agility', 'puckhandling'],
+        type: 'Offensive',
     },
     {
         name: "Two-Way Forward",
         description: "Effective at both ends of the ice.",
         positions: ['Forward'],
         keyAttributes: ['defensiveRead', 'positioning', 'stickchecking', 'offensiveRead', 'passing'],
+        type: 'Two-Way',
     },
     {
         name: "Checking Forward",
         description: "Responsibilities are primarily defensive.",
         positions: ['Forward'],
         keyAttributes: ['checking', 'defensiveRead', 'positioning', 'stickchecking', 'determination'],
+        type: 'Defensive',
     },
     {
         name: "Grinder",
         description: "A defensive forward with a strong physical tendency.",
         positions: ['Forward'],
         keyAttributes: ['hitting', 'strength', 'stamina', 'determination', 'checking', 'bravery'],
+        type: 'Physical',
     },
     {
         name: "Agitator",
         description: "Antagonizes opponents into taking bad penalties.",
         positions: ['Forward'],
         keyAttributes: ['aggression', 'determination', 'bravery', 'hitting'],
+        type: 'Physical',
     },
     {
         name: "Enforcer",
         description: "Primarily on the ice to protect teammates.",
         positions: ['Forward'],
         keyAttributes: ['fighting', 'strength', 'hitting', 'bravery', 'aggression'],
+        type: 'Physical',
     },
     // Defencemen
     {
@@ -75,23 +86,27 @@ export const roles: Role[] = [
         description: "Primary contribution is expected to be offensive.",
         positions: ['Defenceman'],
         keyAttributes: ['offensiveRead', 'passing', 'shootingRange', 'puckhandling', 'speed'],
+        type: 'Offensive',
     },
     {
         name: "Playmaking Defenceman",
         description: "Focuses on setting up teammates and controlling play.",
         positions: ['Defenceman'],
         keyAttributes: ['passing', 'offensiveRead', 'puckhandling', 'agility', 'determination'],
+        type: 'Offensive',
     },
     {
         name: "Two-Way Defenceman",
         description: "Effective at both ends of the ice.",
         positions: ['Defenceman'],
         keyAttributes: ['defensiveRead', 'positioning', 'stickchecking', 'passing', 'offensiveRead'],
+        type: 'Two-Way',
     },
     {
         name: "Defensive Defenceman",
         description: "A 'stay-at-home' defenceman focused on their own zone.",
         positions: ['Defenceman'],
         keyAttributes: ['defensiveRead', 'positioning', 'shotBlocking', 'stickchecking', 'strength'],
+        type: 'Defensive',
     },
 ];

@@ -49,12 +49,15 @@ const PlayerProfile = () => {
   const isSkater = player.positions[0] !== 'G';
   const attributes = player.attributes;
 
-  const renderAttribute = (label: string, value: number) => (
-    <div className="flex justify-between text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={`font-medium ${getAttributeColorClass(value)}`}>{value}</span>
-    </div>
-  );
+  const renderAttribute = (label: string, value: number) => {
+    const flooredValue = Math.floor(value);
+    return (
+        <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{label}</span>
+            <span className={`font-medium ${getAttributeColorClass(flooredValue)}`}>{flooredValue}</span>
+        </div>
+    );
+  };
 
   const getAttributeColorClass = (value: number) => {
     if (value >= 17) return "text-green-700";

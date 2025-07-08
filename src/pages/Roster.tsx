@@ -26,6 +26,14 @@ const Roster = () => {
   const [eligibilityFilter, setEligibilityFilter] = useState('All');
   const [starRatingFilter, setStarRatingFilter] = useState([0.5]);
 
+  const roleTypeColors: { [key: string]: string } = {
+    Offensive: 'bg-red-500',
+    Defensive: 'bg-yellow-500',
+    'Two-Way': 'bg-blue-500',
+    Physical: 'bg-purple-500',
+    Specialist: 'bg-gray-500',
+  };
+
   const handlePlayerClick = (playerId: string) => {
     navigate(`/player/${playerId}`);
   };
@@ -221,6 +229,7 @@ const Roster = () => {
             <TableBody>
               {filteredRoster.map((player: Player) => {
                 const applicableRoles = getApplicableRoles(player);
+                const selectedRole = applicableRoles.find(r => r.name === player.role);
                 const currentRoleSuitability = player.role ? player.roleSuitability[player.role] : 0;
                 const roleColorClass = getAttributeColorClass(currentRoleSuitability);
                 return (
@@ -247,13 +256,19 @@ const Roster = () => {
                           onValueChange={(newRole) => handleRoleChange(player.id, newRole)}
                         >
                           <SelectTrigger className={`w-[220px] font-bold ${roleColorClass}`}>
-                            <SelectValue placeholder="Select a role" />
+                            <div className="flex items-center w-full">
+                                {selectedRole && <span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[selectedRole.type]}`}></span>}
+                                <SelectValue placeholder="Select a role" />
+                            </div>
                           </SelectTrigger>
                           <SelectContent>
                             {applicableRoles.map(role => (
                               <SelectItem key={role.name} value={role.name}>
                                 <div className="flex justify-between w-full pr-2">
-                                  <span>{role.name}</span>
+                                  <div className="flex items-center">
+                                    <span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[role.type]}`}></span>
+                                    <span>{role.name}</span>
+                                  </div>
                                   <span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>
                                     {player.roleSuitability[role.name]}/20
                                   </span>

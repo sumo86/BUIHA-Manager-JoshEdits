@@ -5,6 +5,8 @@ import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
+import { roles } from '@/data/roles';
+import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
 
 interface GameDate {
     month: string;
@@ -32,6 +34,7 @@ interface TeamContextType {
     advanceWeek: () => void;
     developmentHistory: DevelopmentLog[];
     updatePlayerTrainingFocus: (playerId: string, focus: TrainingFocus) => void;
+    autoAssignTrainingFocuses: () => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -280,6 +283,36 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         updateTeam({ ...userTeam, roster: newRoster });
     };
 
+    const autoAssignTrainingFocuses = () => {
+        const newRoster = userTeam.roster.map(player => {
+            if (!player.role) return player;
+
+            const playerRole = roles.find(r => r.name === player.role);
+            if (!playerRole) return player;
+
+            const keyAttributes = playerRole.keyAttributes;
+            let bestFocus: TrainingFocus = null;
+            let maxMatch = 0;
+
+            const applicableFocuses = player.positions.includes('G') ? goalieFocuses : skaterFocuses;
+
+            for (const focus of applicableFocuses) {
+                if (!focus) continue;
+                const focusAttributes = trainingFocusesMap[focus];
+                const matchCount = focusAttributes.filter(attr => keyAttributes.includes(attr as any)).length;
+
+                if (matchCount > maxMatch) {
+                    maxMatch = matchCount;
+                    bestFocus = focus;
+                }
+            }
+            return { ...player, trainingFocus: bestFocus };
+        });
+
+        updateTeam({ ...userTeam, roster: newRoster });
+        toast.success("Training focuses have been auto-assigned based on player roles.");
+    };
+
     const generateScoutingPool = () => {
         const allTeamNames = teams.map(t => t.name).filter(name => name !== userTeam.name);
         const newRecruits = generateRecruits(userTeam.leagueDivision, allTeamNames);
@@ -431,7 +464,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             currentDate,
             advanceWeek,
             developmentHistory,
-            updatePlayerTrainingFocus
+            updatePlayerTrainingFocus,
+            autoAssignTrainingFocuses
         }}>
             {children}
         </TeamContext.Provider>
