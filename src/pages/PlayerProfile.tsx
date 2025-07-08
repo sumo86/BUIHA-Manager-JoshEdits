@@ -37,10 +37,18 @@ const PlayerProfile = () => {
         );
     };
 
+    const getAttributeColorClass = (value: number) => {
+        if (value >= 17) return "text-green-700"; // Dark Green
+        if (value >= 13) return "text-green-500"; // Light Green
+        if (value >= 9) return "text-yellow-500"; // Yellow
+        if (value >= 5) return "text-orange-500"; // Orange
+        return "text-red-500"; // Red
+    };
+
     const AttributeItem = ({ label, value }: { label: string, value: number }) => (
         <div className="flex justify-between items-center py-1">
             <span className="text-sm font-medium text-muted-foreground">{label}</span>
-            <span className="text-sm font-bold">{value}</span>
+            <span className={`text-sm font-bold ${getAttributeColorClass(value)}`}>{value}</span>
         </div>
     );
     
