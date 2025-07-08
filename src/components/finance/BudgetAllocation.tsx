@@ -29,7 +29,7 @@ const categoryColors: Record<BudgetCategory, string> = {
 };
 
 export const BudgetAllocation = () => {
-  const { userTeam, updateBudgetAllocations } = useTeam();
+  const { userTeam, updateBudgetAllocations, runStudentLifeInitiative } = useTeam();
   const [allocations, setAllocations] = useState<BudgetAllocations>(userTeam.financials.budgetAllocations);
 
   const numberOfHomeGames = 13;
@@ -120,6 +120,15 @@ export const BudgetAllocation = () => {
                     readOnly={isReadOnly}
                     disabled={isReadOnly}
                   />
+                  {category === "Student Life" && (
+                    <Button 
+                        variant="secondary" 
+                        onClick={runStudentLifeInitiative}
+                        disabled={(allocations['Student Life'] || 0) <= 0}
+                    >
+                        Run Initiative
+                    </Button>
+                  )}
                 </div>
               </div>
             );

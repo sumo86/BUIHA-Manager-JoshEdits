@@ -2,6 +2,7 @@ import { createContext, useState, useContext, ReactNode, useEffect } from 'react
 import { Team, Player, BudgetAllocations } from '@/types';
 import { teams as initialTeams } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
+import { toast } from 'sonner';
 
 interface TeamContextType {
     teams: Team[];
@@ -15,6 +16,7 @@ interface TeamContextType {
     assignPlayerToRoster: (playerId: string) => void;
     discardRecruit: (playerId: string) => void;
     updateBudgetAllocations: (newAllocations: BudgetAllocations) => void;
+    runStudentLifeInitiative: () => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -119,6 +121,32 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
         updateTeam(updatedTeam);
     };
 
+    const runStudentLifeInitiative = () => {
+        const studentLifeBudget = userTeam.financials.budgetAllocations['Student Life'];
+        if (studentLifeBudget <= 0) {
+            toast.error("No funds allocated to Student Life.", { description: "Allocate a budget to host team events and boost morale." });
+            return;
+        }
+
+        const chance = studentLifeBudget / 50;
+        const roll = Math.random() * 100;
+
+        if (roll < chance) {
+            const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy", "Ecstatic"];
+            const newRoster = userTeam.roster.map(player => {
+                const currentMoraleIndex = moraleLevels.indexOf(player.morale);
+                if (currentMoraleIndex < moraleLevels.length - 1) {
+                    return { ...player, morale: moraleLevels[currentMoraleIndex + 1] };
+                }
+                return player;
+            });
+            updateTeam({ ...userTeam, roster: newRoster });
+            toast.success("Team event was a success!", { description: "Player morale has improved across the team." });
+        } else {
+            toast.info("Team event had no effect.", { description: "The event was fine, but it didn't boost team morale this time." });
+        }
+    };
+
     return (
         <TeamContext.Provider value={{ 
             teams, 
@@ -131,7 +159,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
             recruitPlayer, 
             assignPlayerToRoster,
             discardRecruit,
-            updateBudgetAllocations
+            updateBudgetAllocations,
+            runStudentLifeInitiative
         }}>
             {children}
         </TeamContext.Provider>

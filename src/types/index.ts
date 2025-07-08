@@ -100,10 +100,16 @@ export interface PlayerSeasonStats {
   team: string;
   league: string;
   gamesPlayed: number;
-  goals: number;
-  assists: number;
-  points: number;
-  penaltyMinutes: number;
+  // Skater stats
+  goals?: number;
+  assists?: number;
+  points?: number;
+  penaltyMinutes?: number;
+  // Goalie stats
+  goalsAgainstAverage?: number;
+  savePercentage?: number;
+  shutouts?: number;
+  // Common
   captaincy?: 'C' | 'A' | null;
 }
 

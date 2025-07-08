@@ -28,7 +28,6 @@ const PlayerProfile = () => {
         return { player: p, team: t };
       }
     }
-    // Check scouting and recruited pools as well, if needed in the future
     return { player: undefined, team: undefined };
   }, [teams, playerId]);
 
@@ -177,7 +176,7 @@ const PlayerProfile = () => {
       )}
 
       {player.history && player.history.length > 0 && (
-        <PlayerHistoryTable history={player.history} />
+        <PlayerHistoryTable history={player.history} isSkater={isSkater} />
       )}
     </div>
   );

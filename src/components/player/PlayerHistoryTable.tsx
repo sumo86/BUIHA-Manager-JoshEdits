@@ -3,69 +3,125 @@ import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, Table
 
 interface PlayerHistoryTableProps {
   history: PlayerSeasonStats[];
+  isSkater: boolean;
 }
 
-export const PlayerHistoryTable = ({ history }: PlayerHistoryTableProps) => {
+export const PlayerHistoryTable = ({ history, isSkater }: PlayerHistoryTableProps) => {
   if (!history || history.length === 0) {
     return <p className="text-muted-foreground">No history available for this player.</p>;
   }
 
-  const careerTotals = history.reduce(
-    (acc, season) => {
-      acc.gamesPlayed += season.gamesPlayed;
-      acc.goals += season.goals;
-      acc.assists += season.assists;
-      acc.points += season.points;
-      acc.penaltyMinutes += season.penaltyMinutes;
-      return acc;
-    },
-    { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0 }
-  );
+  if (isSkater) {
+    const careerTotals = history.reduce(
+      (acc, season) => {
+        acc.gamesPlayed += season.gamesPlayed || 0;
+        acc.goals += season.goals || 0;
+        acc.assists += season.assists || 0;
+        acc.points += season.points || 0;
+        acc.penaltyMinutes += season.penaltyMinutes || 0;
+        return acc;
+      },
+      { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0 }
+    );
 
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Season</TableHead>
-          <TableHead>Team</TableHead>
-          <TableHead>League</TableHead>
-          <TableHead className="text-right">GP</TableHead>
-          <TableHead className="text-right">G</TableHead>
-          <TableHead className="text-right">A</TableHead>
-          <TableHead className="text-right">P</TableHead>
-          <TableHead className="text-right">PIM</TableHead>
-          <TableHead>Captaincy</TableHead> {/* New column for captaincy */}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {history.map((season, index) => (
-          <TableRow key={index}>
-            <TableCell>{season.season}</TableCell>
-            <TableCell>{season.team}</TableCell>
-            <TableCell>{season.league}</TableCell>
-            <TableCell className="text-right">{season.gamesPlayed}</TableCell>
-            <TableCell className="text-right">{season.goals}</TableCell>
-            <TableCell className="text-right">{season.assists}</TableCell>
-            <TableCell className="text-right">{season.points}</TableCell>
-            <TableCell className="text-right">{season.penaltyMinutes}</TableCell>
-            <TableCell>
-              {season.captaincy === 'C' && <span className="font-bold text-yellow-700">C</span>}
-              {season.captaincy === 'A' && <span className="font-medium text-yellow-500">A</span>}
-            </TableCell>
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Season</TableHead>
+            <TableHead>Team</TableHead>
+            <TableHead>League</TableHead>
+            <TableHead className="text-right">GP</TableHead>
+            <TableHead className="text-right">G</TableHead>
+            <TableHead className="text-right">A</TableHead>
+            <TableHead className="text-right">P</TableHead>
+            <TableHead className="text-right">PIM</TableHead>
+            <TableHead>Captaincy</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-      <TableFooter>
-        <TableRow className="font-bold">
-          <TableCell colSpan={3}>Career Totals</TableCell>
-          <TableCell className="text-right">{careerTotals.gamesPlayed}</TableCell>
-          <TableCell className="text-right">{careerTotals.goals}</TableCell>
-          <TableCell className="text-right">{careerTotals.assists}</TableCell>
-          <TableCell className="text-right">{careerTotals.points}</TableCell>
-          <TableCell className="text-right">{careerTotals.penaltyMinutes}</TableCell>
-          <TableCell></TableCell> {/* Empty cell for captaincy in footer */}
-        </TableRow>
-      </TableFooter>
-    </Table>
-  );
+        </TableHeader>
+        <TableBody>
+          {history.map((season, index) => (
+            <TableRow key={index}>
+              <TableCell>{season.season}</TableCell>
+              <TableCell>{season.team}</TableCell>
+              <TableCell>{season.league}</TableCell>
+              <TableCell className="text-right">{season.gamesPlayed}</TableCell>
+              <TableCell className="text-right">{season.goals}</TableCell>
+              <TableCell className="text-right">{season.assists}</TableCell>
+              <TableCell className="text-right">{season.points}</TableCell>
+              <TableCell className="text-right">{season.penaltyMinutes}</TableCell>
+              <TableCell>
+                {season.captaincy === 'C' && <span className="font-bold text-yellow-700">C</span>}
+                {season.captaincy === 'A' && <span className="font-medium text-yellow-500">A</span>}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+        <TableFooter>
+          <TableRow className="font-bold">
+            <TableCell colSpan={3}>Career Totals</TableCell>
+            <TableCell className="text-right">{careerTotals.gamesPlayed}</TableCell>
+            <TableCell className="text-right">{careerTotals.goals}</TableCell>
+            <TableCell className="text-right">{careerTotals.assists}</TableCell>
+            <TableCell className="text-right">{careerTotals.points}</TableCell>
+            <TableCell className="text-right">{careerTotals.penaltyMinutes}</TableCell>
+            <TableCell></TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
+    );
+  } else {
+    // Goalie Table
+    const careerTotals = history.reduce(
+      (acc, season) => {
+        const gp = season.gamesPlayed || 0;
+        acc.gamesPlayed += gp;
+        acc.shutouts += season.shutouts || 0;
+        acc.gaaSum += (season.goalsAgainstAverage || 0) * gp;
+        acc.svSum += (season.savePercentage || 0) * gp;
+        return acc;
+      },
+      { gamesPlayed: 0, shutouts: 0, gaaSum: 0, svSum: 0 }
+    );
+    const careerGAA = careerTotals.gamesPlayed > 0 ? (careerTotals.gaaSum / careerTotals.gamesPlayed).toFixed(2) : '0.00';
+    const careerSV = careerTotals.gamesPlayed > 0 ? (careerTotals.svSum / careerTotals.gamesPlayed).toFixed(3) : '.000';
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Season</TableHead>
+            <TableHead>Team</TableHead>
+            <TableHead>League</TableHead>
+            <TableHead className="text-right">GP</TableHead>
+            <TableHead className="text-right">GAA</TableHead>
+            <TableHead className="text-right">SV%</TableHead>
+            <TableHead className="text-right">SO</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {history.map((season, index) => (
+            <TableRow key={index}>
+              <TableCell>{season.season}</TableCell>
+              <TableCell>{season.team}</TableCell>
+              <TableCell>{season.league}</TableCell>
+              <TableCell className="text-right">{season.gamesPlayed}</TableCell>
+              <TableCell className="text-right">{season.goalsAgainstAverage?.toFixed(2)}</TableCell>
+              <TableCell className="text-right">{season.savePercentage?.toFixed(3)}</TableCell>
+              <TableCell className="text-right">{season.shutouts}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+        <TableFooter>
+          <TableRow className="font-bold">
+            <TableCell colSpan={3}>Career Totals</TableCell>
+            <TableCell className="text-right">{careerTotals.gamesPlayed}</TableCell>
+            <TableCell className="text-right">{careerGAA}</TableCell>
+            <TableCell className="text-right">{careerSV}</TableCell>
+            <TableCell className="text-right">{careerTotals.shutouts}</TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
+    );
+  }
 };
