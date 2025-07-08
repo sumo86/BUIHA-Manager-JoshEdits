@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -18,9 +19,10 @@ type FormValues = z.infer<typeof formSchema>;
 interface PlayerEditFormProps {
   player: Player;
   onSave: (updatedPlayer: Partial<Player>) => void;
+  allUsedJerseyNumbers: number[];
 }
 
-export const PlayerEditForm = ({ player, onSave }: PlayerEditFormProps) => {
+export const PlayerEditForm = ({ player, onSave, allUsedJerseyNumbers }: PlayerEditFormProps) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -39,6 +41,9 @@ export const PlayerEditForm = ({ player, onSave }: PlayerEditFormProps) => {
     });
     toast.success(`${player.name}'s details have been updated.`);
   };
+
+  const availableJerseyNumbers = Array.from({ length: 99 }, (_, i) => i + 1)
+    .filter(num => !allUsedJerseyNumbers.includes(num) || num === player.jerseyNumber);
 
   return (
     <Form {...form}>
@@ -62,9 +67,18 @@ export const PlayerEditForm = ({ player, onSave }: PlayerEditFormProps) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Jersey Number</FormLabel>
-              <FormControl>
-                <Input type="number" {...field} />
-              </FormControl>
+              <Select onValueChange={field.onChange} defaultValue={String(field.value)}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a jersey number" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {availableJerseyNumbers.map(num => (
+                    <SelectItem key={num} value={String(num)}>{num}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

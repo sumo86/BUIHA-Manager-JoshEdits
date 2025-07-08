@@ -104,6 +104,7 @@ export interface PlayerSeasonStats {
   assists: number;
   points: number;
   penaltyMinutes: number;
+  captaincy?: 'C' | 'A' | null;
 }
 
 export interface Player {
@@ -123,6 +124,7 @@ export interface Player {
   potentialAbility: number;
   role?: string;
   roleSuitability: { [key: string]: number };
+  captaincy?: 'C' | 'A' | null;
   yearsLeftInProgram?: number;
   history?: PlayerSeasonStats[];
   source?: 'Local' | 'Transfer' | 'International';

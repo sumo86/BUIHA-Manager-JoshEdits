@@ -177,11 +177,19 @@ const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDi
     let goals = 0;
     let assists = 0;
     let penaltyMinutes = 0;
+    let captaincy: 'C' | 'A' | null = null;
 
     if (isSkater) {
         goals = Math.floor(Math.random() * 10) + 1; // 1-10 goals
         assists = Math.floor(Math.random() * 15) + 1; // 1-15 assists
         penaltyMinutes = Math.floor(Math.random() * 30) + 5; // 5-35 PIM
+        
+        const captaincyRoll = Math.random();
+        if (captaincyRoll < 0.05) { // 5% chance of being captain
+            captaincy = 'C';
+        } else if (captaincyRoll < 0.15) { // 10% chance of being alternate
+            captaincy = 'A';
+        }
     } else { // Goalie
         goals = 0;
         assists = Math.random() < 0.1 ? 1 : 0; // 10% chance of 1 assist
@@ -197,6 +205,7 @@ const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDi
         assists,
         points: goals + assists,
         penaltyMinutes,
+        captaincy,
     };
 };
 
@@ -325,10 +334,57 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     potentialAbility,
     role,
     roleSuitability,
+    captaincy: null,
     yearsLeftInProgram,
     history,
   };
 };
+
+const assignInitialCaptaincy = (roster: Player[]): Player[] => {
+    const skaters = roster.filter(p => p.positions[0] !== 'G');
+    if (skaters.length < 3) return roster;
+
+    // --- Assign Captain ---
+    // Find players with prior captaincy experience, not in their first year
+    const priorCaptains = skaters.filter(p => 
+        p.eligibility !== 'UG Year 1' &&
+        p.history?.some(h => h.captaincy === 'C')
+    );
+
+    let captain: Player | undefined;
+
+    if (priorCaptains.length > 0) {
+        // If prior captains exist, pick the one with the highest leadership
+        captain = priorCaptains.sort((a, b) => (b.attributes as SkaterAttributes).leadership - (a.attributes as SkaterAttributes).leadership)[0];
+    } else {
+        // Otherwise, pick the non-first-year player with the highest leadership
+        const eligibleCandidates = skaters.filter(p => p.eligibility !== 'UG Year 1');
+        if (eligibleCandidates.length > 0) {
+            captain = eligibleCandidates.sort((a, b) => (b.attributes as SkaterAttributes).leadership - (a.attributes as SkaterAttributes).leadership)[0];
+        }
+    }
+
+    if (captain) {
+        captain.captaincy = 'C';
+    }
+
+    // --- Assign Alternates ---
+    // Find the top two players by leadership, excluding the captain
+    const alternateCandidates = skaters
+        .filter(p => p.id !== captain?.id)
+        .sort((a, b) => (b.attributes as SkaterAttributes).leadership - (a.attributes as SkaterAttributes).leadership);
+    
+    const alternates = alternateCandidates.slice(0, 2);
+    alternates.forEach(alt => {
+        const playerInRoster = roster.find(p => p.id === alt.id);
+        if (playerInRoster) {
+            playerInRoster.captaincy = 'A';
+        }
+    });
+
+    return roster;
+};
+
 
 export const generateRoster = (leagueDivision: string, teamName: string): Player[] => {
   const roster: Player[] = [];
@@ -349,7 +405,9 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
   roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision, teamName));
   roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision, teamName));
 
-  return roster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+  const finalRoster = assignInitialCaptaincy(roster);
+
+  return finalRoster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 };
 
 export const generateRecruits = (userLeagueDivision: string, allTeamNames: string[]): Player[] => {

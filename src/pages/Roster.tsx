@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -26,6 +27,32 @@ const Roster = () => {
     const newRoster = team.roster.map(p => 
       p.id === playerId ? { ...p, role: newRole } : p
     );
+    updateTeam({ ...team, roster: newRoster });
+  };
+
+  const handleCaptaincyChange = (playerId: string, newRole: 'C' | 'A' | 'None') => {
+    const newRoster = [...team.roster];
+    const targetPlayer = newRoster.find(p => p.id === playerId);
+    if (!targetPlayer) return;
+
+    if (newRole === 'C') {
+        // Unassign old captain
+        const oldCaptain = newRoster.find(p => p.captaincy === 'C');
+        if (oldCaptain) oldCaptain.captaincy = null;
+        // Assign new captain
+        targetPlayer.captaincy = 'C';
+    } else if (newRole === 'A') {
+        const alternates = newRoster.filter(p => p.captaincy === 'A');
+        if (alternates.length < 2) {
+            targetPlayer.captaincy = 'A';
+        } else {
+            toast.error("Maximum of 2 alternate captains allowed.");
+            return; // Prevent update
+        }
+    } else { // 'None'
+        targetPlayer.captaincy = null;
+    }
+
     updateTeam({ ...team, roster: newRoster });
   };
 
@@ -172,6 +199,7 @@ const Roster = () => {
               <TableRow>
                 <TableHead className="w-[50px]">#</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Captaincy</TableHead>
                 <TableHead>Position(s)</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Age</TableHead>
@@ -193,6 +221,25 @@ const Roster = () => {
                   >
                     <TableCell className="font-bold">{player.jerseyNumber}</TableCell>
                     <TableCell>{player.name}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                        {player.positions[0] !== 'G' ? (
+                            <Select
+                                value={player.captaincy || 'None'}
+                                onValueChange={(newRole) => handleCaptaincyChange(player.id, newRole as any)}
+                            >
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue placeholder="-" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="None">None</SelectItem>
+                                    <SelectItem value="C">Captain (C)</SelectItem>
+                                    <SelectItem value="A">Alternate (A)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            'N/A'
+                        )}
+                    </TableCell>
                     <TableCell>{player.positions.join(", ")}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {applicableRoles.length > 0 ? (
