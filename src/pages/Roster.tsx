@@ -26,6 +26,7 @@ import {
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ const Roster = () => {
   const [eligibilityFilter, setEligibilityFilter] = useState('All');
   const [starRatingFilter, setStarRatingFilter] = useState([0.5]);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [viewMode, setViewMode] = useState<'attributes' | 'stats'>('attributes');
 
   const roleTypeColors: { [key: string]: string } = {
     Offensive: 'bg-red-500',
@@ -148,46 +150,66 @@ const Roster = () => {
     return true;
   }), [team.roster, positionFilter, eligibilityFilter, starRatingFilter]);
 
-  const columns = useMemo<ColumnDef<Player>[]>(() => [
-    {
-      accessorKey: 'jerseyNumber',
-      header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>#<ArrowUpDown className="ml-2 h-4 w-4" /></Button>,
-      cell: ({ row }) => <div className="font-bold">{row.original.jerseyNumber}</div>,
-      size: 50,
-    },
-    {
-      accessorKey: 'name',
-      header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Name<ArrowUpDown className="ml-2 h-4 w-4" /></Button>,
-      cell: ({ row }) => {
-        const player = row.original;
-        return <div>{player.name}{player.captaincy === 'C' && <span className="ml-2 font-bold text-yellow-700">C</span>}{player.captaincy === 'A' && <span className="ml-2 font-medium text-yellow-500">A</span>}</div>;
-      }
-    },
-    { accessorKey: 'positions', header: 'Position(s)', cell: ({ row }) => row.original.positions.join(", ") },
-    {
-      accessorKey: 'role',
-      header: 'Role',
-      cell: ({ row }) => {
-        const player = row.original;
-        const applicableRoles = getApplicableRoles(player);
-        const selectedRole = applicableRoles.find(r => r.name === player.role);
-        return <div onClick={(e) => e.stopPropagation()}>{applicableRoles.length > 0 ? <Select value={player.role} onValueChange={(newRole) => handleRoleChange(player.id, newRole)}><SelectTrigger className="w-[220px]"><div className="flex items-center w-full">{selectedRole && <span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[selectedRole.type]}`}></span>}<SelectValue placeholder="Select a role" /></div></SelectTrigger><SelectContent>{applicableRoles.map(role => <SelectItem key={role.name} value={role.name}><div className="flex justify-between w-full pr-2"><div className="flex items-center"><span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[role.type]}`}></span><span>{role.name}</span></div><span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>{player.roleSuitability[role.name]}/20</span></div></SelectItem>)}</SelectContent></Select> : 'N/A'}</div>;
-      }
-    },
-    { accessorKey: 'age', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Age<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-    { accessorKey: 'nationality', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Nationality<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-    { accessorKey: 'starRating', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Rating<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => renderStars(row.original.starRating) },
-    { accessorKey: 'morale', header: 'Morale', cell: ({ row }) => <Badge variant="outline">{row.original.morale}</Badge> },
-    { accessorKey: 'healthStatus', header: 'Status', cell: ({ row }) => <Badge variant={row.original.healthStatus === 'Healthy' ? 'secondary' : 'destructive'}>{row.original.healthStatus}</Badge> },
-    { accessorKey: 'eligibility', header: 'Eligibility', cell: ({ row }) => renderEligibility(row.original) },
-    {
-      id: 'actions',
-      cell: ({ row }) => {
-        const player = row.original;
-        return <div className="text-right" onClick={(e) => e.stopPropagation()}>{player.positions[0] !== 'G' && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'C')}>Assign Captain (C)</DropdownMenuItem><DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'A')}>Assign Alternate (A)</DropdownMenuItem><DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'None')}>Remove Captaincy</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</div>;
-      }
+  const columns = useMemo<ColumnDef<Player>[]>(() => {
+    const baseCols: ColumnDef<Player>[] = [
+        {
+            accessorKey: 'jerseyNumber',
+            header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>#<ArrowUpDown className="ml-2 h-4 w-4" /></Button>,
+            cell: ({ row }) => <div className="font-bold">{row.original.jerseyNumber}</div>,
+            size: 50,
+        },
+        {
+            accessorKey: 'name',
+            header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Name<ArrowUpDown className="ml-2 h-4 w-4" /></Button>,
+            cell: ({ row }) => {
+                const player = row.original;
+                return <div>{player.name}{player.captaincy === 'C' && <span className="ml-2 font-bold text-yellow-700">C</span>}{player.captaincy === 'A' && <span className="ml-2 font-medium text-yellow-500">A</span>}</div>;
+            }
+        },
+        { accessorKey: 'positions', header: 'Position(s)', cell: ({ row }) => row.original.positions.join(", ") },
+    ];
+
+    if (viewMode === 'stats') {
+        return [
+            ...baseCols,
+            { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
+            { accessorKey: 'currentStats.goals', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>G<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.goals },
+            { accessorKey: 'currentStats.assists', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>A<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.assists },
+            { accessorKey: 'currentStats.points', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>P<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.points },
+            { accessorKey: 'currentStats.penaltyMinutes', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>PIM<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.penaltyMinutes },
+            { accessorKey: 'currentStats.wins', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>W<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => !row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.wins },
+            { accessorKey: 'currentStats.losses', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>L<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => !row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.losses },
+            { accessorKey: 'currentStats.shutouts', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>SO<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => !row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.shutouts },
+        ];
     }
-  ], [getApplicableRoles, handleCaptaincyChange, handleRoleChange]);
+
+    return [
+        ...baseCols,
+        {
+            accessorKey: 'role',
+            header: 'Role',
+            cell: ({ row }) => {
+                const player = row.original;
+                const applicableRoles = getApplicableRoles(player);
+                const selectedRole = applicableRoles.find(r => r.name === player.role);
+                return <div onClick={(e) => e.stopPropagation()}>{applicableRoles.length > 0 ? <Select value={player.role} onValueChange={(newRole) => handleRoleChange(player.id, newRole)}><SelectTrigger className="w-[220px]"><div className="flex items-center w-full">{selectedRole && <span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[selectedRole.type]}`}></span>}<SelectValue placeholder="Select a role" /></div></SelectTrigger><SelectContent>{applicableRoles.map(role => <SelectItem key={role.name} value={role.name}><div className="flex justify-between w-full pr-2"><div className="flex items-center"><span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[role.type]}`}></span><span>{role.name}</span></div><span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>{player.roleSuitability[role.name]}/20</span></div></SelectItem>)}</SelectContent></Select> : 'N/A'}</div>;
+            }
+        },
+        { accessorKey: 'age', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Age<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
+        { accessorKey: 'nationality', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Nationality<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
+        { accessorKey: 'starRating', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Rating<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => renderStars(row.original.starRating) },
+        { accessorKey: 'morale', header: 'Morale', cell: ({ row }) => <Badge variant="outline">{row.original.morale}</Badge> },
+        { accessorKey: 'healthStatus', header: 'Status', cell: ({ row }) => <Badge variant={row.original.healthStatus === 'Healthy' ? 'secondary' : 'destructive'}>{row.original.healthStatus}</Badge> },
+        { accessorKey: 'eligibility', header: 'Eligibility', cell: ({ row }) => renderEligibility(row.original) },
+        {
+            id: 'actions',
+            cell: ({ row }) => {
+                const player = row.original;
+                return <div className="text-right" onClick={(e) => e.stopPropagation()}>{player.positions[0] !== 'G' && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'C')}>Assign Captain (C)</DropdownMenuItem><DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'A')}>Assign Alternate (A)</DropdownMenuItem><DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'None')}>Remove Captaincy</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</div>;
+            }
+        }
+    ];
+  }, [viewMode, getApplicableRoles, handleCaptaincyChange, handleRoleChange]);
 
   const table = useReactTable({
     data: filteredRoster,
@@ -211,7 +233,15 @@ const Roster = () => {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle>Player List</CardTitle></CardHeader>
+        <CardHeader>
+            <div className="flex justify-between items-center">
+                <CardTitle>Player List</CardTitle>
+                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => { if (value) setViewMode(value as any)}}>
+                    <ToggleGroupItem value="attributes">Attributes</ToggleGroupItem>
+                    <ToggleGroupItem value="stats">Stats</ToggleGroupItem>
+                </ToggleGroup>
+            </div>
+        </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>

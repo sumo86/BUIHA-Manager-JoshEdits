@@ -6,10 +6,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Player } from '@/types';
 import { ColumnDef, flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface PlayerWithTeam extends Player {
+    teamName: string;
+}
 
 const SeasonOverview = () => {
     const { userTeam, teams } = useTeam();
+    const navigate = useNavigate();
     const [sorting, setSorting] = useState<SortingState>([]);
     const [goalieSorting, setGoalieSorting] = useState<SortingState>([]);
 
@@ -17,24 +23,48 @@ const SeasonOverview = () => {
         .filter(t => t.leagueDivision === userTeam.leagueDivision)
         .sort((a, b) => (b.wins * 2 + b.otLosses) - (a.wins * 2 + a.otLosses)), [teams, userTeam.leagueDivision]);
 
-    const skaters = useMemo(() => userTeam.roster.filter(p => !p.positions.includes('G')), [userTeam.roster]);
-    const goalies = useMemo(() => userTeam.roster.filter(p => p.positions.includes('G')), [userTeam.roster]);
+    const divisionPlayers = useMemo(() => 
+        teams
+            .filter(t => t.leagueDivision === userTeam.leagueDivision)
+            .flatMap(team => team.roster.map(player => ({ ...player, teamName: team.name }))),
+    [teams, userTeam.leagueDivision]);
 
-    const skaterColumns = useMemo<ColumnDef<Player>[]>(() => [
+    const skaters = useMemo(() => divisionPlayers.filter(p => !p.positions.includes('G')), [divisionPlayers]);
+    const goalies = useMemo(() => divisionPlayers.filter(p => p.positions.includes('G')), [divisionPlayers]);
+
+    const skaterColumns = useMemo<ColumnDef<PlayerWithTeam>[]>(() => [
         { accessorKey: 'name', header: 'Name' },
+        { accessorKey: 'teamName', header: 'Team' },
         { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
         { accessorKey: 'currentStats.goals', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>G<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
         { accessorKey: 'currentStats.assists', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>A<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
         { accessorKey: 'currentStats.points', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>P<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
         { accessorKey: 'currentStats.penaltyMinutes', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>PIM<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-    ], []);
+        {
+            id: 'actions',
+            cell: ({ row }) => (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/player/${row.original.id}`)}>
+                    <Eye className="h-4 w-4" />
+                </Button>
+            ),
+        },
+    ], [navigate]);
 
-    const goalieColumns = useMemo<ColumnDef<Player>[]>(() => [
+    const goalieColumns = useMemo<ColumnDef<PlayerWithTeam>[]>(() => [
         { accessorKey: 'name', header: 'Name' },
+        { accessorKey: 'teamName', header: 'Team' },
         { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
         { accessorKey: 'currentStats.wins', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>W<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
         { accessorKey: 'currentStats.losses', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>L<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-    ], []);
+        {
+            id: 'actions',
+            cell: ({ row }) => (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/player/${row.original.id}`)}>
+                    <Eye className="h-4 w-4" />
+                </Button>
+            ),
+        },
+    ], [navigate]);
 
     const skaterTable = useReactTable({ data: skaters, columns: skaterColumns, state: { sorting }, onSortingChange: setSorting, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel() });
     const goalieTable = useReactTable({ data: goalies, columns: goalieColumns, state: { sorting: goalieSorting }, onSortingChange: setGoalieSorting, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel() });
@@ -70,7 +100,7 @@ const SeasonOverview = () => {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Player Statistics</CardTitle><CardDescription>Statistics for your current roster.</CardDescription></CardHeader>
+                <CardHeader><CardTitle>Player Statistics</CardTitle><CardDescription>Statistics for all players in your division.</CardDescription></CardHeader>
                 <CardContent>
                     <Tabs defaultValue="skaters">
                         <TabsList><TabsTrigger value="skaters">Skaters</TabsTrigger><TabsTrigger value="goalies">Goalies</TabsTrigger></TabsList>
