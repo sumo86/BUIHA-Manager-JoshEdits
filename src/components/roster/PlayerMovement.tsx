@@ -4,10 +4,24 @@ import { Team, Player } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeftRight, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeftRight, ChevronUp, ChevronDown, Star, StarHalf } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+
+const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 !== 0;
+    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+    
+    return (
+      <div className="flex items-center">
+        {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} className="h-4 w-4 text-yellow-400 fill-yellow-400" />)}
+        {halfStar && <StarHalf key="half" className="h-4 w-4 text-yellow-400 fill-yellow-400" />}
+        {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />)}
+      </div>
+    );
+  };
 
 export const PlayerMovement = () => {
     const { userTeam, teams, movePlayer, requestPlayerTransfer } = useTeam();
@@ -62,7 +76,10 @@ export const PlayerMovement = () => {
                                     <div key={player.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                                         <div className="cursor-pointer flex-grow" onClick={() => navigate(`/player/${player.id}`)}>
                                             <p className="font-medium">{player.name}</p>
-                                            <p className="text-sm text-muted-foreground">{player.positions.join(', ')}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm text-muted-foreground">{player.positions.join(', ')}</p>
+                                                {renderStars(player.starRating)}
+                                            </div>
                                         </div>
                                         {hasOptions && (
                                             <DropdownMenu>
