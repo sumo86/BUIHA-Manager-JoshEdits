@@ -165,9 +165,15 @@ const Game = () => {
                 <CardHeader className="text-center pb-2">
                     <CardTitle className="text-4xl font-bold tracking-tight">
                         <div className="flex justify-around items-center">
-                            <span className="w-1/3 text-right">{userTeam.name}</span>
+                            <span className="w-1/3 text-right flex justify-end items-center gap-4">
+                                {userTeam.name}
+                                {userTeam.logo && <img src={userTeam.logo} alt={userTeam.name} className="h-10 w-10 object-contain" />}
+                            </span>
                             <span className="w-1/3 text-center">{gameState.userScore} - {gameState.opponentScore}</span>
-                            <span className="w-1/3 text-left">{opponentTeam.name}</span>
+                            <span className="w-1/3 text-left flex items-center gap-4">
+                                {opponentTeam.logo && <img src={opponentTeam.logo} alt={opponentTeam.name} className="h-10 w-10 object-contain" />}
+                                {opponentTeam.name}
+                            </span>
                         </div>
                     </CardTitle>
                     <div className="flex justify-center items-center gap-4">

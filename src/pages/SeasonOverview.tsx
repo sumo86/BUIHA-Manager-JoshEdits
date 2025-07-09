@@ -87,7 +87,10 @@ const SeasonOverview = () => {
                         <TableBody>
                             {divisionTeams.map(team => (
                                 <TableRow key={team.name} className={team.name === userTeam.name ? 'bg-muted/50' : ''}>
-                                    <TableCell className="font-medium">{team.name}</TableCell>
+                                    <TableCell className="font-medium flex items-center gap-2">
+                                        {team.logo && <img src={team.logo} alt={team.name} className="h-6 w-6 object-contain" />}
+                                        {team.name}
+                                    </TableCell>
                                     <TableCell>{team.wins}</TableCell>
                                     <TableCell>{team.losses}</TableCell>
                                     <TableCell>{team.otLosses}</TableCell>

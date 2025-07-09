@@ -147,7 +147,37 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const autoAssignTrainingFocuses = () => {
         if (!userTeam) return;
-        // ... (rest of the function is the same, just guarded)
+        const newRoster = userTeam.roster.map(player => {
+            const isSkater = !player.positions.includes('G');
+            const applicableFocuses = isSkater ? skaterFocuses : goalieFocuses;
+            
+            let weakestFocus: TrainingFocus = null;
+            let lowestAverage = Infinity;
+
+            for (const focus of applicableFocuses) {
+                if (!focus) continue;
+
+                const focusAttributes = trainingFocusesMap[focus];
+                const relevantPlayerAttributes = focusAttributes.filter(attr => player.attributes.hasOwnProperty(attr));
+
+                if (relevantPlayerAttributes.length === 0) continue;
+
+                const totalValue = relevantPlayerAttributes.reduce((sum, attr) => {
+                    return sum + (player.attributes[attr as keyof typeof player.attributes] as number);
+                }, 0);
+
+                const averageValue = totalValue / relevantPlayerAttributes.length;
+
+                if (averageValue < lowestAverage) {
+                    lowestAverage = averageValue;
+                    weakestFocus = focus;
+                }
+            }
+            return { ...player, trainingFocus: weakestFocus };
+        });
+
+        updateTeam({ ...userTeam, roster: newRoster });
+        toast.success("Training focuses have been auto-assigned based on players' weakest areas.");
     };
 
     const generateScoutingPool = () => {
@@ -160,16 +190,56 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const recruitPlayer = (playerId: string) => {
         if (!userTeam) return;
-        // ... (rest of the function is the same, just guarded)
+        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        if (!playerToRecruit) return;
+
+        const cost = playerToRecruit.recruitmentCost || 0;
+        const currentBudget = userTeam.financials.budgetAllocations.Recruiting;
+
+        if (currentBudget < cost) {
+            toast.error("Insufficient Recruiting Budget", {
+                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+            });
+            return;
+        }
+
+        const newBudgetAllocations = {
+            ...userTeam.financials.budgetAllocations,
+            Recruiting: currentBudget - cost,
+        };
+        
+        updateBudgetAllocations(newBudgetAllocations);
+        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        setRecruitedPool(prev => [...prev, playerToRecruit]);
+        toast.success(`${playerToRecruit.name} recruited!`, {
+            description: `Cost: £${cost.toLocaleString()}. Remaining budget: £${(currentBudget - cost).toLocaleString()}`,
+        });
     };
 
     const assignPlayerToRoster = (playerId: string) => {
         if (!userTeam) return;
-        // ... (rest of the function is the same, just guarded)
+        const playerToAssign = recruitedPool.find(p => p.id === playerId);
+        if (playerToAssign) {
+            const usedJerseyNumbers = new Set(userTeam.roster.map(p => p.jerseyNumber));
+            let newJerseyNumber = 1;
+            while (usedJerseyNumbers.has(newJerseyNumber)) {
+                newJerseyNumber++;
+            }
+            playerToAssign.jerseyNumber = newJerseyNumber;
+
+            const newRoster = [...userTeam.roster, playerToAssign].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+            updateTeam({ ...userTeam, roster: newRoster });
+            setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+            toast.success(`${playerToAssign.name} has been added to the roster.`);
+        }
     };
 
     const discardRecruit = (playerId: string) => {
-        setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+        const player = recruitedPool.find(p => p.id === playerId);
+        if (player) {
+            setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+            toast.info(`${player.name} has been discarded.`);
+        }
     };
 
     const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {

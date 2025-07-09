@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 
 const Dashboard = () => {
-  const { generateScoutingPool, scoutingPool, recruitedPool, fairHosted } = useTeam();
+  const { userTeam, generateScoutingPool, scoutingPool, recruitedPool, fairHosted } = useTeam();
 
   const handleHostFair = () => {
     generateScoutingPool();
@@ -22,7 +22,10 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       )}
-      <h1 className="text-3xl font-bold mb-4">Welcome, Manager!</h1>
+      <div className="flex items-center gap-4 mb-4">
+        {userTeam.logo && <img src={userTeam.logo} alt={userTeam.name} className="h-12 w-12 object-contain" />}
+        <h1 className="text-3xl font-bold">Welcome, Manager!</h1>
+      </div>
       <p className="text-lg text-muted-foreground">
         This is your central hub for managing your university ice hockey team.
         <br />
