@@ -1,6 +1,7 @@
 import { Team, Lineup, TacticsSelection, Player, Position } from "@/types";
 import { generateRoster } from "@/lib/playerGenerator";
 import { initialFacilityProjects } from './facilities';
+import { teamLogos } from './logos';
 
 const teamData = [
     // Checking 1 - North
@@ -98,70 +99,62 @@ const populateLineup = (roster: Player[]): Lineup => {
 
     const playerPool = [...roster];
 
-    const assignPlayer = (position: Position, slotIndex?: number) => {
-        let bestPlayerIndex = -1;
-
-        // Prioritize primary position
-        bestPlayerIndex = playerPool.findIndex(p => p.positions[0] === position);
-
-        // Fallback to any player who can play the position
+    const assignPlayer = (position: Position) => {
+        let bestPlayerIndex = playerPool.findIndex(p => p.positions[0] === position);
         if (bestPlayerIndex === -1) {
             bestPlayerIndex = playerPool.findIndex(p => p.positions.includes(position));
         }
-
         if (bestPlayerIndex !== -1) {
-            const player = playerPool.splice(bestPlayerIndex, 1)[0];
-            return player.id;
+            return playerPool.splice(bestPlayerIndex, 1)[0].id;
         }
         return null;
     };
 
-    // Fill forward lines
     for (let i = 0; i < 3; i++) {
         lineup.forwards.lw[i] = assignPlayer('LW');
         lineup.forwards.c[i] = assignPlayer('C');
         lineup.forwards.rw[i] = assignPlayer('RW');
     }
-
-    // Fill defence pairings
     for (let i = 0; i < 3; i++) {
         lineup.defence.ld[i] = assignPlayer('LD');
         lineup.defence.rd[i] = assignPlayer('RD');
     }
-
-    // Fill goalies
     lineup.goalies.starter = assignPlayer('G');
     lineup.goalies.backup = assignPlayer('G');
 
     return lineup;
 };
 
+const orgMap: { [key: string]: string } = {
+    'Oxford University Blues': 'Oxford University',
+    'Oxford Vikings': 'Oxford University',
+    'Cambridge Blues': 'Cambridge University',
+    'Cambridge Huskies': 'Cambridge University',
+};
+
+export const getOrganizationName = (teamName: string): string => {
+    const mappedOrg = Object.keys(orgMap).find(key => teamName.startsWith(key));
+    if (mappedOrg) return orgMap[mappedOrg];
+    return teamName.replace(/ (B|C|D|E)$/, '').trim();
+};
+
 export const teams: Team[] = teamData.map(team => {
     const roster = generateRoster(team.leagueDivision, team.name);
     const lineup = populateLineup(roster);
+    const orgName = getOrganizationName(team.name);
     return {
         ...team,
         nationalsDivision: getNationalsDivision(team.leagueDivision),
         roster: roster,
         lineup: lineup,
         tactics: defaultTactics,
-        wins: 0,
-        losses: 0,
-        otLosses: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
+        wins: 0, losses: 0, otLosses: 0, goalsFor: 0, goalsAgainst: 0,
+        logo: teamLogos[orgName],
         financials: {
             totalBudget: 15000,
             iceTimeCostPerGame: 350,
             equipmentCost: Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500,
-            budgetAllocations: {
-                Travel: 0,
-                Equipment: 0,
-                "Ice Time": 0,
-                Recruiting: 0,
-                "Student Life": 0,
-                Facilities: 0,
-            },
+            budgetAllocations: { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 },
         },
         facilities: initialFacilityProjects.map(p => ({ ...p })),
     };
@@ -171,15 +164,11 @@ export const getTeamOrganizations = () => {
     const organizations: { [key: string]: { name: string, teams: Team[] } } = {};
 
     teams.forEach(team => {
-        const baseName = team.name.replace(/ (B|C|D|E)$/, '').trim();
-        
-        if (!organizations[baseName]) {
-            organizations[baseName] = {
-                name: baseName,
-                teams: []
-            };
+        const orgName = getOrganizationName(team.name);
+        if (!organizations[orgName]) {
+            organizations[orgName] = { name: orgName, teams: [] };
         }
-        organizations[baseName].teams.push(team);
+        organizations[orgName].teams.push(team);
     });
 
     Object.values(organizations).forEach(org => {

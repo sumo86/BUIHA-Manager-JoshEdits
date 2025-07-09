@@ -23,14 +23,22 @@ const TeamSelection = () => {
                     <Accordion type="single" collapsible className="w-full">
                         {organizations.map(org => (
                             <AccordionItem value={org.name} key={org.name}>
-                                <AccordionTrigger>{org.name}</AccordionTrigger>
+                                <AccordionTrigger>
+                                    <div className="flex items-center gap-4">
+                                        {org.teams[0].logo && <img src={org.teams[0].logo} alt={org.name} className="h-8 w-8 object-contain" />}
+                                        <span>{org.name}</span>
+                                    </div>
+                                </AccordionTrigger>
                                 <AccordionContent>
                                     <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                                         {org.teams.map(team => (
                                             <div key={team.name} className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-semibold">{team.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{team.leagueDivision}</p>
+                                                <div className="flex items-center gap-3">
+                                                    {team.logo && <img src={team.logo} alt={team.name} className="h-6 w-6 object-contain" />}
+                                                    <div>
+                                                        <p className="font-semibold">{team.name}</p>
+                                                        <p className="text-sm text-muted-foreground">{team.leagueDivision}</p>
+                                                    </div>
                                                 </div>
                                                 <Button onClick={() => handleSelectTeam(team.name)}>
                                                     Manage {team.name.split(' ').pop()}

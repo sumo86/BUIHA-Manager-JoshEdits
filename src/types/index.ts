@@ -236,6 +236,7 @@ export interface Team {
   goalsAgainst: number;
   financials: Financials;
   facilities: FacilityProject[];
+  logo?: string;
 }
 
 export interface GameEvent {
