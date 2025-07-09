@@ -1,15 +1,21 @@
-import { PlayerSeasonStats } from "@/types";
+import { PlayerSeasonStats, Team } from "@/types";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface PlayerHistoryTableProps {
   history: PlayerSeasonStats[];
   isSkater: boolean;
+  teams: Team[];
 }
 
-export const PlayerHistoryTable = ({ history, isSkater }: PlayerHistoryTableProps) => {
+export const PlayerHistoryTable = ({ history, isSkater, teams }: PlayerHistoryTableProps) => {
   if (!history || history.length === 0) {
     return <p className="text-muted-foreground">No history available for this player.</p>;
   }
+
+  const findTeamLogo = (teamName: string) => {
+    const team = teams.find(t => t.name === teamName);
+    return team?.logo;
+  };
 
   if (isSkater) {
     const careerTotals = history.reduce(
@@ -43,7 +49,10 @@ export const PlayerHistoryTable = ({ history, isSkater }: PlayerHistoryTableProp
           {history.map((season, index) => (
             <TableRow key={index}>
               <TableCell>{season.season}</TableCell>
-              <TableCell>{season.team}</TableCell>
+              <TableCell className="flex items-center gap-2">
+                {findTeamLogo(season.team) && <img src={findTeamLogo(season.team)} alt={season.team} className="h-5 w-5 object-contain" />}
+                {season.team}
+              </TableCell>
               <TableCell>{season.league}</TableCell>
               <TableCell className="text-right">{season.gamesPlayed}</TableCell>
               <TableCell className="text-right">{season.goals}</TableCell>
@@ -103,7 +112,10 @@ export const PlayerHistoryTable = ({ history, isSkater }: PlayerHistoryTableProp
           {history.map((season, index) => (
             <TableRow key={index}>
               <TableCell>{season.season}</TableCell>
-              <TableCell>{season.team}</TableCell>
+              <TableCell className="flex items-center gap-2">
+                {findTeamLogo(season.team) && <img src={findTeamLogo(season.team)} alt={season.team} className="h-5 w-5 object-contain" />}
+                {season.team}
+              </TableCell>
               <TableCell>{season.league}</TableCell>
               <TableCell className="text-right">{season.gamesPlayed}</TableCell>
               <TableCell className="text-right">{season.goalsAgainstAverage?.toFixed(2)}</TableCell>

@@ -37,6 +37,7 @@ interface TeamContextType {
     updatePlayerTrainingFocus: (playerId: string, focus: TrainingFocus) => void;
     autoAssignTrainingFocuses: () => void;
     processGameResults: (userTeam: Team, opponentTeam: Team, gameState: GameState) => void;
+    movePlayer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -106,6 +107,47 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setTeams(currentTeams =>
             currentTeams.map(t => (t.name === updatedTeam.name ? updatedTeam : t))
         );
+    };
+
+    const movePlayer = (playerId: string, fromTeamName: string, toTeamName: string) => {
+        setTeams(currentTeams => {
+            const fromTeam = currentTeams.find(t => t.name === fromTeamName);
+            const toTeam = currentTeams.find(t => t.name === toTeamName);
+            const player = fromTeam?.roster.find(p => p.id === playerId);
+
+            if (!fromTeam || !toTeam || !player) {
+                toast.error("Could not move player. Team or player not found.");
+                return currentTeams;
+            }
+
+            // Remove from old team
+            const newFromRoster = fromTeam.roster.filter(p => p.id !== playerId);
+
+            // Add to new team and handle jersey conflict
+            const toTeamJerseyNumbers = new Set(toTeam.roster.map(p => p.jerseyNumber));
+            if (toTeamJerseyNumbers.has(player.jerseyNumber)) {
+                let newJerseyNumber = 1;
+                while (toTeamJerseyNumbers.has(newJerseyNumber)) {
+                    newJerseyNumber++;
+                }
+                toast.warning(`${player.name}'s jersey #${player.jerseyNumber} was taken.`, {
+                    description: `They have been assigned #${newJerseyNumber}.`
+                });
+                player.jerseyNumber = newJerseyNumber;
+            }
+            const newToRoster = [...toTeam.roster, player].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+
+            const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
+            const updatedToTeam = { ...toTeam, roster: newToRoster };
+
+            toast.success(`${player.name} transferred to ${toTeam.name}.`);
+
+            return currentTeams.map(t => {
+                if (t.name === fromTeamName) return updatedFromTeam;
+                if (t.name === toTeamName) return updatedToTeam;
+                return t;
+            });
+        });
     };
 
     const handlePlayerDevelopment = () => {
@@ -270,7 +312,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             generateScoutingPool, recruitPlayer, assignPlayerToRoster, discardRecruit,
             updateBudgetAllocations, runStudentLifeInitiative, startFacilityProject,
             currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
-            autoAssignTrainingFocuses, processGameResults
+            autoAssignTrainingFocuses, processGameResults, movePlayer
         }}>
             {children}
         </TeamContext.Provider>

@@ -3,7 +3,7 @@ import { useTeam } from "@/context/TeamContext";
 import { Player, SkaterAttributes, GoalieAttributes } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit } from "lucide-react";
+import { ArrowLeft, Edit, ChevronUp, ChevronDown } from "lucide-react";
 import { PlayerHistoryTable } from "@/components/player/PlayerHistoryTable";
 import {
   Dialog,
@@ -15,28 +15,62 @@ import {
 import { PlayerEditForm } from "@/components/player/PlayerEditForm";
 import { PlayerScoutingReport } from "@/components/player/PlayerScoutingReport";
 import { useState, useMemo } from "react";
+import { getOrganizationName } from "@/data/teams";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
-  const { teams, userTeam, updateTeam } = useTeam();
+  const { teams, userTeam, updateTeam, movePlayer } = useTeam();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const { player, team } = useMemo(() => {
-    for (const t of teams) {
-      const p = t.roster.find((p) => p.id === playerId);
-      if (p) {
-        return { player: p, team: t };
-      }
+  const { player, team, organizationTeams } = useMemo(() => {
+    let p, t;
+    for (const team of teams) {
+        const foundPlayer = team.roster.find((pl) => pl.id === playerId);
+        if (foundPlayer) {
+            p = foundPlayer;
+            t = team;
+            break;
+        }
     }
-    return { player: undefined, team: undefined };
+    if (!t || !p) return { player: undefined, team: undefined, organizationTeams: [] };
+
+    const orgName = getOrganizationName(t.name);
+    const orgTeams = teams
+        .filter(teamInFilter => getOrganizationName(teamInFilter.name) === orgName)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    return { player: p, team: t, organizationTeams: orgTeams };
   }, [teams, playerId]);
 
-  const isUserPlayer = player && team?.name === userTeam.name;
-
-  if (!player || !team) {
-    return <div>Player not found</div>;
+  if (!player || !team || !userTeam) {
+    return <div>Player not found or user team not set.</div>;
   }
+
+  const isUserPlayer = player && team?.name === userTeam.name;
+  const isUserOrg = team && getOrganizationName(team.name) === getOrganizationName(userTeam.name);
+
+  const userTeamIndex = organizationTeams.findIndex(t => t.name === userTeam.name);
+  const playerTeamIndex = organizationTeams.findIndex(t => t.name === team?.name);
+
+  const canCallUp = isUserOrg && !isUserPlayer && playerTeamIndex > userTeamIndex;
+  const sendDownOptions = isUserPlayer ? organizationTeams.filter((_, index) => index > userTeamIndex) : [];
+
+  const handleCallUp = () => {
+    if (player && team) {
+        movePlayer(player.id, team.name, userTeam.name);
+        navigate(`/roster`);
+    }
+  };
+
+  const handleSendDown = (toTeamName: string) => {
+    if (player) {
+        movePlayer(player.id, userTeam.name, toTeamName);
+        navigate(`/roster`);
+    }
+  };
 
   const handleSaveChanges = (updatedPlayer: Partial<Player>) => {
     const newRoster = userTeam.roster.map((p) =>
@@ -73,7 +107,7 @@ const PlayerProfile = () => {
         <div key={attr as string}>
           {renderAttribute(
             (attr as string).replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase()),
-            (player.attributes[attr as keyof typeof attributes] as number) // Type assertion here
+            (player.attributes[attr as keyof typeof attributes] as number)
           )}
         </div>
       ))}
@@ -84,14 +118,9 @@ const PlayerProfile = () => {
   const skaterMentalAttrs: (keyof SkaterAttributes)[] = ['aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament'];
   const skaterOffensiveAttrs: (keyof SkaterAttributes)[] = ['gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange'];
   const skaterDefensiveAttrs: (keyof SkaterAttributes)[] = ['checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
-  
   const goalieAttrs: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
-
   const allUsedJerseyNumbers = userTeam.roster.map(p => p.jerseyNumber);
-
-  const sortedRoles = isSkater ? Object.entries(player.roleSuitability)
-    .sort(([, a]: [string, number], [, b]: [string, number]) => b - a)
-    .slice(0, 5) : [];
+  const sortedRoles = isSkater ? Object.entries(player.roleSuitability).sort(([, a]: [string, number], [, b]: [string, number]) => b - a).slice(0, 5) : [];
 
   return (
     <div className="space-y-6">
@@ -101,37 +130,39 @@ const PlayerProfile = () => {
       </Button>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-5xl font-extrabold leading-none tracking-tight">
-              {player.name}
-            </CardTitle>
-            <p className="text-4xl font-bold text-primary mt-2">
-              #{player.jerseyNumber}
-            </p>
-            <p className="text-muted-foreground text-lg mt-1">
-              {player.positions.join(", ")} | {player.age} years old | {player.nationality}
-            </p>
-          </div>
-          {isUserPlayer && (
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Edit {player.name}</DialogTitle>
-                </DialogHeader>
-                <PlayerEditForm 
-                  player={player} 
-                  onSave={handleSaveChanges}
-                  allUsedJerseyNumbers={allUsedJerseyNumbers}
-                />
-              </DialogContent>
-            </Dialog>
-          )}
+        <CardHeader className="flex flex-row items-start justify-between">
+            <div className="flex items-center gap-4">
+                {team.logo && <img src={team.logo} alt={team.name} className="h-16 w-16 object-contain" />}
+                <div>
+                    <CardTitle className="text-5xl font-extrabold leading-none tracking-tight">{player.name}</CardTitle>
+                    <p className="text-4xl font-bold text-primary mt-2">#{player.jerseyNumber}</p>
+                    <p className="text-muted-foreground text-lg mt-1">{player.positions.join(", ")} | {player.age} years old | {player.nationality}</p>
+                </div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+                {isUserPlayer && (
+                    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                        <DialogTrigger asChild><Button variant="outline" size="icon"><Edit className="h-4 w-4" /></Button></DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader><DialogTitle>Edit {player.name}</DialogTitle></DialogHeader>
+                            <PlayerEditForm player={player} onSave={handleSaveChanges} allUsedJerseyNumbers={allUsedJerseyNumbers} />
+                        </DialogContent>
+                    </Dialog>
+                )}
+                {canCallUp && (
+                    <Button onClick={handleCallUp}><ChevronUp className="mr-2 h-4 w-4" />Call Up to {userTeam.name}</Button>
+                )}
+                {sendDownOptions.length > 0 && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="outline"><ChevronDown className="mr-2 h-4 w-4" />Send Down</Button></DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {sendDownOptions.map(t => (
+                                <DropdownMenuItem key={t.name} onClick={() => handleSendDown(t.name)}>Send to {t.name}</DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+            </div>
         </CardHeader>
       </Card>
 
@@ -140,36 +171,19 @@ const PlayerProfile = () => {
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {isSkater ? (
           <>
-            <Card>
-              <CardHeader><CardTitle>Physical</CardTitle></CardHeader>
-              <CardContent>{renderAttributeGrid(skaterPhysicalAttrs)}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle>Mental</CardTitle></CardHeader>
-              <CardContent>{renderAttributeGrid(skaterMentalAttrs)}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle>Offensive</CardTitle></CardHeader>
-              <CardContent>{renderAttributeGrid(skaterOffensiveAttrs)}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle>Defensive</CardTitle></CardHeader>
-              <CardContent>{renderAttributeGrid(skaterDefensiveAttrs)}</CardContent>
-            </Card>
+            <Card><CardHeader><CardTitle>Physical</CardTitle></CardHeader><CardContent>{renderAttributeGrid(skaterPhysicalAttrs)}</CardContent></Card>
+            <Card><CardHeader><CardTitle>Mental</CardTitle></CardHeader><CardContent>{renderAttributeGrid(skaterMentalAttrs)}</CardContent></Card>
+            <Card><CardHeader><CardTitle>Offensive</CardTitle></CardHeader><CardContent>{renderAttributeGrid(skaterOffensiveAttrs)}</CardContent></Card>
+            <Card><CardHeader><CardTitle>Defensive</CardTitle></CardHeader><CardContent>{renderAttributeGrid(skaterDefensiveAttrs)}</CardContent></Card>
           </>
         ) : (
-          <Card className="md:col-span-2 lg:col-span-4">
-            <CardHeader><CardTitle>Goaltending</CardTitle></CardHeader>
-            <CardContent>{renderAttributeGrid(goalieAttrs)}</CardContent>
-          </Card>
+          <Card className="md:col-span-2 lg:col-span-4"><CardHeader><CardTitle>Goaltending</CardTitle></CardHeader><CardContent>{renderAttributeGrid(goalieAttrs)}</CardContent></Card>
         )}
       </div>
 
       {isSkater && (
         <Card>
-          <CardHeader>
-            <CardTitle>Top Role Suitability</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Top Role Suitability</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {sortedRoles.map(([role, suitability]: [string, number]) => (
               <div key={role} className="flex items-center justify-between text-sm">
@@ -182,7 +196,7 @@ const PlayerProfile = () => {
       )}
 
       {player.history && player.history.length > 0 && (
-        <PlayerHistoryTable history={player.history} isSkater={isSkater} />
+        <PlayerHistoryTable history={player.history} isSkater={isSkater} teams={teams} />
       )}
     </div>
   );

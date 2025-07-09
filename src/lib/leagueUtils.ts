@@ -1,7 +1,7 @@
 export const divisionTiers: { [key: string]: { skater: number, goalie: number, step: { skater: number, goalie: number } } } = {
-    'Checking 1':     { skater: 420, goalie: 190, step: { skater: 25, goalie: 12 } },
-    'Checking 2':     { skater: 360, goalie: 160, step: { skater: 25, goalie: 12 } },
-    'Non-Checking 1': { skater: 310, goalie: 140, step: { skater: 28, goalie: 13 } }, 
-    'Non-Checking 2': { skater: 270, goalie: 120, step: { skater: 30, goalie: 15 } },
-    'Non-Checking 3': { skater: 230, goalie: 100, step: { skater: 35, goalie: 18 } },
+    "Checking 1":       { skater: 420, goalie: 195, step: { skater: 28, goalie: 13 } }, // Avg 15 per attr
+    "Checking 2":       { skater: 364, goalie: 169, step: { skater: 28, goalie: 13 } }, // Avg 13 per attr
+    "Non-Checking 1":   { skater: 308, goalie: 143, step: { skater: 28, goalie: 13 } }, // Avg 11 per attr
+    "Non-Checking 2":   { skater: 252, goalie: 117, step: { skater: 28, goalie: 13 } }, // Avg 9 per attr
+    "Non-Checking 3":   { skater: 140, goalie: 65,  step: { skater: 28, goalie: 13 } }, // Avg 5 per attr
 };
