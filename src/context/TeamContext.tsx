@@ -132,6 +132,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 });
                 player.jerseyNumber = newJerseyNumber;
             }
+            
+            // Recalculate star rating for the new division
+            const isSkater = player.positions[0] !== 'G';
+            player.starRating = calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision);
+
             const newToRoster = [...toTeam.roster, player].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 
             const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
