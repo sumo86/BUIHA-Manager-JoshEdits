@@ -27,6 +27,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PlayerMovement } from "@/components/roster/PlayerMovement";
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -224,47 +226,59 @@ const Roster = () => {
     <div>
       <h1 className="text-3xl font-bold mb-2">{team.name} Roster</h1>
       <p className="text-lg text-muted-foreground mb-6">Manage your players, lines, and training schedules here.</p>
-      <Card className="mb-6">
-        <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
-        <CardContent className="grid sm:grid-cols-3 gap-4">
-          <div className="space-y-2"><Label htmlFor="position-filter">Position</Label><Select value={positionFilter} onValueChange={setPositionFilter}><SelectTrigger id="position-filter"><SelectValue placeholder="Filter by position" /></SelectTrigger><SelectContent>{positionCategories.map(pos => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}</SelectContent></Select></div>
-          <div className="space-y-2"><Label htmlFor="eligibility-filter">Degree</Label><Select value={eligibilityFilter} onValueChange={setEligibilityFilter}><SelectTrigger id="eligibility-filter"><SelectValue placeholder="Filter by degree" /></SelectTrigger><SelectContent>{uniqueEligibilities.map((eligibility: string) => <SelectItem key={eligibility} value={eligibility}>{eligibility}</SelectItem>)}</SelectContent></Select></div>
-          <div className="space-y-2"><Label htmlFor="star-filter">Minimum Star Rating: {starRatingFilter[0].toFixed(1)}</Label><Slider id="star-filter" min={0.5} max={5} step={0.5} value={starRatingFilter} onValueChange={setStarRatingFilter} /></div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-            <div className="flex justify-between items-center">
-                <CardTitle>Player List</CardTitle>
-                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => { if (value) setViewMode(value as any)}}>
-                    <ToggleGroupItem value="attributes">Attributes</ToggleGroupItem>
-                    <ToggleGroupItem value="stats">Stats</ToggleGroupItem>
-                </ToggleGroup>
-            </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map(headerGroup => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map(header => <TableHead key={header.id} style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map(row => (
-                  <TableRow key={row.id} onClick={() => handlePlayerClick(row.original.id)} className="cursor-pointer hover:bg-muted/50" data-state={row.getIsSelected() && 'selected'}>
-                    {row.getVisibleCells().map(cell => <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>)}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No players match filters.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      
+      <Tabs defaultValue="roster">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="roster">Player Roster</TabsTrigger>
+          <TabsTrigger value="movement">Player Movement</TabsTrigger>
+        </TabsList>
+        <TabsContent value="roster" className="mt-4">
+          <Card className="mb-6">
+            <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
+            <CardContent className="grid sm:grid-cols-3 gap-4">
+              <div className="space-y-2"><Label htmlFor="position-filter">Position</Label><Select value={positionFilter} onValueChange={setPositionFilter}><SelectTrigger id="position-filter"><SelectValue placeholder="Filter by position" /></SelectTrigger><SelectContent>{positionCategories.map(pos => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2"><Label htmlFor="eligibility-filter">Degree</Label><Select value={eligibilityFilter} onValueChange={setEligibilityFilter}><SelectTrigger id="eligibility-filter"><SelectValue placeholder="Filter by degree" /></SelectTrigger><SelectContent>{uniqueEligibilities.map((eligibility: string) => <SelectItem key={eligibility} value={eligibility}>{eligibility}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2"><Label htmlFor="star-filter">Minimum Star Rating: {starRatingFilter[0].toFixed(1)}</Label><Slider id="star-filter" min={0.5} max={5} step={0.5} value={starRatingFilter} onValueChange={setStarRatingFilter} /></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <CardTitle>Player List</CardTitle>
+                    <ToggleGroup type="single" value={viewMode} onValueChange={(value) => { if (value) setViewMode(value as any)}}>
+                        <ToggleGroupItem value="attributes">Attributes</ToggleGroupItem>
+                        <ToggleGroupItem value="stats">Stats</ToggleGroupItem>
+                    </ToggleGroup>
+                </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map(headerGroup => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map(header => <TableHead key={header.id} style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map(row => (
+                      <TableRow key={row.id} onClick={() => handlePlayerClick(row.original.id)} className="cursor-pointer hover:bg-muted/50" data-state={row.getIsSelected() && 'selected'}>
+                        {row.getVisibleCells().map(cell => <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>)}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No players match filters.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="movement" className="mt-4">
+          <PlayerMovement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
