@@ -1,8 +1,10 @@
 import { NavLink } from "react-router-dom";
-import { Home, Users, BarChart, Shield, DollarSign, ClipboardList, Globe, Gamepad2, Building, TrendingUp } from "lucide-react";
+import { Home, Users, BarChart, Shield, DollarSign, ClipboardList, Globe, Gamepad2, Building, TrendingUp, CalendarDays, Trophy } from "lucide-react";
 
 const navItems = [
   { to: "/", icon: Home, label: "Dashboard" },
+  { to: "/season-overview", icon: Trophy, label: "Season Overview" },
+  { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/standings", icon: BarChart, label: "Standings" },
   { to: "/roster", icon: Users, label: "Roster" },
   { to: "/lineup", icon: ClipboardList, label: "Lineup" },

@@ -114,6 +114,25 @@ export interface PlayerSeasonStats {
   captaincy?: 'C' | 'A' | null;
 }
 
+export interface CurrentSeasonStats {
+  gamesPlayed: number;
+  // Skater
+  goals: number;
+  assists: number;
+  points: number;
+  penaltyMinutes: number;
+  // Goalie
+  wins: number;
+  losses: number;
+  otLosses: number;
+  goalsAgainst: number;
+  shotsAgainst: number;
+  saves: number;
+  savePercentage: number;
+  goalsAgainstAverage: number;
+  shutouts: number;
+}
+
 export interface Player {
   id: string;
   jerseyNumber: number;
@@ -138,6 +157,7 @@ export interface Player {
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
   recruitmentCost?: number;
   trainingFocus?: TrainingFocus;
+  currentStats: CurrentSeasonStats;
 }
 
 export interface Tactic {

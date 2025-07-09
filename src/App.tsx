@@ -18,6 +18,8 @@ import BuihaOverview from "./pages/BuihaOverview";
 import PlayGame from "./pages/PlayGame";
 import Game from "./pages/Game";
 import Training from "./pages/Training";
+import Calendar from "./pages/Calendar";
+import SeasonOverview from "./pages/SeasonOverview";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,8 @@ const router = createBrowserRouter(
   createRoutesFromElements(
     <Route element={<Layout />}>
       <Route path="/" element={<Dashboard />} />
+      <Route path="/season-overview" element={<SeasonOverview />} />
+      <Route path="/calendar" element={<Calendar />} />
       <Route path="/standings" element={<Standings />} />
       <Route path="/roster" element={<Roster />} />
       <Route path="/player/:playerId" element={<PlayerProfile />} />

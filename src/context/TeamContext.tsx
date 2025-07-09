@@ -7,6 +7,8 @@ import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenera
 import { trainingFocusesMap } from '@/data/trainingFocuses';
 import { roles } from '@/data/roles';
 import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
+import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
+import { GameState } from '@/types'; // Added GameState import
 
 interface GameDate {
     month: string;
@@ -35,6 +37,7 @@ interface TeamContextType {
     developmentHistory: DevelopmentLog[];
     updatePlayerTrainingFocus: (playerId: string, focus: TrainingFocus) => void;
     autoAssignTrainingFocuses: () => void;
+    processGameResults: (userTeam: Team, opponentTeam: Team, gameState: GameState) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -451,6 +454,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         });
     };
 
+    const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState) => {
+        const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(userTeam, opponentTeam, gameState);
+        updateTeam(updatedUserTeam);
+        updateTeam(updatedOpponentTeam);
+    };
+
     const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
     return (
@@ -472,7 +481,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             advanceWeek,
             developmentHistory,
             updatePlayerTrainingFocus,
-            autoAssignTrainingFocuses
+            autoAssignTrainingFocuses,
+            processGameResults
         }}>
             {children}
         </TeamContext.Provider>
