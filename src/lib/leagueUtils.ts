@@ -3,5 +3,5 @@ export const divisionTiers: { [key: string]: { skater: number, goalie: number, s
     "Checking 2":       { skater: 364, goalie: 169, step: { skater: 28, goalie: 13 } }, // Avg 13 per attr
     "Non-Checking 1":   { skater: 308, goalie: 143, step: { skater: 28, goalie: 13 } }, // Avg 11 per attr
     "Non-Checking 2":   { skater: 252, goalie: 117, step: { skater: 28, goalie: 13 } }, // Avg 9 per attr
-    "Non-Checking 3":   { skater: 140, goalie: 65,  step: { skater: 28, goalie: 13 } }, // Avg 5 per attr
+    "Non-Checking 3":   { skater: 112, goalie: 52,  step: { skater: 28, goalie: 13 } }, // Avg 4 per attr
 };

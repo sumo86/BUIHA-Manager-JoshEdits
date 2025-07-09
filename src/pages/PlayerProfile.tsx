@@ -22,7 +22,7 @@ import { toast } from "sonner";
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
-  const { teams, userTeam, updateTeam, movePlayer } = useTeam();
+  const { teams, userTeam, updateTeam, movePlayer, requestPlayerTransfer } = useTeam();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const { player, team, organizationTeams } = useMemo(() => {
@@ -56,11 +56,13 @@ const PlayerProfile = () => {
   const playerTeamIndex = organizationTeams.findIndex(t => t.name === team?.name);
 
   const canCallUp = isUserOrg && !isUserPlayer && playerTeamIndex > userTeamIndex;
+  const canRequestDown = isUserOrg && !isUserPlayer && playerTeamIndex < userTeamIndex;
   const sendDownOptions = isUserPlayer ? organizationTeams.filter((_, index) => index > userTeamIndex) : [];
 
   const handleCallUp = () => {
     if (player && team) {
         movePlayer(player.id, team.name, userTeam.name);
+        toast.success(`${player.name} has been called up to ${userTeam.name}.`);
         navigate(`/roster`);
     }
   };
@@ -68,7 +70,14 @@ const PlayerProfile = () => {
   const handleSendDown = (toTeamName: string) => {
     if (player) {
         movePlayer(player.id, userTeam.name, toTeamName);
+        toast.success(`${player.name} has been sent down to ${toTeamName}.`);
         navigate(`/roster`);
+    }
+  };
+
+  const handleRequestDown = () => {
+    if (player && team) {
+        requestPlayerTransfer(player.id, team.name, userTeam.name);
     }
   };
 
@@ -151,6 +160,9 @@ const PlayerProfile = () => {
                 )}
                 {canCallUp && (
                     <Button onClick={handleCallUp}><ChevronUp className="mr-2 h-4 w-4" />Call Up to {userTeam.name}</Button>
+                )}
+                {canRequestDown && (
+                    <Button variant="secondary" onClick={handleRequestDown}><ChevronDown className="mr-2 h-4 w-4" />Request from {team.name}</Button>
                 )}
                 {sendDownOptions.length > 0 && (
                     <DropdownMenu>

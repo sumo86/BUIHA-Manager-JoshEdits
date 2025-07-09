@@ -38,6 +38,7 @@ interface TeamContextType {
     autoAssignTrainingFocuses: () => void;
     processGameResults: (userTeam: Team, opponentTeam: Team, gameState: GameState) => void;
     movePlayer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
+    requestPlayerTransfer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -120,16 +121,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 return currentTeams;
             }
 
-            // Remove from old team
             const newFromRoster = fromTeam.roster.filter(p => p.id !== playerId);
 
-            // Add to new team and handle jersey conflict
             const toTeamJerseyNumbers = new Set(toTeam.roster.map(p => p.jerseyNumber));
             if (toTeamJerseyNumbers.has(player.jerseyNumber)) {
                 let newJerseyNumber = 1;
-                while (toTeamJerseyNumbers.has(newJerseyNumber)) {
-                    newJerseyNumber++;
-                }
+                while (toTeamJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
                 toast.warning(`${player.name}'s jersey #${player.jerseyNumber} was taken.`, {
                     description: `They have been assigned #${newJerseyNumber}.`
                 });
@@ -140,14 +137,37 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
             const updatedToTeam = { ...toTeam, roster: newToRoster };
 
-            toast.success(`${player.name} transferred to ${toTeam.name}.`);
-
             return currentTeams.map(t => {
                 if (t.name === fromTeamName) return updatedFromTeam;
                 if (t.name === toTeamName) return updatedToTeam;
                 return t;
             });
         });
+    };
+
+    const requestPlayerTransfer = (playerId: string, fromTeamName: string, toTeamName: string) => {
+        const fromTeam = teams.find(t => t.name === fromTeamName);
+        const player = fromTeam?.roster.find(p => p.id === playerId);
+
+        if (!fromTeam || !player) {
+            toast.error("Could not request player. Team or player not found.");
+            return;
+        }
+
+        const successChance = 0.3; // 30% chance
+        if (Math.random() < successChance) {
+            toast.success("Transfer Approved!", {
+                description: `${player.name} has agreed to the move and their coach has approved the transfer.`
+            });
+            movePlayer(playerId, fromTeamName, toTeamName);
+        } else {
+            const reason = Math.random() < 0.5 ? 'coach' : 'player';
+            toast.error("Transfer Denied", {
+                description: reason === 'coach'
+                    ? `The manager of ${fromTeamName} has blocked the transfer.`
+                    : `${player.name} has declined the offer to move to ${toTeamName}.`
+            });
+        }
     };
 
     const handlePlayerDevelopment = () => {
@@ -312,7 +332,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             generateScoutingPool, recruitPlayer, assignPlayerToRoster, discardRecruit,
             updateBudgetAllocations, runStudentLifeInitiative, startFacilityProject,
             currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
-            autoAssignTrainingFocuses, processGameResults, movePlayer
+            autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer
         }}>
             {children}
         </TeamContext.Provider>
