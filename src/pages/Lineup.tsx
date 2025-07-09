@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { calculateTacticSuitability } from '@/lib/tactics';
 import { Star, StarHalf } from 'lucide-react';
 import { useTeam } from '@/context/TeamContext';
+import { toast } from 'sonner';
 
 const getAttributeColorClass = (value: number) => {
     if (value >= 17) return "text-green-700";
@@ -178,6 +179,57 @@ const Lineup = () => {
         updateTeam({ ...team, lineup: newLineup });
     };
 
+    const autoAssignRoles = () => {
+        const newRoster = team.roster.map(p => ({ ...p }));
+        const rosterMap = new Map(newRoster.map(p => [p.id, p]));
+
+        const forwardRoles = roles.filter(r => r.positions.includes('Forward'));
+        const defenceRoles = roles.filter(r => r.positions.includes('Defenceman'));
+
+        const findBestRole = (player: Player, availableRoles: typeof roles): string | null => {
+            if (!player || !player.roleSuitability || availableRoles.length === 0) return null;
+
+            let bestRoleName: string | null = null;
+            let maxSuitability = -1;
+
+            for (const role of availableRoles) {
+                const suitability = player.roleSuitability[role.name] || 0;
+                if (suitability > maxSuitability) {
+                    maxSuitability = suitability;
+                    bestRoleName = role.name;
+                }
+            }
+            return bestRoleName;
+        };
+
+        // Assign roles for forwards
+        Object.values(team.lineup.forwards).flat().forEach(playerId => {
+            if (!playerId) return;
+            const player = rosterMap.get(playerId);
+            if (player) {
+                const bestRole = findBestRole(player, forwardRoles);
+                if (bestRole) {
+                    player.role = bestRole;
+                }
+            }
+        });
+
+        // Assign roles for defence
+        Object.values(team.lineup.defence).flat().forEach(playerId => {
+            if (!playerId) return;
+            const player = rosterMap.get(playerId);
+            if (player) {
+                const bestRole = findBestRole(player, defenceRoles);
+                if (bestRole) {
+                    player.role = bestRole;
+                }
+            }
+        });
+
+        updateTeam({ ...team, roster: newRoster });
+        toast.success("Player roles have been auto-assigned based on position and suitability.");
+    };
+
     const autoFillTactics = () => {
         const newTactics = { ...team.tactics };
         Object.keys(groupedTactics).forEach(phase => {
@@ -266,7 +318,10 @@ const Lineup = () => {
                     <CardHeader>
                         <div className="flex justify-between items-center">
                             <CardTitle>Set Your Lines</CardTitle>
-                            <Button onClick={autoFillLines}>Auto-Fill Lines</Button>
+                            <div className="flex items-center gap-2">
+                                <Button onClick={autoAssignRoles} variant="outline">Auto-Assign Roles</Button>
+                                <Button onClick={autoFillLines}>Auto-Fill Lines</Button>
+                            </div>
                         </div>
                         <CardDescription>
                             You can have a maximum of 2 staff members in your lineup. Currently: {staffInLineupCount}/2
