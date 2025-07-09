@@ -474,11 +474,19 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         }
 
         const qualityRoll = Math.random();
-        const estimatedQuality: Player['estimatedQuality'] = 
-            qualityRoll < 0.5 ? 'Beginner' :
-            qualityRoll < 0.8 ? 'Moderate' :
-            qualityRoll < 0.95 ? 'Intermediate' : 'Experienced';
-
+        let estimatedQuality: Player['estimatedQuality'];
+        if (qualityRoll < 0.49) {
+            estimatedQuality = 'Beginner';
+        } else if (qualityRoll < 0.79) {
+            estimatedQuality = 'Moderate';
+        } else if (qualityRoll < 0.94) {
+            estimatedQuality = 'Intermediate';
+        } else if (qualityRoll < 0.98) {
+            estimatedQuality = 'Experienced';
+        } else {
+            estimatedQuality = 'Elite';
+        }
+        
         const allPossiblePositions: Position[] = [...skaterPositions, 'G'];
         const position = getRandomItem(allPossiblePositions);
         
@@ -504,12 +512,21 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
             targetCurrentAbilityMin += isSkater ? 10 : 5;
             targetCurrentAbilityMax += isSkater ? 10 : 5;
             player.recruitmentCost = getRandomValueInRange(300, 500);
-        } else { // Experienced
+        } else if (estimatedQuality === 'Experienced') {
             targetCurrentAbilityMin = isSkater ? divisionTiers['Checking 2'].skater : divisionTiers['Checking 2'].goalie;
             targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
             targetCurrentAbilityMin += isSkater ? 15 : 8;
             targetCurrentAbilityMax += isSkater ? 15 : 8;
             player.recruitmentCost = getRandomValueInRange(500, 750);
+        } else { // Elite
+            const checking1Tier = divisionTiers['Checking 1'];
+            targetCurrentAbilityMin = isSkater 
+                ? checking1Tier.skater + (checking1Tier.step.skater * 0.25) // 3.5 stars
+                : checking1Tier.goalie + (checking1Tier.step.goalie * 0.25);
+            targetCurrentAbilityMax = isSkater 
+                ? checking1Tier.skater + (checking1Tier.step.skater * 2.0) // ~5 stars
+                : checking1Tier.goalie + (checking1Tier.step.goalie * 2.0);
+            player.recruitmentCost = getRandomValueInRange(750, 1500);
         }
 
         player.currentAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);

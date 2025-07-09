@@ -135,7 +135,7 @@ export interface Player {
   yearsLeftInProgram?: number;
   history?: PlayerSeasonStats[];
   source?: 'Local' | 'Transfer' | 'International';
-  estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced';
+  estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
   recruitmentCost?: number;
   trainingFocus?: TrainingFocus;
 }
