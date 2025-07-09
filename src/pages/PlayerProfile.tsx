@@ -3,7 +3,7 @@ import { useTeam } from "@/context/TeamContext";
 import { Player, SkaterAttributes, GoalieAttributes } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, Edit } from "lucide-react";
 import { PlayerHistoryTable } from "@/components/player/PlayerHistoryTable";
 import {
   Dialog,
@@ -15,34 +15,21 @@ import {
 import { PlayerEditForm } from "@/components/player/PlayerEditForm";
 import { PlayerScoutingReport } from "@/components/player/PlayerScoutingReport";
 import { useState, useMemo } from "react";
-import { getOrganizationName } from "@/data/teams";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
-  const { teams, userTeam, updateTeam, movePlayer, requestPlayerTransfer } = useTeam();
+  const { teams, userTeam, updateTeam } = useTeam();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const { player, team, organizationTeams } = useMemo(() => {
-    let p, t;
+  const { player, team } = useMemo(() => {
     for (const team of teams) {
         const foundPlayer = team.roster.find((pl) => pl.id === playerId);
         if (foundPlayer) {
-            p = foundPlayer;
-            t = team;
-            break;
+            return { player: foundPlayer, team: team };
         }
     }
-    if (!t || !p) return { player: undefined, team: undefined, organizationTeams: [] };
-
-    const orgName = getOrganizationName(t.name);
-    const orgTeams = teams
-        .filter(teamInFilter => getOrganizationName(teamInFilter.name) === orgName)
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-    return { player: p, team: t, organizationTeams: orgTeams };
+    return { player: undefined, team: undefined };
   }, [teams, playerId]);
 
   if (!player || !team || !userTeam) {
@@ -50,36 +37,6 @@ const PlayerProfile = () => {
   }
 
   const isUserPlayer = player && team?.name === userTeam.name;
-  const isUserOrg = team && getOrganizationName(team.name) === getOrganizationName(userTeam.name);
-
-  const userTeamIndex = organizationTeams.findIndex(t => t.name === userTeam.name);
-  const playerTeamIndex = organizationTeams.findIndex(t => t.name === team?.name);
-
-  const canCallUp = isUserOrg && !isUserPlayer && playerTeamIndex > userTeamIndex;
-  const canRequestDown = isUserOrg && !isUserPlayer && playerTeamIndex < userTeamIndex;
-  const sendDownOptions = isUserPlayer ? organizationTeams.filter((_, index) => index > userTeamIndex) : [];
-
-  const handleCallUp = () => {
-    if (player && team) {
-        movePlayer(player.id, team.name, userTeam.name);
-        toast.success(`${player.name} has been called up to ${userTeam.name}.`);
-        navigate(`/roster`);
-    }
-  };
-
-  const handleSendDown = (toTeamName: string) => {
-    if (player) {
-        movePlayer(player.id, userTeam.name, toTeamName);
-        toast.success(`${player.name} has been sent down to ${toTeamName}.`);
-        navigate(`/roster`);
-    }
-  };
-
-  const handleRequestDown = () => {
-    if (player && team) {
-        requestPlayerTransfer(player.id, team.name, userTeam.name);
-    }
-  };
 
   const handleSaveChanges = (updatedPlayer: Partial<Player>) => {
     const newRoster = userTeam.roster.map((p) =>
@@ -157,22 +114,6 @@ const PlayerProfile = () => {
                             <PlayerEditForm player={player} onSave={handleSaveChanges} allUsedJerseyNumbers={allUsedJerseyNumbers} />
                         </DialogContent>
                     </Dialog>
-                )}
-                {canCallUp && (
-                    <Button onClick={handleCallUp}><ChevronUp className="mr-2 h-4 w-4" />Call Up to {userTeam.name}</Button>
-                )}
-                {canRequestDown && (
-                    <Button variant="secondary" onClick={handleRequestDown}><ChevronDown className="mr-2 h-4 w-4" />Request from {team.name}</Button>
-                )}
-                {sendDownOptions.length > 0 && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="outline"><ChevronDown className="mr-2 h-4 w-4" />Send Down</Button></DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            {sendDownOptions.map(t => (
-                                <DropdownMenuItem key={t.name} onClick={() => handleSendDown(t.name)}>Send to {t.name}</DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 )}
             </div>
         </CardHeader>
