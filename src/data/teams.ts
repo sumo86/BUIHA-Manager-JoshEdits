@@ -166,3 +166,25 @@ export const teams: Team[] = teamData.map(team => {
         facilities: initialFacilityProjects.map(p => ({ ...p })),
     };
 });
+
+export const getTeamOrganizations = () => {
+    const organizations: { [key: string]: { name: string, teams: Team[] } } = {};
+
+    teams.forEach(team => {
+        const baseName = team.name.replace(/ (B|C|D|E)$/, '').trim();
+        
+        if (!organizations[baseName]) {
+            organizations[baseName] = {
+                name: baseName,
+                teams: []
+            };
+        }
+        organizations[baseName].teams.push(team);
+    });
+
+    Object.values(organizations).forEach(org => {
+        org.teams.sort((a, b) => a.name.localeCompare(b.name));
+    });
+
+    return Object.values(organizations).sort((a, b) => a.name.localeCompare(b.name));
+};

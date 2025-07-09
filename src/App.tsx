@@ -13,13 +13,14 @@ import Finances from "./pages/Finances";
 import Facilities from "./pages/Facilities";
 import PlayerProfile from "./pages/PlayerProfile";
 import Lineup from "./pages/Lineup";
-import { TeamProvider } from "./context/TeamContext";
+import { TeamProvider, useTeam } from "./context/TeamContext";
 import BuihaOverview from "./pages/BuihaOverview";
 import PlayGame from "./pages/PlayGame";
 import Game from "./pages/Game";
 import Training from "./pages/Training";
 import Calendar from "./pages/Calendar";
 import SeasonOverview from "./pages/SeasonOverview";
+import TeamSelection from "./pages/TeamSelection";
 
 const queryClient = new QueryClient();
 
@@ -45,13 +46,23 @@ const router = createBrowserRouter(
   )
 );
 
+const AppContent = () => {
+  const { userTeam } = useTeam();
+
+  if (!userTeam) {
+    return <TeamSelection />;
+  }
+
+  return <RouterProvider router={router} />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TeamProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <RouterProvider router={router} />
+        <AppContent />
       </TooltipProvider>
     </TeamProvider>
   </QueryClientProvider>
