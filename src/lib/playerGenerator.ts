@@ -104,10 +104,10 @@ const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string):
     return attrs;
 };
 
+const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament', 'gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
+const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
+
 export const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAttributes, isSkater: boolean): number => {
-    const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament', 'gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
-    const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
-    
     if (isSkater) {
         return visibleSkaterKeys.reduce((sum, key) => sum + (attributes as SkaterAttributes)[key], 0);
     } else {
@@ -136,7 +136,7 @@ export const calculateStarRating = (currentAbility: number, isSkater: boolean, l
 };
 
 const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 'Forward' | 'Defenceman'): { suitabilities: { [key: string]: number }, bestRole: string, highestSuitability: number } => {
-    const suitabilities: { [key: number]: number } = {};
+    const suitabilities: { [key: string]: number } = {};
     let bestRole = '';
     let highestSuitability = -1;
 
@@ -492,11 +492,10 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         
         const genericDivisionForBaseGeneration = 'Non-Checking 3'; 
         const player = generatePlayer(usedJerseyNumbers, position, genericDivisionForBaseGeneration, "Unattached", [eligibility]);
+        const isSkater = player.positions[0] !== 'G';
 
         let targetCurrentAbilityMin: number;
         let targetCurrentAbilityMax: number;
-
-        const isSkater = player.positions[0] !== 'G';
 
         if (estimatedQuality === 'Beginner') {
             targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 3'].skater : divisionTiers['Non-Checking 3'].goalie;
@@ -508,15 +507,11 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
             player.recruitmentCost = getRandomValueInRange(150, 300);
         } else if (estimatedQuality === 'Intermediate') {
             targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 1'].skater : divisionTiers['Non-Checking 1'].goalie;
-            targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
-            targetCurrentAbilityMin += isSkater ? 10 : 5;
-            targetCurrentAbilityMax += isSkater ? 10 : 5;
+            targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 2'].skater : divisionTiers['Checking 2'].goalie;
             player.recruitmentCost = getRandomValueInRange(300, 500);
         } else if (estimatedQuality === 'Experienced') {
             targetCurrentAbilityMin = isSkater ? divisionTiers['Checking 2'].skater : divisionTiers['Checking 2'].goalie;
             targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
-            targetCurrentAbilityMin += isSkater ? 15 : 8;
-            targetCurrentAbilityMax += isSkater ? 15 : 8;
             player.recruitmentCost = getRandomValueInRange(500, 750);
         } else { // Elite
             const checking1Tier = divisionTiers['Checking 1'];
@@ -529,9 +524,27 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
             player.recruitmentCost = getRandomValueInRange(750, 1500);
         }
 
-        player.currentAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);
+        const targetAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);
+        let abilityDifference = targetAbility - player.currentAbility;
+
+        if (abilityDifference > 0) {
+            const attributes = player.attributes;
+            const visibleKeys = isSkater ? visibleSkaterKeys : visibleGoalieKeys;
+
+            while (abilityDifference > 0) {
+                const improvableAttrs = visibleKeys.filter(key => (attributes[key as keyof typeof attributes] as number) < 20);
+                if (improvableAttrs.length === 0) break;
+                
+                const attrToImprove = getRandomItem(improvableAttrs);
+                (attributes[attrToImprove as keyof typeof attributes] as number) += 1;
+                abilityDifference -= 1;
+            }
+            player.attributes = attributes;
+        }
+
+        // Recalculate everything based on new attributes
+        player.currentAbility = calculateCurrentAbility(player.attributes, isSkater);
         
-        // Increased potential bonus for recruits as well
         const potentialBonus = Math.floor(Math.random() * 150) * ((30 - player.age) / 12);
         player.potentialAbility = Math.round(player.currentAbility + potentialBonus);
         const maxAbility = isSkater ? 560 : 260;
@@ -540,11 +553,24 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
 
         player.starRating = calculateStarRating(player.currentAbility, isSkater, userLeagueDivision);
 
+        if (isSkater) {
+            const { suitabilities, bestRole } = calculateRoleSuitability(player.attributes as SkaterAttributes, 'Forward');
+            const { suitabilities: defSuitabilities, bestRole: defBestRole } = calculateRoleSuitability(player.attributes as SkaterAttributes, 'Defenceman');
+            
+            const allSuitabilities = {...suitabilities, ...defSuitabilities};
+            let finalBestRole = bestRole;
+            if(allSuitabilities[defBestRole] > allSuitabilities[bestRole]) {
+                finalBestRole = defBestRole;
+            }
+
+            player.roleSuitability = allSuitabilities;
+            player.role = finalBestRole;
+        }
+
         player.source = source;
         player.estimatedQuality = estimatedQuality;
         player.jerseyNumber = 0;
         player.morale = "Content";
-        player.role = undefined;
 
         if (source === 'Transfer' && eligibility !== 'UG Year 1') {
             const otherTeamName = getRandomItem(allTeamNames);

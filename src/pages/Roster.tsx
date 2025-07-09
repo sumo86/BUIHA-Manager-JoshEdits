@@ -134,7 +134,7 @@ const Roster = () => {
   const forwardPositions: Position[] = ['C', 'LW', 'RW'];
   const defencePositions: Position[] = ['LD', 'RD'];
 
-  const filteredRoster = team.roster.filter(player => {
+  const filteredRoster = useMemo(() => team.roster.filter(player => {
     if (positionFilter !== 'All') {
       const isForward = forwardPositions.some(p => player.positions.includes(p));
       const isDefence = defencePositions.some(p => player.positions.includes(p));
@@ -146,7 +146,7 @@ const Roster = () => {
     if (eligibilityFilter !== 'All' && player.eligibility !== eligibilityFilter) return false;
     if (player.starRating < starRatingFilter[0]) return false;
     return true;
-  });
+  }), [team.roster, positionFilter, eligibilityFilter, starRatingFilter]);
 
   const columns = useMemo<ColumnDef<Player>[]>(() => [
     {
