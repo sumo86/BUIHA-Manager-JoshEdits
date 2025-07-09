@@ -25,8 +25,8 @@ const qualitySortingFn: SortingFn<Player> = (rowA, rowB, columnId) => {
   return qualityOrder.indexOf(qualityA) - qualityOrder.indexOf(qualityB);
 };
 
-export const ScoutingTable = () => {
-    const { scoutingPool, recruitPlayer } = useTeam();
+export const ScoutingTable = ({ data }: { data: Player[] }) => {
+    const { recruitPlayer } = useTeam();
     const [sorting, setSorting] = useState<SortingState>([]);
 
     const columns = useMemo<ColumnDef<Player>[]>(() => [
@@ -95,7 +95,7 @@ export const ScoutingTable = () => {
     ], [recruitPlayer]);
 
     const table = useReactTable({
-        data: scoutingPool,
+        data: data,
         columns,
         state: {
             sorting,

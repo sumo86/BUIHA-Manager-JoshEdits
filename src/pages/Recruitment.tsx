@@ -3,10 +3,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScoutingTable } from '@/components/recruitment/ScoutingTable';
 import { RecruitsTable } from '@/components/recruitment/RecruitsTable';
+import { useState } from 'react';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Player, Position } from '@/types';
+
+const qualityOrder: (Player['estimatedQuality'])[] = ['Beginner', 'Moderate', 'Intermediate', 'Experienced', 'Elite'];
 
 const Recruitment = () => {
   const { userTeam, scoutingPool, recruitedPool } = useTeam();
   const recruitingBudget = userTeam.financials.budgetAllocations.Recruiting;
+
+  // Filter state
+  const [qualityFilter, setQualityFilter] = useState('All');
+  const [positionFilter, setPositionFilter] = useState('All');
+  const [sourceFilter, setSourceFilter] = useState('All');
 
   if (scoutingPool.length === 0 && recruitedPool.length === 0) {
     return (
@@ -18,6 +29,31 @@ const Recruitment = () => {
       </div>
     );
   }
+
+  const uniqueQualities = ['All', ...qualityOrder];
+  const positionCategories = ['All', 'Forward', 'Defence', 'Goaltender'];
+  const uniqueSources = ['All', ...Array.from(new Set(scoutingPool.map(p => p.source)))];
+  const forwardPositions: Position[] = ['C', 'LW', 'RW'];
+  const defencePositions: Position[] = ['LD', 'RD'];
+
+  const filteredScoutingPool = scoutingPool.filter(player => {
+    if (qualityFilter !== 'All' && player.estimatedQuality !== qualityFilter) {
+      return false;
+    }
+    if (positionFilter !== 'All') {
+      const isForward = forwardPositions.some(p => player.positions.includes(p));
+      const isDefence = defencePositions.some(p => player.positions.includes(p));
+      const isGoaltender = player.positions.includes('G');
+
+      if (positionFilter === 'Forward' && !isForward) return false;
+      if (positionFilter === 'Defence' && !isDefence) return false;
+      if (positionFilter === 'Goaltender' && !isGoaltender) return false;
+    }
+    if (sourceFilter !== 'All' && player.source !== sourceFilter) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-4">
@@ -51,7 +87,47 @@ const Recruitment = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScoutingTable />
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>Filters</CardTitle>
+                </CardHeader>
+                <CardContent className="grid sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="quality-filter">Est. Quality</Label>
+                    <Select value={qualityFilter} onValueChange={setQualityFilter}>
+                      <SelectTrigger id="quality-filter">
+                        <SelectValue placeholder="Filter by quality" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {uniqueQualities.map(q => q && <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="position-filter">Position</Label>
+                    <Select value={positionFilter} onValueChange={setPositionFilter}>
+                      <SelectTrigger id="position-filter">
+                        <SelectValue placeholder="Filter by position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {positionCategories.map(pos => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="source-filter">Source</Label>
+                    <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                      <SelectTrigger id="source-filter">
+                        <SelectValue placeholder="Filter by source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {uniqueSources.map(s => s && <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+              <ScoutingTable data={filteredScoutingPool} />
             </CardContent>
           </Card>
         </TabsContent>

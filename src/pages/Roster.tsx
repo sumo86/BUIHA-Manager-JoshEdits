@@ -1,12 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Added this import
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { roles } from "@/data/roles";
 import { useTeam } from "@/context/TeamContext";
 import { Player, Position } from "@/types";
-import { Star, StarHalf, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
+import { Star, StarHalf, MoreHorizontal, ArrowUpDown } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -18,6 +18,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -25,6 +33,7 @@ const Roster = () => {
   const [positionFilter, setPositionFilter] = useState('All');
   const [eligibilityFilter, setEligibilityFilter] = useState('All');
   const [starRatingFilter, setStarRatingFilter] = useState([0.5]);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const roleTypeColors: { [key: string]: string } = {
     Offensive: 'bg-red-500',
@@ -40,23 +49,21 @@ const Roster = () => {
     navigate(`/player/${playerId}`);
   };
 
-  const handleRoleChange = (playerId: string, newRole: string) => {
+  const handleRoleChange = useCallback((playerId: string, newRole: string) => {
     const newRoster = team.roster.map(p => 
       p.id === playerId ? { ...p, role: newRole } : p
     );
     updateTeam({ ...team, roster: newRoster });
-  };
+  }, [team, updateTeam]);
 
-  const handleCaptaincyChange = (playerId: string, newRole: 'C' | 'A' | 'None') => {
+  const handleCaptaincyChange = useCallback((playerId: string, newRole: 'C' | 'A' | 'None') => {
     const newRoster = [...team.roster];
     const targetPlayer = newRoster.find(p => p.id === playerId);
     if (!targetPlayer) return;
 
     if (newRole === 'C') {
-        // Unassign old captain
         const oldCaptain = newRoster.find(p => p.captaincy === 'C');
         if (oldCaptain) oldCaptain.captaincy = null;
-        // Assign new captain
         targetPlayer.captaincy = 'C';
     } else if (newRole === 'A') {
         const alternates = newRoster.filter(p => p.captaincy === 'A');
@@ -64,14 +71,14 @@ const Roster = () => {
             targetPlayer.captaincy = 'A';
         } else {
             toast.error("Maximum of 2 alternate captains allowed.");
-            return; // Prevent update
+            return;
         }
-    } else { // 'None'
+    } else {
         targetPlayer.captaincy = null;
     }
 
     updateTeam({ ...team, roster: newRoster });
-  };
+  }, [team, updateTeam]);
 
   const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
@@ -80,13 +87,9 @@ const Roster = () => {
     
     return (
       <div className="flex">
-        {[...Array(fullStars)].map((_, i) => (
-          <Star key={`full-${i}`} className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-        ))}
+        {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} className="h-4 w-4 text-yellow-400 fill-yellow-400" />)}
         {halfStar && <StarHalf key="half" className="h-4 w-4 text-yellow-400 fill-yellow-400" />}
-        {[...Array(emptyStars)].map((_, i) => (
-          <Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />
-        ))}
+        {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />)}
       </div>
     );
   };
@@ -100,34 +103,23 @@ const Roster = () => {
     return "text-red-500";
   };
 
-  const getApplicableRoles = (player: Player) => {
+  const getApplicableRoles = useCallback((player: Player) => {
     if (player.positions.includes('G')) return [];
-
     const forwardPositions: Position[] = ['C', 'LW', 'RW'];
     const defencePositions: Position[] = ['LD', 'RD'];
-
     const isForward = forwardPositions.some(p => player.positions.includes(p));
     const isDefenceman = defencePositions.some(p => player.positions.includes(p));
-
     let filteredRoles = [];
-    if (isForward && isDefenceman) {
-        filteredRoles = roles; 
-    } else if (isForward) {
-        filteredRoles = roles.filter(r => r.positions.includes('Forward'));
-    } else if (isDefenceman) {
-        filteredRoles = roles.filter(r => r.positions.includes('Defenceman'));
-    }
-
-    // Sort roles by type order
+    if (isForward && isDefenceman) filteredRoles = roles; 
+    else if (isForward) filteredRoles = roles.filter(r => r.positions.includes('Forward'));
+    else if (isDefenceman) filteredRoles = roles.filter(r => r.positions.includes('Defenceman'));
     return [...filteredRoles].sort((a, b) => {
         const typeA = roleTypeOrder.indexOf(a.type);
         const typeB = roleTypeOrder.indexOf(b.type);
-        if (typeA === typeB) {
-            return a.name.localeCompare(b.name); // Secondary sort by name
-        }
+        if (typeA === typeB) return a.name.localeCompare(b.name);
         return typeA - typeB;
     });
-  };
+  }, [roleTypeOrder]);
 
   const renderEligibility = (player: Player) => {
     if ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && player.yearsLeftInProgram) {
@@ -147,189 +139,98 @@ const Roster = () => {
       const isForward = forwardPositions.some(p => player.positions.includes(p));
       const isDefence = defencePositions.some(p => player.positions.includes(p));
       const isGoaltender = player.positions.includes('G');
-
       if (positionFilter === 'Forward' && !isForward) return false;
       if (positionFilter === 'Defence' && !isDefence) return false;
       if (positionFilter === 'Goaltender' && !isGoaltender) return false;
     }
-
-    if (eligibilityFilter !== 'All' && player.eligibility !== eligibilityFilter) {
-      return false;
-    }
-
-    if (player.starRating < starRatingFilter[0]) {
-      return false;
-    }
-
+    if (eligibilityFilter !== 'All' && player.eligibility !== eligibilityFilter) return false;
+    if (player.starRating < starRatingFilter[0]) return false;
     return true;
+  });
+
+  const columns = useMemo<ColumnDef<Player>[]>(() => [
+    {
+      accessorKey: 'jerseyNumber',
+      header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>#<ArrowUpDown className="ml-2 h-4 w-4" /></Button>,
+      cell: ({ row }) => <div className="font-bold">{row.original.jerseyNumber}</div>,
+      size: 50,
+    },
+    {
+      accessorKey: 'name',
+      header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Name<ArrowUpDown className="ml-2 h-4 w-4" /></Button>,
+      cell: ({ row }) => {
+        const player = row.original;
+        return <div>{player.name}{player.captaincy === 'C' && <span className="ml-2 font-bold text-yellow-700">C</span>}{player.captaincy === 'A' && <span className="ml-2 font-medium text-yellow-500">A</span>}</div>;
+      }
+    },
+    { accessorKey: 'positions', header: 'Position(s)', cell: ({ row }) => row.original.positions.join(", ") },
+    {
+      accessorKey: 'role',
+      header: 'Role',
+      cell: ({ row }) => {
+        const player = row.original;
+        const applicableRoles = getApplicableRoles(player);
+        const selectedRole = applicableRoles.find(r => r.name === player.role);
+        return <div onClick={(e) => e.stopPropagation()}>{applicableRoles.length > 0 ? <Select value={player.role} onValueChange={(newRole) => handleRoleChange(player.id, newRole)}><SelectTrigger className="w-[220px]"><div className="flex items-center w-full">{selectedRole && <span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[selectedRole.type]}`}></span>}<SelectValue placeholder="Select a role" /></div></SelectTrigger><SelectContent>{applicableRoles.map(role => <SelectItem key={role.name} value={role.name}><div className="flex justify-between w-full pr-2"><div className="flex items-center"><span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[role.type]}`}></span><span>{role.name}</span></div><span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>{player.roleSuitability[role.name]}/20</span></div></SelectItem>)}</SelectContent></Select> : 'N/A'}</div>;
+      }
+    },
+    { accessorKey: 'age', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Age<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
+    { accessorKey: 'nationality', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Nationality<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
+    { accessorKey: 'starRating', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Rating<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => renderStars(row.original.starRating) },
+    { accessorKey: 'morale', header: 'Morale', cell: ({ row }) => <Badge variant="outline">{row.original.morale}</Badge> },
+    { accessorKey: 'healthStatus', header: 'Status', cell: ({ row }) => <Badge variant={row.original.healthStatus === 'Healthy' ? 'secondary' : 'destructive'}>{row.original.healthStatus}</Badge> },
+    { accessorKey: 'eligibility', header: 'Eligibility', cell: ({ row }) => renderEligibility(row.original) },
+    {
+      id: 'actions',
+      cell: ({ row }) => {
+        const player = row.original;
+        return <div className="text-right" onClick={(e) => e.stopPropagation()}>{player.positions[0] !== 'G' && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'C')}>Assign Captain (C)</DropdownMenuItem><DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'A')}>Assign Alternate (A)</DropdownMenuItem><DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'None')}>Remove Captaincy</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</div>;
+      }
+    }
+  ], [getApplicableRoles, handleCaptaincyChange, handleRoleChange]);
+
+  const table = useReactTable({
+    data: filteredRoster,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">{team.name} Roster</h1>
-      <p className="text-lg text-muted-foreground mb-6">
-        Manage your players, lines, and training schedules here.
-      </p>
-
+      <p className="text-lg text-muted-foreground mb-6">Manage your players, lines, and training schedules here.</p>
       <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
         <CardContent className="grid sm:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="position-filter">Position</Label>
-            <Select value={positionFilter} onValueChange={setPositionFilter}>
-              <SelectTrigger id="position-filter">
-                <SelectValue placeholder="Filter by position" />
-              </SelectTrigger>
-              <SelectContent>
-                {positionCategories.map(pos => (
-                  <SelectItem key={pos} value={pos}>{pos}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="eligibility-filter">Degree</Label>
-            <Select value={eligibilityFilter} onValueChange={setEligibilityFilter}>
-              <SelectTrigger id="eligibility-filter">
-                <SelectValue placeholder="Filter by degree" />
-              </SelectTrigger>
-              <SelectContent>
-                {uniqueEligibilities.map((eligibility: string) => (
-                  <SelectItem key={eligibility} value={eligibility}>{eligibility}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="star-filter">Minimum Star Rating: {starRatingFilter[0].toFixed(1)}</Label>
-            <Slider
-              id="star-filter"
-              min={0.5}
-              max={5}
-              step={0.5}
-              value={starRatingFilter}
-              onValueChange={setStarRatingFilter}
-            />
-          </div>
+          <div className="space-y-2"><Label htmlFor="position-filter">Position</Label><Select value={positionFilter} onValueChange={setPositionFilter}><SelectTrigger id="position-filter"><SelectValue placeholder="Filter by position" /></SelectTrigger><SelectContent>{positionCategories.map(pos => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}</SelectContent></Select></div>
+          <div className="space-y-2"><Label htmlFor="eligibility-filter">Degree</Label><Select value={eligibilityFilter} onValueChange={setEligibilityFilter}><SelectTrigger id="eligibility-filter"><SelectValue placeholder="Filter by degree" /></SelectTrigger><SelectContent>{uniqueEligibilities.map((eligibility: string) => <SelectItem key={eligibility} value={eligibility}>{eligibility}</SelectItem>)}</SelectContent></Select></div>
+          <div className="space-y-2"><Label htmlFor="star-filter">Minimum Star Rating: {starRatingFilter[0].toFixed(1)}</Label><Slider id="star-filter" min={0.5} max={5} step={0.5} value={starRatingFilter} onValueChange={setStarRatingFilter} /></div>
         </CardContent>
       </Card>
-
       <Card>
-        <CardHeader>
-          <CardTitle>Player List</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Player List</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]">#</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Position(s)</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Age</TableHead>
-                <TableHead>Nationality</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Morale</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Eligibility</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
+              {table.getHeaderGroups().map(headerGroup => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map(header => <TableHead key={header.id} style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-              {filteredRoster.map((player: Player) => {
-                const applicableRoles = getApplicableRoles(player);
-                const selectedRole = applicableRoles.find(r => r.name === player.role);
-                const currentRoleSuitability = player.role ? player.roleSuitability[player.role] : 0;
-                
-                return (
-                  <TableRow 
-                    key={player.id} 
-                    onClick={() => handlePlayerClick(player.id)}
-                    className="cursor-pointer hover:bg-muted/50"
-                  >
-                    <TableCell className="font-bold">{player.jerseyNumber}</TableCell>
-                    <TableCell>
-                        {player.name}
-                        {player.captaincy === 'C' && (
-                            <span className="ml-2 font-bold text-yellow-700">C</span>
-                        )}
-                        {player.captaincy === 'A' && (
-                            <span className="ml-2 font-medium text-yellow-500">A</span>
-                        )}
-                    </TableCell>
-                    <TableCell>{player.positions.join(", ")}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      {applicableRoles.length > 0 ? (
-                        <Select
-                          value={player.role}
-                          onValueChange={(newRole) => handleRoleChange(player.id, newRole)}
-                        >
-                          <SelectTrigger className="w-[220px]"> {/* Removed font-bold and roleColorClass */}
-                            <div className="flex items-center w-full">
-                                {selectedRole && <span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[selectedRole.type]}`}></span>}
-                                <SelectValue placeholder="Select a role" />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {applicableRoles.map(role => (
-                              <SelectItem key={role.name} value={role.name}>
-                                <div className="flex justify-between w-full pr-2">
-                                  <div className="flex items-center">
-                                    <span className={`h-2 w-2 rounded-full mr-2 ${roleTypeColors[role.type]}`}></span>
-                                    <span>{role.name}</span>
-                                  </div>
-                                  <span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>
-                                    {player.roleSuitability[role.name]}/20
-                                  </span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        'N/A'
-                      )}
-                    </TableCell>
-                    <TableCell>{player.age}</TableCell>
-                    <TableCell>{player.nationality}</TableCell>
-                    <TableCell>{renderStars(player.starRating)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{player.morale}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={player.healthStatus === 'Healthy' ? 'secondary' : 'destructive'}>
-                        {player.healthStatus}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{renderEligibility(player)}</TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        {player.positions[0] !== 'G' && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <span className="sr-only">Open menu</span>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'C')}>
-                                        Assign Captain (C)
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'A')}>
-                                        Assign Alternate (A)
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleCaptaincyChange(player.id, 'None')}>
-                                        Remove Captaincy
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
-                    </TableCell>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map(row => (
+                  <TableRow key={row.id} onClick={() => handlePlayerClick(row.original.id)} className="cursor-pointer hover:bg-muted/50" data-state={row.getIsSelected() && 'selected'}>
+                    {row.getVisibleCells().map(cell => <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>)}
                   </TableRow>
-                )
-              })}
+                ))
+              ) : (
+                <TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No players match filters.</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
