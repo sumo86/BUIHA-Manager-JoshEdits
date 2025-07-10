@@ -10,7 +10,7 @@ const skaterAbilityThresholds: Record<string, Record<number, { min: number; max:
         3.5: { min: 261, max: 280 },
         4: { min: 281, max: 300 },
         4.5: { min: 301, max: 320 },
-        5: { min: 321, max: 9999 } // Using 9999 for "≥" to represent effectively infinite upper bound
+        5: { min: 321, max: 9999 }
     },
     "Non-Checking 2": {
         1: { min: 0, max: 200 },
@@ -47,7 +47,7 @@ const skaterAbilityThresholds: Record<string, Record<number, { min: number; max:
     },
     "Checking 1": {
         1: { min: 0, max: 295 },
-        1.5: { min: 286, max: 305 }, // This value seems to be a typo in the CSV, should be 296-305 based on previous pattern. Keeping as provided.
+        1.5: { min: 286, max: 305 },
         2: { min: 306, max: 325 },
         2.5: { min: 326, max: 345 },
         3: { min: 346, max: 365 },

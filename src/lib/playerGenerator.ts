@@ -3,7 +3,7 @@ import { archetypes } from "@/data/archetypes";
 import { roles } from "@/data/roles";
 import { teams as allTeamsData } from "@/data/teams";
 import { getRandomNationality } from "@/data/nationalityDistributions";
-import { getRandomNameForNationality } from "@/data/names";
+import { getRandomNameForNationality } from "@/data/names"; // Fixed: changed '=>' to 'from'
 import { getDivisionBaseName, getAbilityThresholds, starRatingDistribution, calculateStarRating } from "./leagueUtils";
 
 const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
