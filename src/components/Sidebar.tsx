@@ -1,5 +1,8 @@
 import { NavLink } from "react-router-dom";
 import { Home, Users, BarChart, Shield, DollarSign, ClipboardList, Globe, Gamepad2, Building, TrendingUp, CalendarDays, Trophy } from "lucide-react";
+import { useTeam } from "@/context/TeamContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getOrganizationName } from "@/data/teams";
 
 const navItems = [
   { to: "/", icon: Home, label: "Dashboard" },
@@ -17,10 +20,33 @@ const navItems = [
 ];
 
 const Sidebar = () => {
+  const { userTeam, userOrganizationTeams, setActiveTeam } = useTeam();
+
   return (
     <aside className="w-64 bg-card border-r p-4 flex flex-col">
-      <h1 className="text-2xl font-bold mb-8">Ice Hockey Sim</h1>
-      <nav className="flex flex-col space-y-2">
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold">Ice Hockey Sim</h1>
+        {userTeam && <p className="text-sm text-muted-foreground">{getOrganizationName(userTeam.name)}</p>}
+      </div>
+      
+      {userOrganizationTeams.length > 1 && userTeam && (
+        <div className="mb-4">
+          <Select value={userTeam.name} onValueChange={(teamName) => setActiveTeam(teamName)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a team" />
+            </SelectTrigger>
+            <SelectContent>
+              {userOrganizationTeams.map(team => (
+                <SelectItem key={team.name} value={team.name}>
+                  {team.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <nav className="flex flex-col space-y-2 flex-grow overflow-y-auto">
         {navItems.map((item) => (
           <NavLink
             key={item.to}

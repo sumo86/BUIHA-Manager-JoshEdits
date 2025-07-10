@@ -5,19 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const TeamSelection = () => {
-    const { selectTeam } = useTeam();
-    const organizations = getTeamOrganizations();
+    const { selectOrganization } = useTeam();
 
-    const handleSelectTeam = (teamName: string) => {
-        selectTeam(teamName);
+    const handleSelectOrganization = (orgName: string) => {
+        selectOrganization(orgName);
     };
+
+    const organizations = getTeamOrganizations();
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
             <Card className="w-full max-w-2xl">
                 <CardHeader>
                     <CardTitle className="text-2xl">Start a New Game</CardTitle>
-                    <CardDescription>Select a team to begin your managerial career.</CardDescription>
+                    <CardDescription>Select an organization to begin your managerial career.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Accordion type="single" collapsible className="w-full">
@@ -31,32 +32,16 @@ const TeamSelection = () => {
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                                        {org.teams.map(team => (
-                                            <div key={team.name} className="flex justify-between items-center">
-                                                <div className="flex items-center gap-3">
-                                                    {team.logo && <img src={team.logo} alt={team.name} className="h-6 w-6 object-contain" />}
-                                                    <div>
-                                                        <p className="font-semibold">{team.name}</p>
-                                                        <p className="text-sm text-muted-foreground">{team.leagueDivision}</p>
-                                                    </div>
-                                                </div>
-                                                <Button onClick={() => handleSelectTeam(team.name)}>
-                                                    Manage {team.name.split(' ').pop()}
-                                                </Button>
-                                            </div>
-                                        ))}
-                                        {org.teams.length > 1 && (
-                                            <>
-                                                <div className="border-t my-4"></div>
-                                                <div className="flex justify-between items-center">
-                                                    <div>
-                                                        <p className="font-semibold">Manage Entire {org.name} Organization</p>
-                                                        <p className="text-sm text-muted-foreground">Oversee all teams in the organization.</p>
-                                                    </div>
-                                                    <Button disabled>Coming Soon</Button>
-                                                </div>
-                                            </>
-                                        )}
+                                        <p className="text-sm text-muted-foreground">This organization includes the following teams:</p>
+                                        <ul className="list-disc pl-5 space-y-1">
+                                            {org.teams.map(team => (
+                                                <li key={team.name}>{team.name} ({team.leagueDivision})</li>
+                                            ))}
+                                        </ul>
+                                        <div className="border-t my-4"></div>
+                                        <div className="flex justify-end items-center">
+                                            <Button onClick={() => handleSelectOrganization(org.name)}>Manage {org.name}</Button>
+                                        </div>
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>

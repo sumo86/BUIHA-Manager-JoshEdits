@@ -1,6 +1,6 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState } from '@/types';
-import { teams as initialTeams } from '@/data/teams';
+import { teams as initialTeams, getOrganizationName } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
@@ -19,8 +19,11 @@ const months = ["August", "September", "October", "November", "December", "Janua
 interface TeamContextType {
     teams: Team[];
     updateTeam: (updatedTeam: Team) => void;
-    userTeam: Team | null;
-    selectTeam: (teamName: string | null) => void;
+    userTeam: Team | null; // Now represents the ACTIVE team
+    selectOrganization: (orgName: string | null) => void;
+    setActiveTeam: (teamName: string) => void;
+    userOrganizationTeams: Team[];
+    selectedOrgName: string | null;
     scoutingPool: Player[];
     recruitedPool: Player[];
     fairHosted: boolean;
@@ -45,20 +48,41 @@ const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
 export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element => {
     const [teams, setTeams] = useState<Team[]>(initialTeams);
-    const [selectedTeamName, setSelectedTeamName] = useState<string | null>(() => localStorage.getItem('selectedTeamName') || null);
+    const [selectedOrgName, setSelectedOrgName] = useState<string | null>(() => localStorage.getItem('selectedOrgName') || null);
+    const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
+
+    const userOrganizationTeams = useMemo(() => {
+        if (!selectedOrgName) return [];
+        return teams.filter(t => getOrganizationName(t.name) === selectedOrgName)
+                    .sort((a, b) => a.name.localeCompare(b.name));
+    }, [selectedOrgName, teams]);
 
     const userTeam = useMemo(() => {
-        if (!selectedTeamName) return null;
-        return teams.find(t => t.name === selectedTeamName) || null;
-    }, [selectedTeamName, teams]);
+        if (!activeTeamName) return null;
+        return teams.find(t => t.name === activeTeamName) || null;
+    }, [activeTeamName, teams]);
 
-    const selectTeam = (teamName: string | null) => {
-        if (teamName) {
-            localStorage.setItem('selectedTeamName', teamName);
+    const selectOrganization = (orgName: string | null) => {
+        if (orgName) {
+            localStorage.setItem('selectedOrgName', orgName);
+            const orgTeams = initialTeams.filter(t => getOrganizationName(t.name) === orgName)
+                                      .sort((a, b) => a.name.localeCompare(b.name));
+            if (orgTeams.length > 0) {
+                const firstTeamName = orgTeams[0].name;
+                localStorage.setItem('activeTeamName', firstTeamName);
+                setActiveTeamName(firstTeamName);
+            }
         } else {
-            localStorage.removeItem('selectedTeamName');
+            localStorage.removeItem('selectedOrgName');
+            localStorage.removeItem('activeTeamName');
+            setActiveTeamName(null);
         }
-        setSelectedTeamName(teamName);
+        setSelectedOrgName(orgName);
+    };
+
+    const setActiveTeam = (teamName: string) => {
+        localStorage.setItem('activeTeamName', teamName);
+        setActiveTeamName(teamName);
     };
     
     const [scoutingPool, setScoutingPool] = useState<Player[]>(() => {
@@ -133,7 +157,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 player.jerseyNumber = newJerseyNumber;
             }
             
-            // Recalculate star rating for the new division
             const isSkater = player.positions[0] !== 'G';
             player.starRating = calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision);
 
@@ -159,7 +182,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
 
-        const successChance = 0.3; // 30% chance
+        const successChance = 0.3;
         if (Math.random() < successChance) {
             toast.success("Transfer Approved!", {
                 description: `${player.name} has agreed to the move and their coach has approved the transfer.`
@@ -177,7 +200,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const handlePlayerDevelopment = () => {
         if (!userTeam) return;
-        // ... (rest of the function is the same, just guarded)
     };
 
     useEffect(() => {
@@ -186,7 +208,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         } else {
             handlePlayerDevelopment();
         }
-    }, [currentDate, userTeam]); // Add userTeam dependency
+    }, [currentDate, userTeam]);
 
     const advanceWeek = () => {
         setCurrentDate(prevDate => {
@@ -317,12 +339,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const runStudentLifeInitiative = () => {
         if (!userTeam) return;
-        // ... (rest of the function is the same, just guarded)
     };
 
     const startFacilityProject = (projectId: string) => {
         if (!userTeam) return;
-        // ... (rest of the function is the same, just guarded)
     };
 
     const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState) => {
@@ -333,11 +353,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     return (
         <TeamContext.Provider value={{ 
-            teams, updateTeam, userTeam, selectTeam, scoutingPool, recruitedPool, fairHosted,
+            teams, updateTeam, userTeam, scoutingPool, recruitedPool, fairHosted,
             generateScoutingPool, recruitPlayer, assignPlayerToRoster, discardRecruit,
             updateBudgetAllocations, runStudentLifeInitiative, startFacilityProject,
             currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
-            autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer
+            autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
+            selectOrganization, setActiveTeam, userOrganizationTeams, selectedOrgName
         }}>
             {children}
         </TeamContext.Provider>
