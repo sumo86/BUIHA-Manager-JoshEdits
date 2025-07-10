@@ -232,28 +232,55 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const advanceWeek = () => {
-        if (gameForCurrentWeek) {
-            const homeTeam = teams.find(t => t.name === gameForCurrentWeek.homeTeam);
-            const awayTeam = teams.find(t => t.name === gameForCurrentWeek.awayTeam);
+        // Find all games for the current week, not just the user's team
+        const gamesThisWeek = schedule.filter(game =>
+            game.date.month === currentDate.month &&
+            game.date.week === currentDate.week &&
+            game.status === 'scheduled'
+        );
 
-            if (homeTeam && awayTeam) {
-                const finalGameState = simulateFullGame(homeTeam, awayTeam);
-                
-                const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState);
-                
-                updateTeam(updatedUserTeam);
-                updateTeam(updatedOpponentTeam);
+        if (gamesThisWeek.length > 0) {
+            // Use a map to store updates, applying them all at once to avoid stale state
+            const updatedTeamsMap = new Map<string, Team>();
 
-                setSchedule(currentSchedule => currentSchedule.map(g => 
-                    g.id === gameForCurrentWeek.id 
-                    ? { ...g, status: 'completed', result: { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore } } 
-                    : g
-                ));
-                
-                toast.info("Game Auto-Simulated", {
-                    description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}`
-                });
-            }
+            // Function to get the latest version of a team for the current simulation step
+            const getTeamForSim = (teamName: string): Team => {
+                return updatedTeamsMap.get(teamName) || teams.find(t => t.name === teamName)!;
+            };
+
+            gamesThisWeek.forEach(game => {
+                const homeTeam = getTeamForSim(game.homeTeam);
+                const awayTeam = getTeamForSim(game.awayTeam);
+
+                if (homeTeam && awayTeam) {
+                    const finalGameState = simulateFullGame(homeTeam, awayTeam);
+                    
+                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState);
+                    
+                    // Store the updated teams in the map
+                    updatedTeamsMap.set(homeTeam.name, updatedHomeTeam);
+                    updatedTeamsMap.set(awayTeam.name, updatedAwayTeam);
+
+                    // Update the schedule entry
+                    setSchedule(currentSchedule => currentSchedule.map(g => 
+                        g.id === game.id 
+                        ? { ...g, status: 'completed', result: { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore } } 
+                        : g
+                    ));
+                    
+                    // Only show toast for user's game to avoid spam
+                    if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
+                        toast.info("Game Auto-Simulated", {
+                            description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}`
+                        });
+                    }
+                }
+            });
+
+            // Apply all updates from the map to the main teams state
+            setTeams(currentTeams => {
+                return currentTeams.map(team => updatedTeamsMap.get(team.name) || team);
+            });
         }
 
         // Placeholder for player development and logging

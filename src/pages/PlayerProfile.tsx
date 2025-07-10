@@ -15,6 +15,7 @@ import {
 import { PlayerEditForm } from "@/components/player/PlayerEditForm";
 import { PlayerScoutingReport } from "@/components/player/PlayerScoutingReport";
 import { useState, useMemo } from "react";
+import { PlayerCurrentStatsTable } from "@/components/player/PlayerCurrentStatsTable";
 
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
@@ -120,6 +121,8 @@ const PlayerProfile = () => {
       </Card>
 
       {isUserPlayer && <PlayerScoutingReport player={player} team={team} />}
+
+      <PlayerCurrentStatsTable stats={player.currentStats} isSkater={isSkater} />
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {isSkater ? (
