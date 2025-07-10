@@ -28,6 +28,7 @@ import {
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/season-overview", label: "Season Overview", icon: Calendar }, // Added this back
   { href: "/roster", label: "Roster", icon: Users },
   { href: "/lineup", label: "Lineup", icon: ClipboardList },
   { href: "/training", label: "Training", icon: BarChart3 },

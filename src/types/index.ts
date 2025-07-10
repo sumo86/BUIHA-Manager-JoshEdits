@@ -1,6 +1,12 @@
 export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
 export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
 
+export interface GameDate {
+    month: string;
+    week: number;
+    year: number;
+}
+
 export interface SkaterAttributes {
   // Physical
   acceleration: number;
