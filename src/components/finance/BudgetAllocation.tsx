@@ -8,6 +8,12 @@ import { BudgetAllocations, BudgetCategory } from '@/types';
 import { toast } from 'sonner';
 import { Plane, Box, Calendar, UserPlus, Users, Building, Info } from 'lucide-react';
 
+interface BudgetAllocationProps {
+  initialAllocations: BudgetAllocations;
+  totalBudget: number;
+  onSave: (newAllocations: BudgetAllocations) => void;
+}
+
 const categoryDetails: Record<BudgetCategory, { icon: React.ElementType, description: string, tooltip: string }> = {
   "Travel": { icon: Plane, description: "Match travel and accommodation", tooltip: "Costs for away games, including transport and hotels." },
   "Equipment": { icon: Box, description: "Gear, sticks, and protective equipment", tooltip: "Includes player sticks, helmets, pads, and jerseys." },
@@ -26,32 +32,40 @@ const categoryColors: Record<BudgetCategory, string> = {
   "Facilities": "bg-purple-100 text-purple-800",
 };
 
-export const BudgetAllocation = () => {
-  const { userTeam, updateBudgetAllocations, runStudentLifeInitiative } = useTeam();
-  const [allocations, setAllocations] = useState<BudgetAllocations>(userTeam.financials.budgetAllocations);
+export const BudgetAllocation = ({ initialAllocations, totalBudget, onSave }: BudgetAllocationProps) => {
+  const { userTeam, runStudentLifeInitiative } = useTeam();
+  const [allocations, setAllocations] = useState<BudgetAllocations>(initialAllocations);
 
   const numberOfHomeGames = 13;
   const numberOfAwayGames = 13;
   
-  const iceTimeCost = useMemo(() => numberOfHomeGames * userTeam.financials.iceTimeCostPerGame, [userTeam.financials.iceTimeCostPerGame]);
+  // Use userTeam.financials for specific team costs, not consolidated org costs
+  const iceTimeCost = useMemo(() => numberOfHomeGames * (userTeam?.financials.iceTimeCostPerGame || 0), [userTeam?.financials.iceTimeCostPerGame]);
   const travelCost = useMemo(() => numberOfAwayGames * 200, []);
-  const equipmentCost = useMemo(() => userTeam.financials.equipmentCost, [userTeam.financials.equipmentCost]);
+  const equipmentCost = useMemo(() => userTeam?.financials.equipmentCost || 0, [userTeam?.financials.equipmentCost]);
 
   useEffect(() => {
+    // Only update if the initialAllocations prop changes, to avoid resetting user input
+    setAllocations(initialAllocations);
+  }, [initialAllocations]);
+
+  useEffect(() => {
+    // Auto-calculate fixed costs and update allocations
     setAllocations(prev => ({ 
       ...prev, 
-      "Ice Time": iceTimeCost,
-      "Travel": travelCost,
-      "Equipment": equipmentCost,
+      "Ice Time": Math.round(iceTimeCost),
+      "Travel": Math.round(travelCost),
+      "Equipment": Math.round(equipmentCost),
     }));
   }, [iceTimeCost, travelCost, equipmentCost]);
+
 
   const handleAllocationChange = (category: BudgetCategory, value: string) => {
     const numberValue = parseInt(value, 10);
     if (!isNaN(numberValue) || value === '') {
       setAllocations(prev => ({
         ...prev,
-        [category]: isNaN(numberValue) ? 0 : numberValue,
+        [category]: isNaN(numberValue) ? 0 : Math.round(numberValue),
       }));
     }
   };
@@ -60,14 +74,14 @@ export const BudgetAllocation = () => {
     return Object.values(allocations).reduce((sum, value) => sum + (value || 0), 0);
   }, [allocations]);
 
-  const unallocated = userTeam.financials.totalBudget - totalAllocated;
+  const unallocated = totalBudget - totalAllocated;
 
   const handleSave = () => {
     if (unallocated < 0) {
       toast.error("Total allocated budget cannot exceed the total budget.");
       return;
     }
-    updateBudgetAllocations(allocations);
+    onSave(allocations);
     toast.success("Budget allocations saved successfully!");
   };
 

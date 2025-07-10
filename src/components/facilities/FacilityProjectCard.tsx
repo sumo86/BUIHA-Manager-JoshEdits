@@ -7,6 +7,7 @@ import { CheckCircle, Construction, Circle } from 'lucide-react';
 
 interface FacilityProjectCardProps {
   project: FacilityProject;
+  onStartProject: (projectId: string) => void; // Added this prop
 }
 
 const statusDetails = {
@@ -15,9 +16,13 @@ const statusDetails = {
   'Completed': { icon: CheckCircle, color: 'text-green-500', badge: 'outline' },
 };
 
-export const FacilityProjectCard = ({ project }: FacilityProjectCardProps) => {
-  const { userTeam, startFacilityProject } = useTeam();
-  const facilitiesBudget = userTeam.financials.budgetAllocations.Facilities;
+export const FacilityProjectCard = ({ project, onStartProject }: FacilityProjectCardProps) => {
+  const { userTeam, managedOrganization, organizationFinancials } = useTeam();
+  
+  // Determine the correct facilities budget based on whether an organization is managed
+  const facilitiesBudget = managedOrganization 
+    ? (organizationFinancials?.budgetAllocations.Facilities || 0) 
+    : (userTeam?.financials.budgetAllocations.Facilities || 0);
 
   const canAfford = facilitiesBudget >= project.cost;
   const isNotStarted = project.status === 'Not Started';
@@ -46,7 +51,7 @@ export const FacilityProjectCard = ({ project }: FacilityProjectCardProps) => {
       <CardFooter>
         <Button 
           className="w-full"
-          onClick={() => startFacilityProject(project.id)}
+          onClick={() => onStartProject(project.id)} // Use the passed prop
           disabled={!isNotStarted || !canAfford}
         >
           {isNotStarted ? (canAfford ? 'Start Project' : 'Insufficient Funds') : 'Project Completed'}
