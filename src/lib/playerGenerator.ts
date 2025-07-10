@@ -182,8 +182,20 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const positions: Position[] = [position];
   const isSkater = position !== 'G';
   if (isSkater) {
-    if (Math.random() > 0.5) { let secondaryPosition: Position; do { secondaryPosition = getRandomItem(skaterPositions) as Position; } while (positions.includes(secondaryPosition)); positions.push(secondaryPosition); }
-    if (positions.length === 2 && Math.random() > 0.8) { let tertiaryPosition: Position; do { tertiaryPosition = getRandomItem(skaterPositions) as Position; } while (positions.includes(tertiaryPosition)); positions.push(tertiaryPosition); }
+    if (Math.random() > 0.5) { 
+      let secondaryPosition: Position; 
+      do { 
+        secondaryPosition = getRandomItem(skaterPositions) as Position; 
+      } while (positions.some(p => p === secondaryPosition));
+      positions.push(secondaryPosition as Position); // Explicit cast
+    }
+    if (positions.length === 2 && Math.random() > 0.8) { 
+      let tertiaryPosition: Position; 
+      do { 
+        tertiaryPosition = getRandomItem(skaterPositions) as Position; 
+      } while (positions.some(p => p === tertiaryPosition));
+      positions.push(tertiaryPosition as Position); // Explicit cast
+    }
   }
 
   const archetype = getArchetypeForPosition(position);

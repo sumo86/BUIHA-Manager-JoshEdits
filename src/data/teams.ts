@@ -2,6 +2,7 @@ import { Team, Lineup, TacticsSelection, Player, Position } from "@/types";
 import { generateRoster } from "@/lib/playerGenerator";
 import { initialFacilityProjects } from './facilities';
 import { teamLogos } from './logos';
+import { getTierName as getNationalsDivision } from '@/lib/leagueUtils';
 
 const teamData = [
     // Checking 1 - North
@@ -71,15 +72,6 @@ const teamData = [
     { name: "Imperial Devils C", leagueDivision: "Non Checking 3 - South" },
     { name: "UEA Avalanche B", leagueDivision: "Non Checking 3 - South" },
 ];
-
-const getNationalsDivision = (leagueDivision: string): string => {
-    if (leagueDivision.startsWith("Checking 1")) return "Checking 1";
-    if (leagueDivision.startsWith("Checking 2")) return "Checking 2";
-    if (leagueDivision.startsWith("Non Checking 1")) return "Non-Checking 1";
-    if (leagueDivision.startsWith("Non Checking 2")) return "Non-Checking 2";
-    if (leagueDivision.startsWith("Non Checking 3")) return "Non-Checking 3";
-    return "Unknown";
-}
 
 const defaultTactics: TacticsSelection = {
     "Breakout": "Flexible Reaction",
