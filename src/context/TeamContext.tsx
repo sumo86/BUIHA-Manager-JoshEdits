@@ -1,4 +1,3 @@
-' to 'from'.">
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory } from '@/types';
 import { teams as initialTeams, getTeamOrganizations } from '@/data/teams';
@@ -474,7 +473,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             // 3. Decimal budget values: Round all values in newAllocations before setting
             const roundedNewAllocations: BudgetAllocations = Object.fromEntries(
                 Object.entries(newAllocations).map(([key, value]) => [key, Math.round(value)])
-            ) as unknown as BudgetAllocations; // Added 'unknown' here
+            ) as unknown as BudgetAllocations;
 
             updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: roundedNewAllocations } });
         }
