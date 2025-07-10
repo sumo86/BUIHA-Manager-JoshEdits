@@ -1,10 +1,10 @@
 // Tier definitions (1 is highest, 5 is lowest)
 export const divisionTierStats = {
-  1: { name: "Checking 1", skater: 350, goalie: 160, step: { skater: 45, goalie: 22 } }, // Highest skill, largest step
-  2: { name: "Checking 2", skater: 290, goalie: 130, step: { skater: 40, goalie: 20 } },
-  3: { name: "Non-Checking 1", skater: 230, goalie: 100, step: { skater: 35, goalie: 17 } },
-  4: { name: "Non-Checking 2", skater: 170, goalie: 70, step: { skater: 30, goalie: 15 } },
-  5: { name: "Non-Checking 3", skater: 110, goalie: 40,  step: { skater: 25, goalie: 12 } }, // Lowest skill, smallest step
+  1: { name: "Checking 1", skater: 335, goalie: 155, step: { skater: 40, goalie: 20 } },
+  2: { name: "Checking 2", skater: 285, goalie: 135, step: { skater: 35, goalie: 18 } },
+  3: { name: "Non-Checking 1", skater: 244, goalie: 113, step: { skater: 30, goalie: 15 } },
+  4: { name: "Non-Checking 2", skater: 222, goalie: 103, step: { skater: 25, goalie: 12 } },
+  5: { name: "Non-Checking 3", skater: 200, goalie: 90,  step: { skater: 20, goalie: 10 } },
 };
 
 // Mapping from full division names in the data to a tier ID
