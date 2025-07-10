@@ -125,7 +125,10 @@ const getTargetAbilityRange = (starRating: number, isSkater: boolean, leagueDivi
         ? range.min + (isSkater ? 40 : 20) // If max is infinity, create a reasonable upper bound for generation
         : range.max;
 
-    return { min: range.min, max: maxAbility };
+    // Ensure a minimum floor for generated ability to prevent excessively low attributes
+    const minFloor = (isSkater ? visibleSkaterKeys.length : visibleGoalieKeys.length) * 5; // e.g., 28 * 5 = 140 for skaters
+    
+    return { min: Math.max(range.min, minFloor), max: maxAbility };
 };
 
 const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 'Forward' | 'Defenceman'): { suitabilities: { [key: string]: number }, bestRole: string, highestSuitability: number } => {
@@ -179,8 +182,8 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const positions: Position[] = [position];
   const isSkater = position !== 'G';
   if (isSkater) {
-    if (Math.random() > 0.5) { let secondaryPosition: Position; do { secondaryPosition = getRandomItem(skaterPositions); } while (positions.includes(secondaryPosition)); positions.push(secondaryPosition); }
-    if (positions.length === 2 && Math.random() > 0.8) { let tertiaryPosition: Position; do { tertiaryPosition = getRandomItem(skaterPositions); } while (positions.includes(tertiaryPosition)); positions.push(tertiaryPosition); }
+    if (Math.random() > 0.5) { let secondaryPosition: Position; do { secondaryPosition = getRandomItem(skaterPositions) as Position; } while (positions.includes(secondaryPosition)); positions.push(secondaryPosition); }
+    if (positions.length === 2 && Math.random() > 0.8) { let tertiaryPosition: Position; do { tertiaryPosition = getRandomItem(skaterPositions) as Position; } while (positions.includes(tertiaryPosition)); positions.push(tertiaryPosition); }
   }
 
   const archetype = getArchetypeForPosition(position);
@@ -266,7 +269,6 @@ const getStarCountsForRoster = (tierName: string, rosterSize: number): Record<st
 export const generateRoster = (leagueDivision: string, teamName: string): Player[] => {
   const roster: Player[] = [];
   const usedJerseyNumbers = new Set<number>();
-  // Explicitly type the array elements as Position
   const rosterPositions: Position[] = [ "G", "G", "LD", "LD", "LD", "LD", "RD", "RD", "RD", "RD", "C", "C", "C", "C", "LW", "LW", "LW", "LW", "RW", "RW", "RW", "RW" ];
   
   const tier = getTierStats(leagueDivision);
@@ -294,14 +296,17 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
     for (let i = 0; i < numRecruits; i++) {
         const sourceRoll = Math.random();
         const source: Player['source'] = sourceRoll < 0.6 ? 'Local' : (sourceRoll < 0.9 ? 'International' : 'Transfer');
-        const eligibility = source === 'Transfer' ? getRandomItem(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"]) : (Math.random() < 0.85 ? "UG Year 1" : getRandomItem(["UG Year 2", "Masters"]));
+        const eligibility = source === 'Transfer' 
+            ? getRandomItem(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"] as Player['eligibility'][]) 
+            : (Math.random() < 0.85 
+                ? "UG Year 1" 
+                : getRandomItem(["UG Year 2", "Masters"] as Player['eligibility'][]));
         
         const qualityRoll = Math.random();
         let estimatedQuality: Player['estimatedQuality'];
         if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else estimatedQuality = 'Elite';
         
-        // Ensure the array passed to getRandomItem is explicitly typed as Position[]
-        const position = getRandomItem([...skaterPositions, 'G'] as Position[]);
+        const position = getRandomItem([...skaterPositions, 'G']) as Position;
         const isSkater = position !== 'G';
 
         let targetCurrentAbilityMin: number, targetCurrentAbilityMax: number;
