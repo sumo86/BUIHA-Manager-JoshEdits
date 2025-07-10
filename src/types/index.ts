@@ -256,6 +256,24 @@ export interface GameState {
   isPaused: boolean;
 }
 
+export interface GameResult {
+    homeScore: number;
+    awayScore: number;
+}
+
+export interface ScheduleEntry {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  date: {
+    month: string;
+    week: number;
+    year: number;
+  };
+  status: 'scheduled' | 'completed';
+  result?: GameResult;
+}
+
 export interface DevelopmentLog {
   playerId: string;
   playerName: string;

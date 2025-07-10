@@ -101,3 +101,30 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
 
     return newGameState;
 };
+
+// New function to simulate a full game
+export const simulateFullGame = (homeTeam: Team, awayTeam: Team): GameState => {
+    let gameState: GameState = {
+        userScore: 0,
+        opponentScore: 0,
+        period: 1,
+        time: 0,
+        gameLog: [],
+        isGameOver: false,
+        isPaused: false, // Start the simulation running
+    };
+
+    for (let p = 1; p <= 3; p++) {
+        gameState.period = p;
+        gameState.time = 0;
+        for (let t = 0; t < 1200; t++) {
+            // In this context, userTeam is homeTeam, opponentTeam is awayTeam
+            gameState = simulateTick(gameState, homeTeam, awayTeam);
+        }
+    }
+
+    gameState.isGameOver = true;
+    gameState.isPaused = true;
+
+    return gameState;
+};
