@@ -269,6 +269,40 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
         }
 
+        // Placeholder for player development and logging
+        if (userTeam) {
+            const randomPlayer = userTeam.roster[Math.floor(Math.random() * userTeam.roster.length)];
+            if (randomPlayer) {
+                const attributes = Object.keys(randomPlayer.attributes);
+                const randomAttribute = attributes[Math.floor(Math.random() * attributes.length)];
+                const change = Math.random() > 0.5 ? 0.1 : -0.1; // Small random change
+                
+                // Update player's attribute (for demonstration)
+                const updatedRoster = userTeam.roster.map(p => {
+                    if (p.id === randomPlayer.id) {
+                        const newAttributes = { ...p.attributes, [randomAttribute]: (p.attributes[randomAttribute as keyof typeof p.attributes] as number) + change };
+                        return { ...p, attributes: newAttributes };
+                    }
+                    return p;
+                });
+                updateTeam({ ...userTeam, roster: updatedRoster });
+
+                // Log the development
+                setDevelopmentHistory(prev => [
+                    {
+                        playerId: randomPlayer.id,
+                        playerName: randomPlayer.name,
+                        attribute: randomAttribute,
+                        change: parseFloat(change.toFixed(2)),
+                        newRating: parseFloat(((randomPlayer.attributes[randomAttribute as keyof typeof randomPlayer.attributes] as number) + change).toFixed(1)),
+                        date: { ...currentDate }
+                    },
+                    ...prev
+                ]);
+            }
+        }
+
+
         setCurrentDate(prevDate => {
             let { month, week, year } = prevDate;
             week += 1;
