@@ -11,17 +11,12 @@ const shuffleArray = <T>(array: T[]): T[] => {
 };
 
 export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): ScheduleEntry[] => {
-    // Season runs from September to April
     const seasonMonths = ["September", "October", "November", "December", "January", "February", "March", "April"];
     const gameWeeks: GameDate[] = [];
     
-    // Create an ordered list of all available weeks in the season
-    // Use a single year for the entire season to simplify logic, as suggested.
     const seasonYear = startDate.year;
     seasonMonths.forEach(month => {
         for (let week = 1; week <= 4; week++) {
-            // The year for the game date will be the year the season started.
-            // The UI and date advancement logic will still correctly show the calendar year change.
             const displayYear = (["January", "February", "March", "April"].includes(month)) ? seasonYear + 1 : seasonYear;
             gameWeeks.push({ month, week, year: displayYear });
         }
@@ -37,7 +32,6 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
 
     let allMatchups: { homeTeam: string, awayTeam: string }[] = [];
 
-    // Generate all home-and-away matchups for each division
     Object.values(teamsByDivision).forEach(divisionTeams => {
         for (let i = 0; i < divisionTeams.length; i++) {
             for (let j = 0; j < divisionTeams.length; j++) {
@@ -53,6 +47,13 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
 
     const remainingMatchups = shuffleArray(allMatchups);
     const schedule: ScheduleEntry[] = [];
+    
+    // Calculate a target for games per week to ensure even distribution
+    const totalGamesToSchedule = remainingMatchups.length;
+    const totalWeeksAvailable = gameWeeks.length;
+    // This will be the maximum number of games to schedule in any given week
+    const gamesPerWeekTarget = Math.ceil(totalGamesToSchedule / totalWeeksAvailable);
+
     let teamsThatPlayedLastWeek = new Set<string>();
 
     gameWeeks.forEach(date => {
@@ -61,6 +62,8 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
         
         // Pass 1: Prioritize scheduling teams that had a break last week
         for (let i = remainingMatchups.length - 1; i >= 0; i--) {
+            if (matchupsThisWeek.length >= gamesPerWeekTarget) break;
+
             const matchup = remainingMatchups[i];
             if (
                 !teamsPlayingThisWeek.has(matchup.homeTeam) &&
@@ -75,8 +78,10 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
             }
         }
 
-        // Pass 2: Fill remaining slots with any available team
+        // Pass 2: Fill remaining slots up to the weekly target, if needed
         for (let i = remainingMatchups.length - 1; i >= 0; i--) {
+            if (matchupsThisWeek.length >= gamesPerWeekTarget) break;
+
             const matchup = remainingMatchups[i];
             if (
                 !teamsPlayingThisWeek.has(matchup.homeTeam) &&
@@ -100,10 +105,39 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
             });
         });
 
-        // Update the set for the next week's iteration
         teamsThatPlayedLastWeek = teamsPlayingThisWeek;
     });
 
+    // After the main loop, some games might be left over due to scheduling constraints.
+    // Distribute these remaining games into weeks that have capacity.
+    if (remainingMatchups.length > 0) {
+        for (let i = remainingMatchups.length - 1; i >= 0; i--) {
+            const matchupToSchedule = remainingMatchups[i];
+            let scheduled = false;
+
+            for (const date of gameWeeks) {
+                const teamsPlayingThatWeek = new Set(
+                    schedule.filter(g => g.date.month === date.month && g.date.week === date.week && g.date.year === date.year)
+                            .flatMap(g => [g.homeTeam, g.awayTeam])
+                );
+
+                if (!teamsPlayingThatWeek.has(matchupToSchedule.homeTeam) && !teamsPlayingThatWeek.has(matchupToSchedule.awayTeam)) {
+                    schedule.push({
+                        id: uuidv4(),
+                        homeTeam: matchupToSchedule.homeTeam,
+                        awayTeam: matchupToSchedule.awayTeam,
+                        date: date,
+                        status: 'scheduled',
+                    });
+                    scheduled = true;
+                    break; // Move to the next matchup
+                }
+            }
+            if (scheduled) {
+                remainingMatchups.splice(i, 1);
+            }
+        }
+    }
 
     if (remainingMatchups.length > 0) {
         console.warn(`Could not schedule ${remainingMatchups.length} games. Consider extending the season.`);
