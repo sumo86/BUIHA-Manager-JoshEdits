@@ -1,6 +1,6 @@
 import { Player, Team, SkaterAttributes, GoalieAttributes } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { calculateStarRating } from '@/lib/playerGenerator';
+import { getTierStats } from '@/lib/leagueUtils';
 
 interface PlayerScoutingReportProps {
   player: Player;
@@ -24,6 +24,26 @@ const getAttributeDescription = (key: string, value: number): string => {
     if (value <= 7) return `weak ${formattedKey}`;
     if (value <= 4) return `very weak ${formattedKey}`;
     return '';
+};
+
+// Helper to calculate star rating for a given ability and division
+const calculateStarRatingForAbility = (ability: number, isSkater: boolean, targetLeagueDivision: string): number => {
+    const tier = getTierStats(targetLeagueDivision);
+    
+    const avgAbility = isSkater ? tier.skater : tier.goalie;
+    const step = isSkater ? tier.step.skater : tier.step.goalie;
+    
+    const diff = ability - avgAbility;
+
+    if (diff > step * 1.75) return 5;
+    if (diff > step * 1.25) return 4.5;
+    if (diff > step * 0.75) return 4;
+    if (diff > step * 0.25) return 3.5;
+    if (diff > -0.25 * step) return 3;
+    if (diff > -0.75 * step) return 2.5;
+    if (diff > -1.25 * step) return 2;
+    if (diff > -1.75 * step) return 1.5;
+    return 1;
 };
 
 const generateReport = (player: Player, team: Team) => {
@@ -122,7 +142,8 @@ const generateReport = (player: Player, team: Team) => {
   // Potential Assessment - only if significant potential
   let potentialAssessment = '';
   if (potentialAbility - currentAbility > 75) { // Only show if potential is significantly higher (changed from 50 to 75)
-    const potentialStarRating = calculateStarRating(potentialAbility, isSkater, leagueDivision);
+    const potentialTier = getTierStats(leagueDivision); // Use current league division for potential assessment
+    const potentialStarRating = calculateStarRatingForAbility(potentialAbility, isSkater, leagueDivision);
     const potentialSkillDescription = getSkillTierDescription(potentialStarRating);
 
     const potentialPhrases = [

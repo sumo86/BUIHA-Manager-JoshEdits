@@ -4,7 +4,7 @@ import { roles } from "@/data/roles";
 import { teams as allTeamsData } from "@/data/teams";
 import { getRandomNationality } from "@/data/nationalityDistributions";
 import { getRandomNameForNationality } from "@/data/names";
-import { divisionToTierMap, starRatingBands, calculateStarRating as calculateStarRatingFromUtils } from "./leagueUtils";
+import { getTierStats, divisionTierStats } from "./leagueUtils";
 
 const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
 const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
@@ -23,80 +23,114 @@ const getArchetypeForPosition = (position: Position): PlayerArchetype => {
     return getRandomItem(possibleArchetypes);
 };
 
-const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament', 'gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
-const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
-
-const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string, targetStarRating: number): SkaterAttributes | GoalieAttributes => {
+const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string): SkaterAttributes | GoalieAttributes => {
     const clamp = (value: number) => Math.max(1, Math.min(20, Math.round(value)));
+
+    const tier = getTierStats(leagueDivision);
+
     const isSkater = archetype.position !== 'Goaltender';
-    const tierId = divisionToTierMap[leagueDivision] || 5;
-    const playerTypeKey = isSkater ? 'skater' : 'goalie';
-    const bands = starRatingBands[playerTypeKey][tierId];
-    const targetBand = bands.find(b => b.stars === targetStarRating) || bands[0];
-    const targetCA = getRandomValueInRange(targetBand.min, targetBand.max);
+    const numVisibleSkaterAttrs = 28;
+    const numVisibleGoalieAttrs = 13;
 
-    const attrKeys = isSkater ? visibleSkaterKeys : visibleGoalieKeys;
-    const numVisibleAttrs = attrKeys.length;
-    const baseValue = Math.floor(targetCA / numVisibleAttrs);
-    let remainder = targetCA % numVisibleAttrs;
+    const avgAbilityForDivision = isSkater ? tier.skater : tier.goalie;
+    const numVisibleAttrs = isSkater ? numVisibleSkaterAttrs : numVisibleGoalieAttrs;
+    const targetAvgPerAttr = avgAbilityForDivision / numVisibleAttrs;
 
-    const generatedAttrs: { [key: string]: number } = {};
-    attrKeys.forEach(key => {
-        generatedAttrs[key] = baseValue;
-    });
+    // Base generation for visible attributes, tied to division average
+    const generateVisibleAttribute = () => {
+        return targetAvgPerAttr + (Math.random() * 12 - 6); // Reduced range for less variance
+    };
 
-    while (remainder > 0) {
-        const randomKey = getRandomItem(attrKeys);
-        if (generatedAttrs[randomKey] < 20) {
-            generatedAttrs[randomKey]++;
-            remainder--;
-        }
-    }
+    // Generation for hidden/highly variable attributes, wider and independent
+    const generateHiddenAttribute = () => {
+        return Math.floor(Math.random() * 20) + 1; // Uniform distribution from 1 to 20
+    };
 
-    // Add hidden attributes
-    const hiddenAttributeKeys = ['aging', 'ambition', 'bigGames', 'coachability', 'controversy', 'developmentRate', 'greed', 'handleFailure', 'handleSuccess', 'handleCritics', 'injuryProneness', 'intelligence', 'loyalty', 'mood', 'sportsmanship', 'professionalism', 'determination', 'leadership'];
-    if (isSkater) {
-        hiddenAttributeKeys.push('teamPlayer', 'temperament', 'passShootTendency');
-    }
-    hiddenAttributeKeys.forEach(key => {
-        generatedAttrs[key] = getRandomValueInRange(1, 20);
-    });
+    if (archetype.position === 'Goaltender') {
+        const attrs: GoalieAttributes = {
+            blocker: generateVisibleAttribute(), glove: generateVisibleAttribute(), lowShots: generateVisibleAttribute(), positioning: generateVisibleAttribute() + 5,
+            rebound: generateVisibleAttribute(), recovery: generateVisibleAttribute(), reflexes: generateVisibleAttribute() + 3, passing: generateVisibleAttribute(),
+            pokeCheck: generateVisibleAttribute(), puckhandling: generateVisibleAttribute(), skating: generateVisibleAttribute(), mentalToughness: generateVisibleAttribute(),
+            goaltenderStamina: generateVisibleAttribute(),
+            // Hidden/Highly Variable Attributes
+            aging: generateHiddenAttribute(), ambition: generateHiddenAttribute(), bigGames: generateHiddenAttribute(), coachability: generateHiddenAttribute(),
+            controversy: generateHiddenAttribute(), developmentRate: generateHiddenAttribute(), greed: generateHiddenAttribute(), handleFailure: generateHiddenAttribute(),
+            handleSuccess: generateHiddenAttribute(), handleCritics: generateHiddenAttribute(), injuryProneness: generateHiddenAttribute(), intelligence: generateHiddenAttribute(),
+            loyalty: generateHiddenAttribute(), mood: generateHiddenAttribute(), sportsmanship: generateHiddenAttribute(),
+            professionalism: generateHiddenAttribute(), determination: generateHiddenAttribute(), leadership: generateHiddenAttribute(),
+        };
 
-    const finalAttributes = generatedAttrs as unknown as SkaterAttributes | GoalieAttributes;
-
-    // Apply archetype bonuses
-    if (isSkater) {
-        const attrs = finalAttributes as SkaterAttributes;
-        if (archetype.type.includes('Offensive')) { attrs.offensiveRead += 5; attrs.puckhandling += 3; attrs.shootingAccuracy += 4; }
-        if (archetype.type.includes('Playmaker')) { attrs.passing += 6; attrs.offensiveRead += 4; }
-        if (archetype.type.includes('Goalscorer')) { attrs.shootingAccuracy += 6; attrs.shootingRange += 4; attrs.gettingOpen += 5; }
-        if (archetype.type.includes('Two-Way')) { attrs.defensiveRead += 4; attrs.positioning += 4; attrs.stickchecking += 3; attrs.offensiveRead += 2; }
-        if (archetype.type.includes('Defensive') || archetype.type.includes('Checking')) { attrs.defensiveRead += 6; attrs.positioning += 5; attrs.stickchecking += 5; attrs.checking += 4; attrs.shotBlocking += 4; attrs.hitting += 3; }
-        if (archetype.type === 'Enforcer') { attrs.fighting += 10; attrs.aggression += 8; attrs.bravery += 6; attrs.hitting += 8; attrs.strength += 5; attrs.passing -= 5; attrs.puckhandling -= 5; attrs.shootingAccuracy -= 5; attrs.offensiveRead -= 6; }
-        if (archetype.physicality === 'Physical') { attrs.strength += 5; attrs.hitting += 4; attrs.balance += 3; attrs.aggression += 3; } 
-        else if (archetype.physicality === 'Non-Physical') { attrs.strength -= 3; attrs.hitting -= 4; attrs.aggression -= 4; attrs.fighting -= 5; }
-    } else {
-        const attrs = finalAttributes as GoalieAttributes;
         if (archetype.type === 'Standup') { attrs.positioning += 3; attrs.recovery -= 2; } 
         else if (archetype.type === 'Butterfly') { attrs.lowShots += 4; attrs.recovery += 2; attrs.positioning -= 2; }
         if (archetype.physicality === 'Puckhandler') { attrs.puckhandling += 8; attrs.passing += 6; }
-    }
 
-    // Final clamp
-    Object.keys(finalAttributes).forEach(key => {
-        (finalAttributes as any)[key] = clamp((finalAttributes as any)[key]);
+        Object.keys(attrs).forEach(key => {
+            const attrKey = key as keyof GoalieAttributes;
+            attrs[attrKey] = clamp(attrs[attrKey]);
+        });
+        return attrs;
+    } 
+    
+    const attrs: SkaterAttributes = {
+        acceleration: generateVisibleAttribute(), agility: generateVisibleAttribute(), balance: generateVisibleAttribute(), fighting: generateVisibleAttribute(), speed: generateVisibleAttribute(),
+        stamina: generateVisibleAttribute(), strength: generateVisibleAttribute(), hitting: generateVisibleAttribute(), aggression: generateVisibleAttribute(), bravery: generateVisibleAttribute(),
+        gettingOpen: generateVisibleAttribute(), offensiveRead: generateVisibleAttribute(), passing: generateVisibleAttribute(),
+        puckhandling: generateVisibleAttribute(), screening: generateVisibleAttribute(), shootingAccuracy: generateVisibleAttribute(), shootingRange: generateVisibleAttribute(),
+        checking: generateVisibleAttribute(), defensiveRead: generateVisibleAttribute(), faceoffs: generateVisibleAttribute(), positioning: generateVisibleAttribute(),
+        shotBlocking: generateVisibleAttribute(), stickchecking: generateVisibleAttribute(),
+        // Hidden/Highly Variable Attributes
+        aging: generateHiddenAttribute(), ambition: generateHiddenAttribute(), bigGames: generateHiddenAttribute(), coachability: generateHiddenAttribute(),
+        controversy: generateHiddenAttribute(), developmentRate: generateHiddenAttribute(), greed: generateHiddenAttribute(), handleFailure: generateHiddenAttribute(),
+        handleSuccess: generateHiddenAttribute(), handleCritics: generateHiddenAttribute(), injuryProneness: generateHiddenAttribute(), intelligence: generateHiddenAttribute(),
+        loyalty: generateHiddenAttribute(), mood: generateHiddenAttribute(), sportsmanship: generateHiddenAttribute(),
+        determination: generateHiddenAttribute(), leadership: generateHiddenAttribute(), professionalism: generateHiddenAttribute(), teamPlayer: generateHiddenAttribute(),
+        temperament: generateHiddenAttribute(), passShootTendency: generateHiddenAttribute(),
+    };
+
+    if (archetype.type.includes('Offensive')) { attrs.offensiveRead += 5; attrs.puckhandling += 3; attrs.shootingAccuracy += 4; }
+    if (archetype.type.includes('Playmaker')) { attrs.passing += 6; attrs.offensiveRead += 4; }
+    if (archetype.type.includes('Goalscorer')) { attrs.shootingAccuracy += 6; attrs.shootingRange += 4; attrs.gettingOpen += 5; }
+    if (archetype.type.includes('Two-Way')) { attrs.defensiveRead += 4; attrs.positioning += 4; attrs.stickchecking += 3; attrs.offensiveRead += 2; }
+    if (archetype.type.includes('Defensive') || archetype.type.includes('Checking')) { attrs.defensiveRead += 6; attrs.positioning += 5; attrs.stickchecking += 5; attrs.checking += 4; attrs.shotBlocking += 4; attrs.hitting += 3; }
+    if (archetype.type === 'Enforcer') { attrs.fighting += 10; attrs.aggression += 8; attrs.bravery += 6; attrs.hitting += 8; attrs.strength += 5; attrs.passing -= 5; attrs.puckhandling -= 5; attrs.shootingAccuracy -= 5; attrs.offensiveRead -= 6; }
+    if (archetype.physicality === 'Physical') { attrs.strength += 5; attrs.hitting += 4; attrs.balance += 3; attrs.aggression += 3; } 
+    else if (archetype.physicality === 'Non-Physical') { attrs.strength -= 3; attrs.hitting -= 4; attrs.aggression -= 4; attrs.fighting -= 5; }
+
+    Object.keys(attrs).forEach(key => {
+        const attrKey = key as keyof SkaterAttributes;
+        attrs[attrKey] = clamp(attrs[attrKey]);
     });
-
-    return finalAttributes;
+    return attrs;
 };
 
+const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament', 'gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
+const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
+
 export const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAttributes, isSkater: boolean): number => {
-    const keys = isSkater ? visibleSkaterKeys : visibleGoalieKeys;
-    return keys.reduce((sum, key) => sum + (attributes as any)[key], 0);
+    if (isSkater) {
+        return visibleSkaterKeys.reduce((sum, key) => sum + (attributes as SkaterAttributes)[key], 0);
+    } else {
+        return visibleGoalieKeys.reduce((sum, key) => sum + (attributes as GoalieAttributes)[key], 0);
+    }
 };
 
 export const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDivision: string): number => {
-    return calculateStarRatingFromUtils(currentAbility, isSkater, leagueDivision);
+    const tier = getTierStats(leagueDivision);
+    
+    const avgAbility = isSkater ? tier.skater : tier.goalie;
+    const step = isSkater ? tier.step.skater : tier.step.goalie;
+    
+    const diff = currentAbility - avgAbility;
+
+    if (diff > step * 1.75) return 5;
+    if (diff > step * 1.25) return 4.5;
+    if (diff > step * 0.75) return 4;
+    if (diff > step * 0.25) return 3.5;
+    if (diff > -0.25 * step) return 3;
+    if (diff > -0.75 * step) return 2.5;
+    if (diff > -1.25 * step) return 2;
+    if (diff > -1.75 * step) return 1.5;
+    return 1;
 };
 
 const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 'Forward' | 'Defenceman'): { suitabilities: { [key: string]: number }, bestRole: string, highestSuitability: number } => {
@@ -239,7 +273,7 @@ const generateRandomSeasonStats = (
     }
 };
 
-const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, teamName: string, targetStarRating: number, allowedEligibilities?: Player['eligibility'][]): Player => {
+const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, teamName: string, allowedEligibilities?: Player['eligibility'][]): Player => {
   let jerseyNumber: number;
   do {
     jerseyNumber = Math.floor(Math.random() * 98) + 1;
@@ -268,8 +302,30 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   }
 
   const archetype = getArchetypeForPosition(position);
-  const attributes = generateAttributes(archetype, leagueDivision, targetStarRating);
+  const attributes = generateAttributes(archetype, leagueDivision);
   
+  if (isSkater && leagueDivision.includes('Checking 1')) {
+    const roll = Math.random();
+    // 5% chance for a 5-star potential boost
+    if (roll < 0.05) {
+        Object.keys(attributes).forEach(key => {
+            const attrKey = key as keyof SkaterAttributes;
+            if (typeof attributes[attrKey] === 'number' && !['aging', 'injuryProneness', 'controversy'].includes(attrKey)) {
+                (attributes[attrKey] as number) = Math.min(20, (attributes[attrKey] as number) + 2);
+            }
+        });
+    } 
+    // 10% chance for a 4.5-star potential boost
+    else if (roll < 0.15) {
+        Object.keys(attributes).forEach(key => {
+            const attrKey = key as keyof SkaterAttributes;
+            if (typeof attributes[attrKey] === 'number' && !['aging', 'injuryProneness', 'controversy'].includes(attrKey)) {
+                (attributes[attrKey] as number) = Math.min(20, (attributes[attrKey] as number) + 1);
+            }
+        });
+    }
+  }
+
   const eligibilitiesToUse = allowedEligibilities || eligibilities;
   const eligibility = getRandomItem(eligibilitiesToUse);
   const ageRange = eligibilityAgeRanges[eligibility];
@@ -286,8 +342,10 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   
   let potentialBonus: number;
   if (isSkater) {
+      // Increased potential bonus for skaters
       potentialBonus = Math.floor(Math.random() * 100) * ((30 - age) / 12); 
   } else {
+      // Increased potential bonus for goalies
       potentialBonus = Math.floor(Math.random() * 50) * ((30 - age) / 12); 
   }
 
@@ -353,18 +411,48 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   }
 
   const gender = Math.random() < 0.8 ? 'Male' : 'Female';
-  const nationality = getRandomNationality(teamName);
+  const nationality = getRandomNationality(teamName); // Pass teamName here
   const name = getRandomNameForNationality(nationality, gender);
 
   const currentStats: Player['currentStats'] = {
-    gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, wins: 0, losses: 0, draws: 0, 
-    goalsAgainst: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0,
+    gamesPlayed: 0,
+    goals: 0,
+    assists: 0,
+    points: 0,
+    penaltyMinutes: 0,
+    wins: 0,
+    losses: 0,
+    draws: 0, 
+    goalsAgainst: 0,
+    shotsAgainst: 0,
+    saves: 0,
+    savePercentage: 0,
+    goalsAgainstAverage: 0,
+    shutouts: 0,
   };
 
   return {
-    id: crypto.randomUUID(), jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy",
-    eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null,
-    yearsLeftInProgram, history, trainingFocus: null, currentStats,
+    id: crypto.randomUUID(),
+    jerseyNumber,
+    name,
+    age,
+    nationality,
+    positions,
+    starRating,
+    morale: "Content",
+    healthStatus: "Healthy",
+    eligibility,
+    archetype,
+    attributes,
+    currentAbility,
+    potentialAbility,
+    role,
+    roleSuitability,
+    captaincy: null,
+    yearsLeftInProgram,
+    history,
+    trainingFocus: null,
+    currentStats,
   };
 };
 
@@ -372,9 +460,13 @@ const assignInitialCaptaincy = (roster: Player[]): Player[] => {
     const skaters = roster.filter(p => p.positions[0] !== 'G');
     if (skaters.length < 3) return roster;
 
-    const priorCaptains = skaters.filter(p => p.eligibility !== 'UG Year 1' && p.history?.some(h => h.captaincy === 'C'));
+    const priorCaptains = skaters.filter(p => 
+        p.eligibility !== 'UG Year 1' &&
+        p.history?.some(h => h.captaincy === 'C')
+    );
 
     let captain: Player | undefined;
+
     if (priorCaptains.length > 0) {
         captain = priorCaptains.sort((a, b) => (b.attributes as SkaterAttributes).leadership - (a.attributes as SkaterAttributes).leadership)[0];
     } else {
@@ -384,65 +476,47 @@ const assignInitialCaptaincy = (roster: Player[]): Player[] => {
         }
     }
 
-    if (captain) captain.captaincy = 'C';
+    if (captain) {
+        captain.captaincy = 'C';
+    }
 
-    const alternateCandidates = skaters.filter(p => p.id !== captain?.id).sort((a, b) => (b.attributes as SkaterAttributes).leadership - (a.attributes as SkaterAttributes).leadership);
+    const alternateCandidates = skaters
+        .filter(p => p.id !== captain?.id)
+        .sort((a, b) => (b.attributes as SkaterAttributes).leadership - (a.attributes as SkaterAttributes).leadership);
+    
     const alternates = alternateCandidates.slice(0, 2);
     alternates.forEach(alt => {
         const playerInRoster = roster.find(p => p.id === alt.id);
-        if (playerInRoster) playerInRoster.captaincy = 'A';
+        if (playerInRoster) {
+            playerInRoster.captaincy = 'A';
+        }
     });
 
     return roster;
 };
 
-const tierStarDistribution: Record<number, Record<string, number>> = {
-    1: { '5': 1, '4.5': 3, '4': 10, '3.5': 20, '3': 20, '2.5': 10, '2': 3, '1.5': 1 },
-    2: { '4.5': 1, '4': 3, '3.5': 10, '3': 20, '2.5': 20, '2': 10, '1.5': 3, '1': 1 },
-    3: { '4': 1, '3.5': 3, '3': 10, '2.5': 20, '2': 20, '1.5': 10, '1': 3 },
-    4: { '3.5': 1, '3': 3, '2.5': 10, '2': 20, '1.5': 20, '1': 10 },
-    5: { '3': 1, '2.5': 3, '2': 10, '1.5': 20, '1': 20 }
-};
-
-const getRandomStarRatingForTier = (tierId: number): number => {
-    const distribution = tierStarDistribution[tierId];
-    const weightedList: number[] = [];
-    for (const starStr in distribution) {
-        const stars = parseFloat(starStr);
-        const weight = distribution[starStr];
-        for (let i = 0; i < weight; i++) {
-            weightedList.push(stars);
-        }
-    }
-    return getRandomItem(weightedList);
-};
 
 export const generateRoster = (leagueDivision: string, teamName: string): Player[] => {
   const roster: Player[] = [];
   const usedJerseyNumbers = new Set<number>();
   const nonStaffEligibilities = eligibilities.filter(e => e !== 'Staff');
-  const tierId = divisionToTierMap[leagueDivision] || 5;
 
-  const generatePlayerForRoster = (pos: Position, elig?: Player['eligibility'][]) => {
-      const targetStars = getRandomStarRatingForTier(tierId);
-      return generatePlayer(usedJerseyNumbers, pos, leagueDivision, teamName, targetStars, elig);
-  };
+  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, teamName, nonStaffEligibilities));
+  roster.push(generatePlayer(usedJerseyNumbers, "G", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision, teamName, nonStaffEligibilities));
+  for (let i = 0; i < 3; i++) roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision, teamName, nonStaffEligibilities));
 
-  roster.push(generatePlayerForRoster("G", nonStaffEligibilities));
-  roster.push(generatePlayerForRoster("G", nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayerForRoster("LD", nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayerForRoster("RD", nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayerForRoster("C", nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayerForRoster("LW", nonStaffEligibilities));
-  for (let i = 0; i < 3; i++) roster.push(generatePlayerForRoster("RW", nonStaffEligibilities));
-
-  roster.push(generatePlayerForRoster("LD"));
-  roster.push(generatePlayerForRoster("RD"));
-  roster.push(generatePlayerForRoster("C"));
-  roster.push(generatePlayerForRoster("LW"));
-  roster.push(generatePlayerForRoster("RW"));
+  roster.push(generatePlayer(usedJerseyNumbers, "LD", leagueDivision, teamName));
+  roster.push(generatePlayer(usedJerseyNumbers, "RD", leagueDivision, teamName));
+  roster.push(generatePlayer(usedJerseyNumbers, "C", leagueDivision, teamName));
+  roster.push(generatePlayer(usedJerseyNumbers, "LW", leagueDivision, teamName));
+  roster.push(generatePlayer(usedJerseyNumbers, "RW", leagueDivision, teamName));
 
   const finalRoster = assignInitialCaptaincy(roster);
+
   return finalRoster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 };
 
@@ -450,6 +524,7 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
     const recruits: Player[] = [];
     const usedJerseyNumbers = new Set<number>();
     const numRecruits = 30 + Math.floor(Math.random() * 21);
+
     const teamDivisionMap = new Map(allTeamsData.map(team => [team.name, team.leagueDivision]));
 
     for (let i = 0; i < numRecruits; i++) {
@@ -458,31 +533,104 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         const source: Player['source'] = sourceRoll < 0.6 ? 'Local' : (sourceRoll < 0.9 ? 'International' : 'Transfer');
 
         if (source === 'Transfer') {
-            eligibility = getRandomItem(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"]);
+            const eligibilityOptionsForTransfers: Player['eligibility'][] = ["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"];
+            eligibility = getRandomItem(eligibilityOptionsForTransfers);
         } else {
             eligibility = Math.random() < 0.85 ? "UG Year 1" : getRandomItem(["UG Year 2", "Masters"]);
         }
 
         const qualityRoll = Math.random();
         let estimatedQuality: Player['estimatedQuality'];
-        let targetStarRating: number;
-
-        if (qualityRoll < 0.49) { estimatedQuality = 'Beginner'; targetStarRating = getRandomItem([1, 1.5]); }
-        else if (qualityRoll < 0.79) { estimatedQuality = 'Moderate'; targetStarRating = getRandomItem([2, 2.5]); }
-        else if (qualityRoll < 0.94) { estimatedQuality = 'Intermediate'; targetStarRating = getRandomItem([3, 3.5]); }
-        else if (qualityRoll < 0.98) { estimatedQuality = 'Experienced'; targetStarRating = getRandomItem([4, 4.5]); }
-        else { estimatedQuality = 'Elite'; targetStarRating = 5; }
+        if (qualityRoll < 0.49) {
+            estimatedQuality = 'Beginner';
+        } else if (qualityRoll < 0.79) {
+            estimatedQuality = 'Moderate';
+        } else if (qualityRoll < 0.94) {
+            estimatedQuality = 'Intermediate';
+        } else if (qualityRoll < 0.98) {
+            estimatedQuality = 'Experienced';
+        } else {
+            estimatedQuality = 'Elite';
+        }
         
         const allPossiblePositions: Position[] = [...skaterPositions, 'G'];
         const position = getRandomItem(allPossiblePositions);
         
-        const player = generatePlayer(usedJerseyNumbers, position, userLeagueDivision, "Unattached", targetStarRating, [eligibility]);
+        const player = generatePlayer(usedJerseyNumbers, position, "BUIHA Non-Checking 3", "Unattached", [eligibility]);
+        const isSkater = player.positions[0] !== 'G';
+
+        let targetCurrentAbilityMin: number;
+        let targetCurrentAbilityMax: number;
+
+        if (estimatedQuality === 'Beginner') {
+            targetCurrentAbilityMin = isSkater ? divisionTierStats[5].skater : divisionTierStats[5].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie;
+            player.recruitmentCost = getRandomValueInRange(75, 150);
+        } else if (estimatedQuality === 'Moderate') {
+            targetCurrentAbilityMin = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie;
+            player.recruitmentCost = getRandomValueInRange(150, 300);
+        } else if (estimatedQuality === 'Intermediate') {
+            targetCurrentAbilityMin = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie;
+            player.recruitmentCost = getRandomValueInRange(300, 500);
+        } else if (estimatedQuality === 'Experienced') {
+            targetCurrentAbilityMin = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTierStats[1].skater : divisionTierStats[1].goalie;
+            player.recruitmentCost = getRandomValueInRange(500, 750);
+        } else { // Elite
+            const checking1Tier = divisionTierStats[1];
+            targetCurrentAbilityMin = isSkater 
+                ? checking1Tier.skater + (checking1Tier.step.skater * 0.25) // 3.5 stars
+                : checking1Tier.goalie + (checking1Tier.step.goalie * 0.25);
+            targetCurrentAbilityMax = isSkater 
+                ? checking1Tier.skater + (checking1Tier.step.skater * 2.0) // ~5 stars
+                : checking1Tier.goalie + (checking1Tier.step.goalie * 2.0);
+            player.recruitmentCost = getRandomValueInRange(750, 1500);
+        }
+
+        const targetAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);
+        let abilityDifference = targetAbility - player.currentAbility;
+
+        if (abilityDifference > 0) {
+            const attributes = player.attributes;
+            const visibleKeys = isSkater ? visibleSkaterKeys : visibleGoalieKeys;
+
+            while (abilityDifference > 0) {
+                const improvableAttrs = visibleKeys.filter(key => (attributes[key as keyof typeof attributes] as number) < 20);
+                if (improvableAttrs.length === 0) break;
+                
+                const attrToImprove = getRandomItem(improvableAttrs);
+                (attributes[attrToImprove as keyof typeof attributes] as number) += 1;
+                abilityDifference -= 1;
+            }
+            player.attributes = attributes;
+        }
+
+        // Recalculate everything based on new attributes
+        player.currentAbility = calculateCurrentAbility(player.attributes, isSkater);
         
-        if (estimatedQuality === 'Beginner') player.recruitmentCost = getRandomValueInRange(75, 150);
-        else if (estimatedQuality === 'Moderate') player.recruitmentCost = getRandomValueInRange(150, 300);
-        else if (estimatedQuality === 'Intermediate') player.recruitmentCost = getRandomValueInRange(300, 500);
-        else if (estimatedQuality === 'Experienced') player.recruitmentCost = getRandomValueInRange(500, 750);
-        else player.recruitmentCost = getRandomValueInRange(750, 1500);
+        const potentialBonus = Math.floor(Math.random() * 150) * ((30 - player.age) / 12);
+        player.potentialAbility = Math.round(player.currentAbility + potentialBonus);
+        const maxAbility = isSkater ? 560 : 260;
+        if (player.potentialAbility > maxAbility) player.potentialAbility = maxAbility;
+        if (player.potentialAbility < player.currentAbility) player.potentialAbility = player.currentAbility;
+
+        player.starRating = calculateStarRating(player.currentAbility, isSkater, userLeagueDivision);
+
+        if (isSkater) {
+            const { suitabilities, bestRole } = calculateRoleSuitability(player.attributes as SkaterAttributes, 'Forward');
+            const { suitabilities: defSuitabilities, bestRole: defBestRole } = calculateRoleSuitability(player.attributes as SkaterAttributes, 'Defenceman');
+            
+            const allSuitabilities = {...suitabilities, ...defSuitabilities};
+            let finalBestRole = bestRole;
+            if(allSuitabilities[defBestRole] > allSuitabilities[bestRole]) {
+                finalBestRole = defBestRole;
+            }
+
+            player.roleSuitability = allSuitabilities;
+            player.role = finalBestRole;
+        }
 
         player.source = source;
         player.estimatedQuality = estimatedQuality;
