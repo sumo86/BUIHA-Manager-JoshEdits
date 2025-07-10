@@ -1,3 +1,4 @@
+' to 'from'.">
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory } from '@/types';
 import { teams as initialTeams, getTeamOrganizations } from '@/data/teams';
@@ -47,8 +48,27 @@ interface TeamContextType {
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
-export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
-    const [teams, setTeams] = useState<Team[]>(initialTeams);
+export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element => {
+    // 1. Persistence: Load teams from localStorage or initialize and save
+    const [teams, setTeams] = useState<Team[]>(() => {
+        try {
+            const savedTeams = localStorage.getItem('teams');
+            if (savedTeams) {
+                return JSON.parse(savedTeams);
+            }
+        } catch (error) {
+            console.error("Failed to load teams from localStorage:", error);
+        }
+        // If no saved teams or error, use initialTeams and save them
+        localStorage.setItem('teams', JSON.stringify(initialTeams));
+        return initialTeams;
+    });
+
+    // Effect to save teams to localStorage whenever they change
+    useEffect(() => {
+        localStorage.setItem('teams', JSON.stringify(teams));
+    }, [teams]);
+
     const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
     const [managedOrganization, setManagedOrganization] = useState<string | null>(() => localStorage.getItem('managedOrganization') || null);
 
@@ -71,7 +91,7 @@ export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
                 totalBudget: managedTeams.reduce((sum, t) => sum + t.financials.totalBudget, 0),
                 budgetAllocations: managedTeams.reduce((acc, t) => {
                     (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
-                        acc[key] = (acc[key] || 0) + t.financials.budgetAllocations[key];
+                        acc[key] = Math.round((acc[key] || 0) + t.financials.budgetAllocations[key]); // Round here too for display
                     });
                     return acc;
                 }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations),
@@ -226,10 +246,14 @@ export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
                 player.jerseyNumber = newJerseyNumber;
             }
             
+            // 2. Star rating re-forecasting: Ensure player object is updated correctly
             const isSkater = player.positions[0] !== 'G';
-            player.starRating = calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision);
+            const updatedPlayer = {
+                ...player,
+                starRating: calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision)
+            };
 
-            const newToRoster = [...toTeam.roster, player].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+            const newToRoster = [...toTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 
             const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
             const updatedToTeam = { ...toTeam, roster: newToRoster };
@@ -248,9 +272,9 @@ export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
         const player = fromTeam?.roster.find(p => p.id === playerId);
 
         if (!fromTeam || !toTeam || !player) {
-            toast.error("Could not request player. Team or player not found.");
-            return;
-        }
+                toast.error("Could not request player. Team or player not found.");
+                return;
+            }
 
         const isInternalTransfer = managedOrganization &&
             managedTeams.some(t => t.name === fromTeamName) &&
@@ -374,7 +398,7 @@ export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
 
         const newBudgetAllocations = {
             ...userTeam.financials.budgetAllocations,
-            Recruiting: currentBudget - cost,
+            Recruiting: Math.round(currentBudget - cost), // Round here
         };
         
         updateBudgetAllocations(newBudgetAllocations);
@@ -437,7 +461,8 @@ export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
                 const updatedAllocations = { ...teamToUpdate.financials.budgetAllocations };
 
                 (Object.keys(allocationChanges) as (keyof BudgetAllocations)[]).forEach(key => {
-                    updatedAllocations[key] += allocationChanges[key]!;
+                    // 3. Decimal budget values: Round here
+                    updatedAllocations[key] = Math.round(updatedAllocations[key] + allocationChanges[key]!);
                 });
 
                 teamToUpdate.financials = { ...teamToUpdate.financials, budgetAllocations: updatedAllocations };
@@ -446,7 +471,12 @@ export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
             });
         } else {
             const updatedTeam = { ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations } };
-            updateTeam(updatedTeam);
+            // 3. Decimal budget values: Round all values in newAllocations before setting
+            const roundedNewAllocations: BudgetAllocations = Object.fromEntries(
+                Object.entries(newAllocations).map(([key, value]) => [key, Math.round(value)])
+            ) as unknown as BudgetAllocations; // Added 'unknown' here
+
+            updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: roundedNewAllocations } });
         }
     };
 
@@ -473,7 +503,7 @@ export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
 
             const newBudgetAllocations = {
                 ...userTeam.financials.budgetAllocations,
-                Facilities: currentBudget - cost,
+                Facilities: Math.round(currentBudget - cost), // Round here
             };
             updateBudgetAllocations(newBudgetAllocations);
 
@@ -509,7 +539,7 @@ export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
 
             const newBudgetAllocations = {
                 ...userTeam.financials.budgetAllocations,
-                Facilities: currentBudget - cost,
+                Facilities: Math.round(currentBudget - cost), // Round here
             };
             const newFacilities = userTeam.facilities.map(p =>
                 p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress' } : p
