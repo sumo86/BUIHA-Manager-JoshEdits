@@ -43,7 +43,6 @@ interface TeamContextType {
     setActiveTeam: (teamName: string) => void;
     schedule: ScheduleEntry[];
     gameForCurrentWeek: ScheduleEntry | null;
-    initializeSchedule: () => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -216,18 +215,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
     }, [managedOrganization]);
 
-    const initializeSchedule = () => {
-        if (schedule.length === 0 && teams.length > 0) {
-            const newSchedule = generateSeasonSchedule(teams, currentDate);
-            setSchedule(newSchedule);
-            toast.success("New season schedule has been generated!");
-        }
-    };
-
-    useEffect(() => {
-        initializeSchedule();
-    }, [teams]);
-
     const gameForCurrentWeek = useMemo(() => {
         if (!userTeam || !schedule) return null;
         return schedule.find(game =>
@@ -277,7 +264,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const randomAttribute = attributes[Math.floor(Math.random() * attributes.length)];
                 const change = Math.random() > 0.5 ? 0.1 : -0.1; // Small random change
                 
-                // Update player's attribute (for demonstration)
                 const updatedRoster = userTeam.roster.map(p => {
                     if (p.id === randomPlayer.id) {
                         const newAttributes = { ...p.attributes, [randomAttribute]: (p.attributes[randomAttribute as keyof typeof p.attributes] as number) + change };
@@ -287,7 +273,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 });
                 updateTeam({ ...userTeam, roster: updatedRoster });
 
-                // Log the development
                 setDevelopmentHistory(prev => [
                     {
                         playerId: randomPlayer.id,
@@ -302,8 +287,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
         }
 
-
-        setCurrentDate(prevDate => {
+        const newDate = ((prevDate) => {
             let { month, week, year } = prevDate;
             week += 1;
             if (week > 4) {
@@ -311,7 +295,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const monthIndex = months.indexOf(month);
                 let nextMonthIndex = (monthIndex + 1) % months.length;
                 
-                // Check for year rollover (December to January)
                 if (month === "December" && months[nextMonthIndex] === "January") {
                     year += 1;
                 }
@@ -319,7 +302,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 month = months[nextMonthIndex];
             }
             return { month, week, year };
-        });
+        })(currentDate);
+
+        // Trigger new season schedule generation when we advance to August, Week 2
+        if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
+            const newSchedule = generateSeasonSchedule(teams, newDate);
+            setSchedule(newSchedule);
+            toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
+        }
+
+        setCurrentDate(newDate);
     };
 
     const movePlayer = (playerId: string, fromTeamName: string, toTeamName: string) => {
@@ -635,7 +627,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
             autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
             managedOrganization, managedTeams, selectOrganization, setActiveTeam,
-            schedule, gameForCurrentWeek, initializeSchedule
+            schedule, gameForCurrentWeek
         }}>
             {children}
         </TeamContext.Provider>

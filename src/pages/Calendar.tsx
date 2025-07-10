@@ -1,6 +1,6 @@
 import { useTeam } from '@/context/TeamContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils'; // Import cn for conditional class names
+import { cn } from '@/lib/utils';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 
@@ -74,9 +74,11 @@ const Calendar = () => {
               </div>
             ))}
           </div>
-          <p className="text-muted-foreground mt-6 text-center">
-            Full game schedule coming soon. Advance the week from the Dashboard.
-          </p>
+          {schedule.length === 0 && (
+            <p className="text-muted-foreground mt-6 text-center">
+              The season schedule will be generated in August, Week 2. Advance the week to continue.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
