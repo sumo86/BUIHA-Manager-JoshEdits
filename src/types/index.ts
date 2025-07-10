@@ -130,7 +130,7 @@ export interface CurrentSeasonStats {
   // Goalie
   wins: number;
   losses: number;
-  otLosses: number;
+  draws: number;
   goalsAgainst: number;
   shotsAgainst: number;
   saves: number;
@@ -237,7 +237,7 @@ export interface Team {
   tactics: TacticsSelection;
   wins: number;
   losses: number;
-  otLosses: number;
+  draws: number;
   goalsFor: number;
   goalsAgainst: number;
   financials: Financials;

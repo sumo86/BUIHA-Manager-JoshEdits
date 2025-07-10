@@ -21,7 +21,7 @@ const SeasonOverview = () => {
 
     const divisionTeams = useMemo(() => teams
         .filter(t => t.leagueDivision === userTeam.leagueDivision)
-        .sort((a, b) => (b.wins * 2 + b.otLosses) - (a.wins * 2 + a.otLosses)), [teams, userTeam.leagueDivision]);
+        .sort((a, b) => (b.wins * 2 + b.draws) - (a.wins * 2 + a.draws)), [teams, userTeam.leagueDivision]);
 
     const divisionPlayers = useMemo(() => 
         teams
@@ -83,7 +83,7 @@ const SeasonOverview = () => {
                 <CardHeader><CardTitle>{userTeam.leagueDivision} Standings</CardTitle></CardHeader>
                 <CardContent>
                     <Table>
-                        <TableHeader><TableRow><TableHead>Team</TableHead><TableHead>GP</TableHead><TableHead>W</TableHead><TableHead>L</TableHead><TableHead>OTL</TableHead><TableHead>GF</TableHead><TableHead>GA</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Team</TableHead><TableHead>GP</TableHead><TableHead>W</TableHead><TableHead>L</TableHead><TableHead>D</TableHead><TableHead>GF</TableHead><TableHead>GA</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {divisionTeams.map(team => (
                                 <TableRow key={team.name} className={team.name === userTeam.name ? 'bg-muted/50' : ''}>
@@ -91,10 +91,10 @@ const SeasonOverview = () => {
                                         {team.logo && <img src={team.logo} alt={team.name} className="h-6 w-6 object-contain" />}
                                         {team.name}
                                     </TableCell>
-                                    <TableCell>{team.wins + team.losses + team.otLosses}</TableCell>
+                                    <TableCell>{team.wins + team.losses + team.draws}</TableCell>
                                     <TableCell>{team.wins}</TableCell>
                                     <TableCell>{team.losses}</TableCell>
-                                    <TableCell>{team.otLosses}</TableCell>
+                                    <TableCell>{team.draws}</TableCell>
                                     <TableCell>{team.goalsFor}</TableCell>
                                     <TableCell>{team.goalsAgainst}</TableCell>
                                 </TableRow>

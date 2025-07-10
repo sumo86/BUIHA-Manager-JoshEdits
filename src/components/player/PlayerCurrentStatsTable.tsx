@@ -42,7 +42,7 @@ export const PlayerCurrentStatsTable = ({ stats, isSkater }: PlayerCurrentStatsT
                 <>
                   <TableHead>W</TableHead>
                   <TableHead>L</TableHead>
-                  <TableHead>OTL</TableHead>
+                  <TableHead>D</TableHead>
                   <TableHead>GAA</TableHead>
                   <TableHead>SV%</TableHead>
                   <TableHead>SO</TableHead>
@@ -64,7 +64,7 @@ export const PlayerCurrentStatsTable = ({ stats, isSkater }: PlayerCurrentStatsT
                 <>
                   <TableCell>{stats.wins}</TableCell>
                   <TableCell>{stats.losses}</TableCell>
-                  <TableCell>{stats.otLosses}</TableCell>
+                  <TableCell>{stats.draws}</TableCell>
                   <TableCell>{stats.goalsAgainstAverage.toFixed(2)}</TableCell>
                   <TableCell>{stats.savePercentage.toFixed(3)}</TableCell>
                   <TableCell>{stats.shutouts}</TableCell>

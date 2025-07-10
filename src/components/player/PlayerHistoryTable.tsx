@@ -59,22 +59,6 @@ export const PlayerHistoryTable = ({ history, isSkater, teams, currentStats, cur
           </TableRow>
         </TableHeader>
         <TableBody>
-          {currentStats && currentStats.gamesPlayed > 0 && (
-            <TableRow className="bg-primary/10 font-semibold">
-              <TableCell>{currentSeason}*</TableCell>
-              <TableCell className="flex items-center gap-2">
-                {findTeamLogo(currentTeamName!) && <img src={findTeamLogo(currentTeamName!)} alt={currentTeamName} className="h-5 w-5 object-contain" />}
-                {currentTeamName}
-              </TableCell>
-              <TableCell>{currentLeagueName}</TableCell>
-              <TableCell className="text-right">{currentStats.gamesPlayed}</TableCell>
-              <TableCell className="text-right">{currentStats.goals}</TableCell>
-              <TableCell className="text-right">{currentStats.assists}</TableCell>
-              <TableCell className="text-right">{currentStats.points}</TableCell>
-              <TableCell className="text-right">{currentStats.penaltyMinutes}</TableCell>
-              <TableCell></TableCell>
-            </TableRow>
-          )}
           {history.map((season, index) => (
             <TableRow key={index}>
               <TableCell>{season.season}</TableCell>
@@ -93,7 +77,23 @@ export const PlayerHistoryTable = ({ history, isSkater, teams, currentStats, cur
                 {season.captaincy === 'A' && <span className="font-medium text-yellow-500">A</span>}
               </TableCell>
             </TableRow>
-          )).reverse()}
+          ))}
+          {currentStats && currentStats.gamesPlayed > 0 && (
+            <TableRow className="bg-primary/10 font-semibold">
+              <TableCell>{currentSeason}*</TableCell>
+              <TableCell className="flex items-center gap-2">
+                {findTeamLogo(currentTeamName!) && <img src={findTeamLogo(currentTeamName!)} alt={currentTeamName} className="h-5 w-5 object-contain" />}
+                {currentTeamName}
+              </TableCell>
+              <TableCell>{currentLeagueName}</TableCell>
+              <TableCell className="text-right">{currentStats.gamesPlayed}</TableCell>
+              <TableCell className="text-right">{currentStats.goals}</TableCell>
+              <TableCell className="text-right">{currentStats.assists}</TableCell>
+              <TableCell className="text-right">{currentStats.points}</TableCell>
+              <TableCell className="text-right">{currentStats.penaltyMinutes}</TableCell>
+              <TableCell></TableCell>
+            </TableRow>
+          )}
         </TableBody>
         <TableFooter>
           <TableRow className="font-bold">
@@ -147,6 +147,20 @@ export const PlayerHistoryTable = ({ history, isSkater, teams, currentStats, cur
           </TableRow>
         </TableHeader>
         <TableBody>
+          {history.map((season, index) => (
+            <TableRow key={index}>
+              <TableCell>{season.season}</TableCell>
+              <TableCell className="flex items-center gap-2">
+                {findTeamLogo(season.team) && <img src={findTeamLogo(season.team)} alt={season.team} className="h-5 w-5 object-contain" />}
+                {season.team}
+              </TableCell>
+              <TableCell>{season.league}</TableCell>
+              <TableCell className="text-right">{season.gamesPlayed}</TableCell>
+              <TableCell className="text-right">{season.goalsAgainstAverage?.toFixed(2)}</TableCell>
+              <TableCell className="text-right">{season.savePercentage?.toFixed(3)}</TableCell>
+              <TableCell className="text-right">{season.shutouts}</TableCell>
+            </TableRow>
+          ))}
           {currentStats && currentStats.gamesPlayed > 0 && (
              <TableRow className="bg-primary/10 font-semibold">
                 <TableCell>{currentSeason}*</TableCell>
@@ -161,20 +175,6 @@ export const PlayerHistoryTable = ({ history, isSkater, teams, currentStats, cur
                 <TableCell className="text-right">{currentStats.shutouts}</TableCell>
             </TableRow>
           )}
-          {history.map((season, index) => (
-            <TableRow key={index}>
-              <TableCell>{season.season}</TableCell>
-              <TableCell className="flex items-center gap-2">
-                {findTeamLogo(season.team) && <img src={findTeamLogo(season.team)} alt={season.team} className="h-5 w-5 object-contain" />}
-                {season.team}
-              </TableCell>
-              <TableCell>{season.league}</TableCell>
-              <TableCell className="text-right">{season.gamesPlayed}</TableCell>
-              <TableCell className="text-right">{season.goalsAgainstAverage?.toFixed(2)}</TableCell>
-              <TableCell className="text-right">{season.savePercentage?.toFixed(3)}</TableCell>
-              <TableCell className="text-right">{season.shutouts}</TableCell>
-            </TableRow>
-          )).reverse()}
         </TableBody>
         <TableFooter>
           <TableRow className="font-bold">

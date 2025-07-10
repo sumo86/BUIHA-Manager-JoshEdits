@@ -374,7 +374,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     penaltyMinutes: 0,
     wins: 0,
     losses: 0,
-    otLosses: 0,
+    draws: 0, // Changed from otLosses
     goalsAgainst: 0,
     shotsAgainst: 0,
     saves: 0,

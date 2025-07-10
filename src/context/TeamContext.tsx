@@ -312,7 +312,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 
                                 const newCurrentStats: CurrentSeasonStats = {
                                     gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0,
-                                    wins: 0, losses: 0, otLosses: 0, goalsAgainst: 0, shotsAgainst: 0,
+                                    wins: 0, losses: 0, draws: 0, goalsAgainst: 0, shotsAgainst: 0,
                                     saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0,
                                 };
 
@@ -321,7 +321,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             return player;
                         });
 
-                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, otLosses: 0, goalsFor: 0, goalsAgainst: 0 };
+                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
                     });
                 }
                 

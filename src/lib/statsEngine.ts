@@ -10,7 +10,12 @@ export const processGameResults = (
 
     // Update team records
     const userWon = gameState.userScore > gameState.opponentScore;
-    if (userWon) {
+    const isDraw = gameState.userScore === gameState.opponentScore;
+
+    if (isDraw) {
+        updatedUserTeam.draws += 1;
+        updatedOpponentTeam.draws += 1;
+    } else if (userWon) {
         updatedUserTeam.wins += 1;
         updatedOpponentTeam.losses += 1;
     } else {
@@ -26,6 +31,7 @@ export const processGameResults = (
         const score = isUserTeam ? gameState.userScore : gameState.opponentScore;
         const opponentScore = isUserTeam ? gameState.opponentScore : gameState.userScore;
         const won = score > opponentScore;
+        const isDraw = score === opponentScore;
 
         const lineupIds = new Set([
             ...Object.values(team.lineup.forwards).flat(),
@@ -42,7 +48,9 @@ export const processGameResults = (
             // Goalie stats
             if (player.id === team.lineup.goalies.starter) {
                 if (won) player.currentStats.wins += 1;
+                else if (isDraw) player.currentStats.draws += 1;
                 else player.currentStats.losses += 1;
+                
                 player.currentStats.goalsAgainst += opponentScore;
                 if (opponentScore === 0) player.currentStats.shutouts += 1;
 
