@@ -35,11 +35,21 @@ const SeasonOverview = () => {
     const skaterColumns = useMemo<ColumnDef<PlayerWithTeam>[]>(() => [
         { accessorKey: 'name', header: 'Name' },
         { accessorKey: 'teamName', header: 'Team' },
-        { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-        { accessorKey: 'currentStats.goals', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>G<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-        { accessorKey: 'currentStats.assists', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>A<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-        { accessorKey: 'currentStats.points', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>P<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-        { accessorKey: 'currentStats.penaltyMinutes', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>PIM<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
+        { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+        )},
+        { accessorKey: 'currentStats.goals', header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>G<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+        )},
+        { accessorKey: 'currentStats.assists', header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>A<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+        )},
+        { accessorKey: 'currentStats.points', header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>P<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+        )},
+        { accessorKey: 'currentStats.penaltyMinutes', header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>PIM<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+        )},
         {
             id: 'actions',
             cell: ({ row }) => (
@@ -53,9 +63,15 @@ const SeasonOverview = () => {
     const goalieColumns = useMemo<ColumnDef<PlayerWithTeam>[]>(() => [
         { accessorKey: 'name', header: 'Name' },
         { accessorKey: 'teamName', header: 'Team' },
-        { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-        { accessorKey: 'currentStats.wins', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>W<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-        { accessorKey: 'currentStats.losses', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>L<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
+        { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+        )},
+        { accessorKey: 'currentStats.wins', header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>W<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+        )},
+        { accessorKey: 'currentStats.losses', header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>L<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+        )},
         {
             id: 'actions',
             cell: ({ row }) => (
@@ -87,7 +103,6 @@ const SeasonOverview = () => {
                             <TableRow>
                                 <TableHead>Team</TableHead>
                                 <TableHead>Pts</TableHead>
-                                <TableHead>GP</TableHead>
                                 <TableHead>W</TableHead>
                                 <TableHead>L</TableHead>
                                 <TableHead>D</TableHead>
@@ -103,7 +118,6 @@ const SeasonOverview = () => {
                                         {team.name}
                                     </TableCell>
                                     <TableCell>{team.wins * 2 + team.draws}</TableCell>
-                                    <TableCell>{team.wins + team.losses + team.draws}</TableCell>
                                     <TableCell>{team.wins}</TableCell>
                                     <TableCell>{team.losses}</TableCell>
                                     <TableCell>{team.draws}</TableCell>

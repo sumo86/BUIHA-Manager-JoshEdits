@@ -162,7 +162,7 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
             roster: roster,
             lineup: lineup,
             tactics: defaultTactics,
-            wins: 0, losses: 0, otLosses: 0, goalsFor: 0, goalsAgainst: 0,
+            wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, // Changed otLosses to draws
             logo: teamLogos[org.name],
             financials: {
                 totalBudget: teamBudget,
