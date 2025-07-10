@@ -47,9 +47,9 @@ const router = createBrowserRouter(
 );
 
 const AppContent = () => {
-  const { selectedOrgName } = useTeam();
+  const { userTeam } = useTeam();
 
-  if (!selectedOrgName) {
+  if (!userTeam) {
     return <TeamSelection />;
   }
 
