@@ -83,7 +83,18 @@ const SeasonOverview = () => {
                 <CardHeader><CardTitle>{userTeam.leagueDivision} Standings</CardTitle></CardHeader>
                 <CardContent>
                     <Table>
-                        <TableHeader><TableRow><TableHead>Team</TableHead><TableHead>GP</TableHead><TableHead>W</TableHead><TableHead>L</TableHead><TableHead>D</TableHead><TableHead>Pts</TableHead><TableHead>GF</TableHead><TableHead>GA</TableHead></TableRow></TableHeader>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Team</TableHead>
+                                <TableHead>Pts</TableHead>
+                                <TableHead>GP</TableHead>
+                                <TableHead>W</TableHead>
+                                <TableHead>L</TableHead>
+                                <TableHead>D</TableHead>
+                                <TableHead>GF</TableHead>
+                                <TableHead>GA</TableHead>
+                            </TableRow>
+                        </TableHeader>
                         <TableBody>
                             {divisionTeams.map(team => (
                                 <TableRow key={team.name} className={team.name === userTeam.name ? 'bg-muted/50' : ''}>
@@ -91,11 +102,11 @@ const SeasonOverview = () => {
                                         {team.logo && <img src={team.logo} alt={team.name} className="h-6 w-6 object-contain" />}
                                         {team.name}
                                     </TableCell>
+                                    <TableCell>{team.wins * 2 + team.draws}</TableCell>
                                     <TableCell>{team.wins + team.losses + team.draws}</TableCell>
                                     <TableCell>{team.wins}</TableCell>
                                     <TableCell>{team.losses}</TableCell>
                                     <TableCell>{team.draws}</TableCell>
-                                    <TableCell>{team.wins * 2 + team.draws}</TableCell>
                                     <TableCell>{team.goalsFor}</TableCell>
                                     <TableCell>{team.goalsAgainst}</TableCell>
                                 </TableRow>
