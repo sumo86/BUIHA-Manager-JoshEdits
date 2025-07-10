@@ -26,7 +26,7 @@ const getArchetypeForPosition = (position: Position): PlayerArchetype => {
 const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string): SkaterAttributes | GoalieAttributes => {
     const clamp = (value: number) => Math.max(1, Math.min(20, Math.round(value)));
 
-    const tierKey = Object.keys(divisionTiers).find(key => leagueDivision.includes(key)) || 'Non-Checking 3';
+    const tierKey = Object.keys(divisionTiers).reverse().find(key => leagueDivision.includes(key)) || 'Non-Checking 3';
     const tier = divisionTiers[tierKey];
 
     const isSkater = archetype.position !== 'Goaltender';
@@ -116,7 +116,7 @@ export const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAtt
 };
 
 export const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDivision: string): number => {
-    const tierKey = Object.keys(divisionTiers).find(key => leagueDivision.includes(key)) || 'Non-Checking 3';
+    const tierKey = Object.keys(divisionTiers).reverse().find(key => leagueDivision.includes(key)) || 'Non-Checking 3';
     const tier = divisionTiers[tierKey];
     
     const avgAbility = isSkater ? tier.skater : tier.goalie;

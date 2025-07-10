@@ -6,10 +6,18 @@ import { Calendar, ArrowRight } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Layout = () => {
   const location = useLocation();
-  const { currentDate, advanceWeek } = useTeam();
+  const { 
+    currentDate, 
+    advanceWeek, 
+    managedOrganization, 
+    managedTeams, 
+    userTeam, 
+    setActiveTeam 
+  } = useTeam();
   const isMobile = useIsMobile();
 
   const showHeaderButton = !location.pathname.startsWith("/game/");
@@ -32,12 +40,34 @@ const Layout = () => {
       )}
       <div className="flex flex-col flex-1">
         <header className="flex items-center justify-between p-4 border-b bg-card">
-          <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
-            <Calendar className="h-5 w-5" />
-            <span>{currentDate.month} {currentDate.year}, Week {currentDate.week}</span>
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+              <Calendar className="h-5 w-5" />
+              <span>{currentDate.month} {currentDate.year}, Week {currentDate.week}</span>
+            </div>
+            {managedOrganization && userTeam && (
+              <div className="flex items-center gap-2 flex-shrink min-w-0">
+                <span className="text-sm font-medium text-muted-foreground hidden md:inline">{managedOrganization}:</span>
+                <Select value={userTeam.name} onValueChange={setActiveTeam}>
+                  <SelectTrigger className="w-[180px] md:w-[220px] h-9">
+                    <SelectValue placeholder="Select team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {managedTeams.map(team => (
+                      <SelectItem key={team.name} value={team.name}>
+                        <div className="flex items-center gap-2">
+                          {team.logo && <img src={team.logo} alt={team.name} className="h-5 w-5 object-contain" />}
+                          <span className="truncate">{team.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           {showHeaderButton && (
-            <Button onClick={advanceWeek}>
+            <Button onClick={advanceWeek} className="ml-4">
               Advance Week
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
