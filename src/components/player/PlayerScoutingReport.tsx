@@ -1,6 +1,6 @@
 import { Player, Team, SkaterAttributes, GoalieAttributes } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { divisionTiers } from '@/lib/leagueUtils';
+import { getTierStats } from '@/lib/leagueUtils';
 
 interface PlayerScoutingReportProps {
   player: Player;
@@ -28,8 +28,7 @@ const getAttributeDescription = (key: string, value: number): string => {
 
 // Helper to calculate star rating for a given ability and division
 const calculateStarRatingForAbility = (ability: number, isSkater: boolean, targetLeagueDivision: string): number => {
-    const tierKey = Object.keys(divisionTiers).find(key => targetLeagueDivision.includes(key)) || 'Non-Checking 3';
-    const tier = divisionTiers[tierKey];
+    const tier = getTierStats(targetLeagueDivision);
     
     const avgAbility = isSkater ? tier.skater : tier.goalie;
     const step = isSkater ? tier.step.skater : tier.step.goalie;
@@ -143,26 +142,14 @@ const generateReport = (player: Player, team: Team) => {
   // Potential Assessment - only if significant potential
   let potentialAssessment = '';
   if (potentialAbility - currentAbility > 75) { // Only show if potential is significantly higher (changed from 50 to 75)
-    const potentialDivisions = Object.keys(divisionTiers);
-    let bestFitDivision = leagueDivision; // Start with current division
-
-    // Find the highest division where potentialAbility is at least "average" (3 stars)
-    for (let i = potentialDivisions.length - 1; i >= 0; i--) {
-      const div = potentialDivisions[i];
-      const potentialStar = calculateStarRatingForAbility(potentialAbility, isSkater, div);
-      if (potentialStar >= 3) {
-        bestFitDivision = div;
-        break;
-      }
-    }
-
-    const potentialStarRating = calculateStarRatingForAbility(potentialAbility, isSkater, bestFitDivision);
+    const potentialTier = getTierStats(leagueDivision); // Use current league division for potential assessment
+    const potentialStarRating = calculateStarRatingForAbility(potentialAbility, isSkater, leagueDivision);
     const potentialSkillDescription = getSkillTierDescription(potentialStarRating);
 
     const potentialPhrases = [
-      `${firstName} may have the potential to become ${potentialSkillDescription} in ${bestFitDivision}.`,
-      `With proper development, ${firstName} could grow into ${potentialSkillDescription} at the ${bestFitDivision} level.`,
-      `Scouts project ${firstName} to potentially develop into ${potentialSkillDescription} in ${bestFitDivision}.`
+      `${firstName} may have the potential to become ${potentialSkillDescription} in ${leagueDivision}.`,
+      `With proper development, ${firstName} could grow into ${potentialSkillDescription} at the ${leagueDivision} level.`,
+      `Scouts project ${firstName} to potentially develop into ${potentialSkillDescription} in ${leagueDivision}.`
     ];
     potentialAssessment = potentialPhrases[Math.floor(Math.random() * potentialPhrases.length)];
   }

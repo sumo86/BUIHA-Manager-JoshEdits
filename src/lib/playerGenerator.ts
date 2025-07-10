@@ -4,7 +4,7 @@ import { roles } from "@/data/roles";
 import { teams as allTeamsData } from "@/data/teams";
 import { getRandomNationality } from "@/data/nationalityDistributions";
 import { getRandomNameForNationality } from "@/data/names";
-import { divisionTiers } from "./leagueUtils";
+import { getTierStats, divisionTierStats } from "./leagueUtils";
 
 const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
 const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
@@ -26,8 +26,7 @@ const getArchetypeForPosition = (position: Position): PlayerArchetype => {
 const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string): SkaterAttributes | GoalieAttributes => {
     const clamp = (value: number) => Math.max(1, Math.min(20, Math.round(value)));
 
-    const tierKey = Object.keys(divisionTiers).reverse().find(key => new RegExp(`\\b${key}\\b`).test(leagueDivision)) || 'Non-Checking 3';
-    const tier = divisionTiers[tierKey];
+    const tier = getTierStats(leagueDivision);
 
     const isSkater = archetype.position !== 'Goaltender';
     const numVisibleSkaterAttrs = 28;
@@ -116,8 +115,7 @@ export const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAtt
 };
 
 export const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDivision: string): number => {
-    const tierKey = Object.keys(divisionTiers).reverse().find(key => new RegExp(`\\b${key}\\b`).test(leagueDivision)) || 'Non-Checking 3';
-    const tier = divisionTiers[tierKey];
+    const tier = getTierStats(leagueDivision);
     
     const avgAbility = isSkater ? tier.skater : tier.goalie;
     const step = isSkater ? tier.step.skater : tier.step.goalie;
@@ -558,31 +556,30 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         const allPossiblePositions: Position[] = [...skaterPositions, 'G'];
         const position = getRandomItem(allPossiblePositions);
         
-        const genericDivisionForBaseGeneration = 'Non-Checking 3'; 
-        const player = generatePlayer(usedJerseyNumbers, position, genericDivisionForBaseGeneration, "Unattached", [eligibility]);
+        const player = generatePlayer(usedJerseyNumbers, position, "BUIHA Non-Checking 3", "Unattached", [eligibility]);
         const isSkater = player.positions[0] !== 'G';
 
         let targetCurrentAbilityMin: number;
         let targetCurrentAbilityMax: number;
 
         if (estimatedQuality === 'Beginner') {
-            targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 3'].skater : divisionTiers['Non-Checking 3'].goalie;
-            targetCurrentAbilityMax = isSkater ? divisionTiers['Non-Checking 2'].skater : divisionTiers['Non-Checking 2'].goalie;
+            targetCurrentAbilityMin = isSkater ? divisionTierStats[5].skater : divisionTierStats[5].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie;
             player.recruitmentCost = getRandomValueInRange(75, 150);
         } else if (estimatedQuality === 'Moderate') {
-            targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 2'].skater : divisionTiers['Non-Checking 2'].goalie;
-            targetCurrentAbilityMax = isSkater ? divisionTiers['Non-Checking 1'].skater : divisionTiers['Non-Checking 1'].goalie;
+            targetCurrentAbilityMin = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie;
             player.recruitmentCost = getRandomValueInRange(150, 300);
         } else if (estimatedQuality === 'Intermediate') {
-            targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 1'].skater : divisionTiers['Non-Checking 1'].goalie;
-            targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 2'].skater : divisionTiers['Checking 2'].goalie;
+            targetCurrentAbilityMin = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie;
             player.recruitmentCost = getRandomValueInRange(300, 500);
         } else if (estimatedQuality === 'Experienced') {
-            targetCurrentAbilityMin = isSkater ? divisionTiers['Checking 2'].skater : divisionTiers['Checking 2'].goalie;
-            targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
+            targetCurrentAbilityMin = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTierStats[1].skater : divisionTierStats[1].goalie;
             player.recruitmentCost = getRandomValueInRange(500, 750);
         } else { // Elite
-            const checking1Tier = divisionTiers['Checking 1'];
+            const checking1Tier = divisionTierStats[1];
             targetCurrentAbilityMin = isSkater 
                 ? checking1Tier.skater + (checking1Tier.step.skater * 0.25) // 3.5 stars
                 : checking1Tier.goalie + (checking1Tier.step.goalie * 0.25);
