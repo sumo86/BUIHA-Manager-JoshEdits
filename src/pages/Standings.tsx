@@ -19,7 +19,7 @@ const gaaSorting: SortingFn<PlayerWithTeam> = (rowA, rowB) => {
     const statsB = rowB.original.currentStats;
     const gaaA = statsA.gamesPlayed > 0 ? statsA.goalsAgainst / statsA.gamesPlayed : Infinity;
     const gaaB = statsB.gamesPlayed > 0 ? statsB.goalsAgainst / statsB.gamesPlayed : Infinity;
-    return gaaA < gaaB ? -1 : 1;
+    return gaaA < gaaB ? -1 : 1; // Lower GAA is better, so sort ascending
 };
 
 const svpSorting: SortingFn<PlayerWithTeam> = (rowA, rowB) => {
@@ -27,7 +27,7 @@ const svpSorting: SortingFn<PlayerWithTeam> = (rowA, rowB) => {
     const statsB = rowB.original.currentStats;
     const svpA = statsA.shotsAgainst > 0 ? statsA.saves / statsA.shotsAgainst : 0;
     const svpB = statsB.shotsAgainst > 0 ? statsB.saves / statsB.shotsAgainst : 0;
-    return svpA < svpB ? -1 : 1;
+    return svpA > svpB ? -1 : 1; // Higher SV% is better, so sort descending
 };
 
 const Standings = () => {
@@ -91,6 +91,7 @@ const Standings = () => {
                 return (goalsAgainst / gamesPlayed).toFixed(2);
             },
             sortingFn: gaaSorting,
+            enableSorting: true, // Explicitly enable sorting
         },
         {
             id: 'svp',
@@ -101,6 +102,7 @@ const Standings = () => {
                 return (saves / shotsAgainst).toFixed(3);
             },
             sortingFn: svpSorting,
+            enableSorting: true, // Explicitly enable sorting
         },
         { id: 'actions', cell: ({ row }) => (<Button variant="outline" size="sm" onClick={() => navigate(`/player/${row.original.id}`)}><Eye className="h-4 w-4" /></Button>), },
     ], [navigate]);
