@@ -7,11 +7,11 @@ const formatTime = (seconds: number): string => {
 };
 
 const getGoalFactor = (leagueDivision: string): number => {
-    if (leagueDivision.includes('Non Checking 3')) return 1.4;
-    if (leagueDivision.includes('Non Checking 2')) return 1.5;
-    if (leagueDivision.includes('Non Checking 1')) return 1.2;
-    if (leagueDivision.includes('Checking 2')) return 1.1;
-    if (leagueDivision.includes('Checking 1')) return 1.0;
+    if (leagueDivision.includes('Non-Checking 3')) return 1.3;
+    if (leagueDivision.includes('Non-Checking 2')) return 1.2;
+    if (leagueDivision.includes('Non-Checking 1')) return 1.1;
+    if (leagueDivision.includes('Checking 2')) return 1.0;
+    if (leagueDivision.includes('Checking 1')) return 0.9;
     return 1.0; // Default
 };
 

@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Player, Team } from "@/types";
-import { ColumnDef, flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
+import { ColumnDef, flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable, SortingFn } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +13,22 @@ import { useNavigate } from 'react-router-dom';
 interface PlayerWithTeam extends Player {
     teamName: string;
 }
+
+const gaaSorting: SortingFn<PlayerWithTeam> = (rowA, rowB) => {
+    const statsA = rowA.original.currentStats;
+    const statsB = rowB.original.currentStats;
+    const gaaA = statsA.gamesPlayed > 0 ? statsA.goalsAgainst / statsA.gamesPlayed : Infinity;
+    const gaaB = statsB.gamesPlayed > 0 ? statsB.goalsAgainst / statsB.gamesPlayed : Infinity;
+    return gaaA < gaaB ? -1 : 1;
+};
+
+const svpSorting: SortingFn<PlayerWithTeam> = (rowA, rowB) => {
+    const statsA = rowA.original.currentStats;
+    const statsB = rowB.original.currentStats;
+    const svpA = statsA.shotsAgainst > 0 ? statsA.saves / statsA.shotsAgainst : 0;
+    const svpB = statsB.shotsAgainst > 0 ? statsB.saves / statsB.shotsAgainst : 0;
+    return svpA < svpB ? -1 : 1;
+};
 
 const Standings = () => {
     const { teams } = useTeam();
@@ -66,6 +82,26 @@ const Standings = () => {
         { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => (<Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button>) },
         { accessorKey: 'currentStats.wins', header: ({ column }) => (<Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>W<ArrowUpDown className="ml-2 h-4 w-4" /></Button>) },
         { accessorKey: 'currentStats.losses', header: ({ column }) => (<Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>L<ArrowUpDown className="ml-2 h-4 w-4" /></Button>) },
+        {
+            id: 'gaa',
+            header: ({ column }) => (<Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GAA<ArrowUpDown className="ml-2 h-4 w-4" /></Button>),
+            cell: ({ row }) => {
+                const { gamesPlayed, goalsAgainst } = row.original.currentStats;
+                if (gamesPlayed === 0) return '0.00';
+                return (goalsAgainst / gamesPlayed).toFixed(2);
+            },
+            sortingFn: gaaSorting,
+        },
+        {
+            id: 'svp',
+            header: ({ column }) => (<Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>SV%<ArrowUpDown className="ml-2 h-4 w-4" /></Button>),
+            cell: ({ row }) => {
+                const { saves, shotsAgainst } = row.original.currentStats;
+                if (shotsAgainst === 0) return '.000';
+                return (saves / shotsAgainst).toFixed(3);
+            },
+            sortingFn: svpSorting,
+        },
         { id: 'actions', cell: ({ row }) => (<Button variant="outline" size="sm" onClick={() => navigate(`/player/${row.original.id}`)}><Eye className="h-4 w-4" /></Button>), },
     ], [navigate]);
 

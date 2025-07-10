@@ -1,4 +1,4 @@
-import { Team, GameState } from '@/types';
+import { Team, GameState, Player } from '@/types';
 
 const parseGoalEvent = (description: string): { scorer: string, assisters: string[] } => {
     const scorerMatch = description.match(/GOAL! (.*?) scores./);
@@ -41,7 +41,7 @@ export const processGameResults = (
     updatedAwayTeam.goalsFor += gameState.opponentScore;
     updatedAwayTeam.goalsAgainst += gameState.userScore;
 
-    // 3. Process game log for individual player stats
+    // 3. Process game log for individual skater stats
     gameState.gameLog.forEach(event => {
         if (event.description.startsWith('GOAL!')) {
             const { scorer, assisters } = parseGoalEvent(event.description);
@@ -67,19 +67,37 @@ export const processGameResults = (
     
     // 4. Update goalie stats
     const homeGoalie = updatedHomeTeam.roster.find(p => p.id === updatedHomeTeam.lineup.goalies.starter);
+    const awayGoalie = updatedAwayTeam.roster.find(p => p.id === updatedAwayTeam.lineup.goalies.starter);
+
+    let homeShotsAgainst = 0;
+    let awayShotsAgainst = 0;
+
+    gameState.gameLog.forEach(event => {
+        if (event.description.startsWith('GOAL!') || event.description.includes("takes a shot, saved by")) {
+            if (event.team === updatedHomeTeam.name) {
+                awayShotsAgainst++;
+            } else {
+                homeShotsAgainst++;
+            }
+        }
+    });
+
     if (homeGoalie) {
         if (gameState.userScore > gameState.opponentScore) homeGoalie.currentStats.wins += 1;
         else if (gameState.opponentScore > gameState.userScore) homeGoalie.currentStats.losses += 1;
         else homeGoalie.currentStats.draws += 1;
         homeGoalie.currentStats.goalsAgainst += gameState.opponentScore;
+        homeGoalie.currentStats.shotsAgainst += homeShotsAgainst;
+        homeGoalie.currentStats.saves += (homeShotsAgainst - gameState.opponentScore);
     }
 
-    const awayGoalie = updatedAwayTeam.roster.find(p => p.id === updatedAwayTeam.lineup.goalies.starter);
     if (awayGoalie) {
         if (gameState.opponentScore > gameState.userScore) awayGoalie.currentStats.wins += 1;
         else if (gameState.userScore > gameState.opponentScore) awayGoalie.currentStats.losses += 1;
         else awayGoalie.currentStats.draws += 1;
         awayGoalie.currentStats.goalsAgainst += gameState.userScore;
+        awayGoalie.currentStats.shotsAgainst += awayShotsAgainst;
+        awayGoalie.currentStats.saves += (awayShotsAgainst - gameState.userScore);
     }
 
     return { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam };
