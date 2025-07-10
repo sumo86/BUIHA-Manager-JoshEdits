@@ -56,7 +56,7 @@ const selectPlayerWeighted = (players: Player[], getWeight: (p: Player) => numbe
 };
 
 const generateGameEvent = (time: number, period: number, userTeam: Team, opponentTeam: Team): GameEvent | null => {
-    if (Math.random() > 0.04) return null;
+    if (Math.random() > 0.05) return null;
 
     const eventTime = formatTime(time);
     const attackingTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
@@ -83,24 +83,24 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     const defenseFactor = (avgDefendingDefense - 10) / 10;
     const goalieFactor = (defendingGoalieAbility - 10) / 10;
 
-    const baseProb = 0.05 * divisionGoalFactor;
-    let goalProbability = baseProb * (1 + offenseFactor - (defenseFactor * 0.5) - (goalieFactor * 0.5));
-    goalProbability = Math.max(0.01, Math.min(0.20, goalProbability));
+    const baseProb = 0.1 * divisionGoalFactor;
+    let goalProbability = baseProb * (1 + offenseFactor * 1.5 - (defenseFactor * 0.5) - (goalieFactor * 0.5));
+    goalProbability = Math.max(0.01, Math.min(0.25, goalProbability));
 
     if (eventType < goalProbability) {
-        const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p), 3));
+        const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p), 4));
         if (!attacker) return null;
 
         const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
         let assists: string[] = [];
         
         if (potentialAssisters.length > 0 && Math.random() > 0.2) { 
-            const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead, 3));
+            const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead, 4));
             if (assist1) {
                 assists.push(assist1.name);
                 const remainingAssisters = potentialAssisters.filter(p => p.id !== assist1.id);
                 if (remainingAssisters.length > 0 && Math.random() > 0.5) { 
-                    const assist2 = selectPlayerWeighted(remainingAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead, 3));
+                    const assist2 = selectPlayerWeighted(remainingAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead, 4));
                     if (assist2) {
                         assists.push(assist2.name);
                     }
