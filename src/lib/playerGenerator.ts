@@ -184,17 +184,23 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   if (isSkater) {
     if (Math.random() > 0.5) { 
       let secondaryPosition: Position; 
-      do { 
-        secondaryPosition = getRandomItem(skaterPositions) as Position; 
-      } while (positions.some(p => p === secondaryPosition));
-      positions.push(secondaryPosition as Position); // Explicit cast
+      while (true) { // Changed to while(true)
+        secondaryPosition = getRandomItem(skaterPositions); 
+        if (!positions.some(p => p === secondaryPosition)) {
+          break;
+        }
+      }
+      positions.push(secondaryPosition); // No 'as Position' needed here
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       let tertiaryPosition: Position; 
-      do { 
-        tertiaryPosition = getRandomItem(skaterPositions) as Position; 
-      } while (positions.some(p => p === tertiaryPosition));
-      positions.push(tertiaryPosition as Position); // Explicit cast
+      while (true) { // Changed to while(true)
+        tertiaryPosition = getRandomItem(skaterPositions); 
+        if (!positions.some(p => p === tertiaryPosition)) {
+          break;
+        }
+      }
+      positions.push(tertiaryPosition); // No 'as Position' needed here
     }
   }
 
