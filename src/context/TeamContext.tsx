@@ -3,8 +3,7 @@ import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, De
 import { teams as initialTeams, getTeamOrganizations } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
-import { calculateCurrentAbility } from '@/lib/playerGenerator'; // calculateCurrentAbility remains here
-import { calculateStarRating } from '@/lib/leagueUtils'; // calculateStarRating imported from leagueUtils
+import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
 import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
 import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
