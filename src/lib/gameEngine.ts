@@ -1,4 +1,4 @@
-import { Team, GameEvent, GameState } from '@/types';
+import { Team, GameEvent, GameState, SkaterAttributes, GoalieAttributes, Player } from '@/types';
 
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -17,6 +17,44 @@ const getGoalFactor = (leagueDivision: string): number => {
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
 
+// Helper to get a player's offensive rating
+const getSkaterOffensiveRating = (player: Player): number => {
+    if (player.positions.includes('G')) return 0;
+    const attrs = player.attributes as SkaterAttributes;
+    return (attrs.shootingAccuracy + attrs.shootingRange + attrs.offensiveRead + attrs.gettingOpen + attrs.passing + attrs.puckhandling) / 6;
+};
+
+// Helper to get a player's defensive rating
+const getSkaterDefensiveRating = (player: Player): number => {
+    if (player.positions.includes('G')) return 0;
+    const attrs = player.attributes as SkaterAttributes;
+    return (attrs.defensiveRead + attrs.positioning + attrs.stickchecking + attrs.checking + attrs.shotBlocking) / 5;
+};
+
+// Helper to get a goalie's rating
+const getGoalieRating = (player: Player): number => {
+    if (!player.positions.includes('G')) return 0;
+    const attrs = player.attributes as GoalieAttributes;
+    return (attrs.blocker + attrs.glove + attrs.lowShots + attrs.positioning + attrs.rebound + attrs.recovery + attrs.reflexes) / 7;
+};
+
+// Weighted random selection for players
+const selectPlayerWeighted = (players: Player[], getWeight: (p: Player) => number): Player | null => {
+    const weightedPlayers = players.map(p => ({ player: p, weight: getWeight(p) }));
+    const totalWeight = weightedPlayers.reduce((sum, wp) => sum + wp.weight, 0);
+
+    if (totalWeight === 0) return null;
+
+    let random = Math.random() * totalWeight;
+    for (const wp of weightedPlayers) {
+        if (random < wp.weight) {
+            return wp.player;
+        }
+        random -= wp.weight;
+    }
+    return null; // Should not happen if totalWeight > 0
+};
+
 const generateGameEvent = (time: number, period: number, userTeam: Team, opponentTeam: Team): GameEvent | null => {
     // Increased event probability from 0.025 to 0.03 for more events per game.
     if (Math.random() > 0.03) return null;
@@ -26,21 +64,59 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     const defendingTeam = attackingTeam.name === userTeam.name ? opponentTeam : userTeam;
 
     const eventType = Math.random();
-    const goalFactor = getGoalFactor(attackingTeam.leagueDivision);
-    const goalThreshold = 1.0 - (0.05 * goalFactor); // Base 5% chance, modified by division
+    const divisionGoalFactor = getGoalFactor(attackingTeam.leagueDivision);
 
-    // Goal (5% * goalFactor of events)
-    if (eventType > goalThreshold) {
-        const attacker = attackingTeam.roster[Math.floor(Math.random() * attackingTeam.roster.length)];
-        
-        const potentialAssisters = attackingTeam.roster.filter(p => p.id !== attacker.id && !p.positions.includes('G'));
+    // Calculate team offensive/defensive strengths
+    const attackingSkaters = attackingTeam.roster.filter(p => !p.positions.includes('G'));
+    const defendingSkaters = defendingTeam.roster.filter(p => !p.positions.includes('G'));
+    const defendingGoalie = defendingTeam.roster.find(p => p.positions.includes('G'));
+
+    const avgAttackingOffense = attackingSkaters.length > 0 
+        ? attackingSkaters.reduce((sum, p) => sum + getSkaterOffensiveRating(p), 0) / attackingSkaters.length
+        : 10; // Default average
+    
+    const avgDefendingDefense = defendingSkaters.length > 0
+        ? defendingSkaters.reduce((sum, p) => sum + getSkaterDefensiveRating(p), 0) / defendingSkaters.length
+        : 10; // Default average
+    
+    const defendingGoalieAbility = defendingGoalie ? getGoalieRating(defendingGoalie) : 10; // Default average
+
+    // Adjust goal probability based on team strengths
+    // Higher attacking offense increases goal chance, higher defending defense/goalie decreases it.
+    // Normalize ratings to a 0-20 scale, then map to a factor.
+    const offenseFactor = (avgAttackingOffense - 10) / 10; // -1 to 1
+    const defenseFactor = (avgDefendingDefense - 10) / 10; // -1 to 1
+    const goalieFactor = (defendingGoalieAbility - 10) / 10; // -1 to 1
+
+    // Base goal chance (e.g., 5%) adjusted by division and team strengths
+    let goalProbability = 0.05 * divisionGoalFactor;
+    goalProbability += goalProbability * (offenseFactor * 0.5); // Offensive players contribute more to goals
+    goalProbability -= goalProbability * (defenseFactor * 0.3 + goalieFactor * 0.2); // Defensive players and goalie reduce goals
+
+    // Clamp probability to reasonable bounds
+    goalProbability = Math.max(0.01, Math.min(0.15, goalProbability)); // Min 1%, Max 15% chance per event
+
+    // Goal
+    if (eventType < goalProbability) {
+        const attacker = selectPlayerWeighted(attackingSkaters, getSkaterOffensiveRating);
+        if (!attacker) return null; // No suitable attacker found
+
+        const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
         let assists: string[] = [];
-        if (potentialAssisters.length > 0 && Math.random() > 0.2) { // 80% chance of at least one assist
-            const assist1 = potentialAssisters.splice(Math.floor(Math.random() * potentialAssisters.length), 1)[0];
-            assists.push(assist1.name);
-            if (potentialAssisters.length > 0 && Math.random() > 0.5) { // 50% chance of a second assist
-                const assist2 = potentialAssisters.splice(Math.floor(Math.random() * potentialAssisters.length), 1)[0];
-                assists.push(assist2.name);
+        
+        // 80% chance of at least one assist, weighted by passing/offensive read
+        if (potentialAssisters.length > 0 && Math.random() > 0.2) { 
+            const assist1 = selectPlayerWeighted(potentialAssisters, p => (p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead);
+            if (assist1) {
+                assists.push(assist1.name);
+                const remainingAssisters = potentialAssisters.filter(p => p.id !== assist1.id);
+                // 50% chance of a second assist
+                if (remainingAssisters.length > 0 && Math.random() > 0.5) { 
+                    const assist2 = selectPlayerWeighted(remainingAssisters, p => (p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead);
+                    if (assist2) {
+                        assists.push(assist2.name);
+                    }
+                }
             }
         }
 
@@ -67,7 +143,8 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     }
     // Shot (remaining percentage is split between shots and checks)
     else if (eventType > 0.35) {
-        const attacker = attackingTeam.roster[Math.floor(Math.random() * attackingTeam.roster.length)];
+        const attacker = selectPlayerWeighted(attackingSkaters, getSkaterOffensiveRating);
+        if (!attacker) return null;
         const goalie = defendingTeam.roster.find(p => p.positions.includes('G'));
         return {
             time: eventTime,
@@ -78,8 +155,9 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     } 
     // Check
     else {
-        const attacker = attackingTeam.roster[Math.floor(Math.random() * attackingTeam.roster.length)];
-        const defender = defendingTeam.roster[Math.floor(Math.random() * defendingTeam.roster.length)];
+        const attacker = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).hitting + (p.attributes as SkaterAttributes).strength);
+        const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
+        if (!attacker || !defender) return null;
         return {
             time: eventTime,
             period,
