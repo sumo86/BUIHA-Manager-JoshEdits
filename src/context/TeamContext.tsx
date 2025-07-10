@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory } from '@/types';
 import { teams as initialTeams, getTeamOrganizations } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
@@ -39,7 +39,6 @@ interface TeamContextType {
     processGameResults: (userTeam: Team, opponentTeam: Team, gameState: GameState) => void;
     movePlayer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
     requestPlayerTransfer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
-    // New properties for organization management
     managedOrganization: string | null;
     managedTeams: Team[];
     selectOrganization: (orgName: string | null) => void;
@@ -48,7 +47,7 @@ interface TeamContextType {
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
-export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element => {
+export const TeamProvider = ({ children }: { ReactNode }): JSX.Element => {
     const [teams, setTeams] = useState<Team[]>(initialTeams);
     const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
     const [managedOrganization, setManagedOrganization] = useState<string | null>(() => localStorage.getItem('managedOrganization') || null);
@@ -64,8 +63,51 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const userTeam = useMemo(() => {
         if (!activeTeamName) return null;
-        return teams.find(t => t.name === activeTeamName) || null;
-    }, [activeTeamName, teams]);
+        const baseTeam = teams.find(t => t.name === activeTeamName);
+        if (!baseTeam) return null;
+
+        if (managedOrganization && managedTeams.length > 0) {
+            const orgFinancials = {
+                totalBudget: managedTeams.reduce((sum, t) => sum + t.financials.totalBudget, 0),
+                budgetAllocations: managedTeams.reduce((acc, t) => {
+                    (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
+                        acc[key] = (acc[key] || 0) + t.financials.budgetAllocations[key];
+                    });
+                    return acc;
+                }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations),
+                iceTimeCostPerGame: managedTeams.reduce((sum, t) => sum + t.financials.iceTimeCostPerGame, 0),
+                equipmentCost: managedTeams.reduce((sum, t) => sum + t.financials.equipmentCost, 0),
+            };
+
+            const uniqueFacilities = managedTeams.reduce((acc, team) => {
+                team.facilities.forEach(project => {
+                    if (!acc.some(p => p.id === project.id)) {
+                        acc.push({ ...project });
+                    }
+                });
+                return acc;
+            }, [] as FacilityProject[]);
+
+            const consolidatedFacilities = uniqueFacilities.map(project => {
+                const allVersions = managedTeams.flatMap(t => t.facilities).filter(p => p.id === project.id);
+                const completed = allVersions.find(p => p.status === 'Completed');
+                const inProgress = allVersions.find(p => p.status === 'In Progress');
+                
+                const newStatus = (completed?.status || inProgress?.status || 'Not Started') as 'Not Started' | 'In Progress' | 'Completed';
+                return { ...project, status: newStatus }; // Create a new object with the correctly typed status
+            });
+
+            return {
+                ...baseTeam,
+                name: managedOrganization,
+                logo: managedTeams[0].logo,
+                financials: orgFinancials,
+                facilities: consolidatedFacilities,
+            };
+        }
+
+        return baseTeam;
+    }, [activeTeamName, teams, managedOrganization, managedTeams]);
 
     const selectTeam = (teamName: string | null) => {
         if (teamName) {
@@ -184,7 +226,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 player.jerseyNumber = newJerseyNumber;
             }
             
-            // Recalculate star rating for the new division
             const isSkater = player.positions[0] !== 'G';
             player.starRating = calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision);
 
@@ -203,14 +244,25 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const requestPlayerTransfer = (playerId: string, fromTeamName: string, toTeamName: string) => {
         const fromTeam = teams.find(t => t.name === fromTeamName);
+        const toTeam = teams.find(t => t.name === toTeamName);
         const player = fromTeam?.roster.find(p => p.id === playerId);
 
-        if (!fromTeam || !player) {
+        if (!fromTeam || !toTeam || !player) {
             toast.error("Could not request player. Team or player not found.");
             return;
         }
 
-        const successChance = 0.3; // 30% chance
+        const isInternalTransfer = managedOrganization &&
+            managedTeams.some(t => t.name === fromTeamName) &&
+            managedTeams.some(t => t.name === toTeamName);
+
+        if (isInternalTransfer) {
+            movePlayer(playerId, fromTeamName, toTeamName);
+            toast.success(`${player.name} moved to ${toTeamName}.`);
+            return;
+        }
+
+        const successChance = 0.3;
         if (Math.random() < successChance) {
             toast.success("Transfer Approved!", {
                 description: `${player.name} has agreed to the move and their coach has approved the transfer.`
@@ -228,7 +280,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const handlePlayerDevelopment = () => {
         if (!userTeam) return;
-        // ... (rest of the function is the same, just guarded)
     };
 
     useEffect(() => {
@@ -237,7 +288,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         } else {
             handlePlayerDevelopment();
         }
-    }, [currentDate, userTeam]); // Add userTeam dependency
+    }, [currentDate, userTeam]);
 
     const advanceWeek = () => {
         setCurrentDate(prevDate => {
@@ -362,18 +413,117 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {
         if (!userTeam) return;
-        const updatedTeam = { ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations } };
-        updateTeam(updatedTeam);
+
+        if (managedOrganization && managedTeams.length > 0) {
+            const oldOrgAllocations = managedTeams.reduce((acc, t) => {
+                (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
+                    acc[key] = (acc[key] || 0) + t.financials.budgetAllocations[key];
+                });
+                return acc;
+            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations);
+
+            const allocationChanges: Partial<BudgetAllocations> = {};
+            (Object.keys(newAllocations) as (keyof BudgetAllocations)[]).forEach(key => {
+                allocationChanges[key] = newAllocations[key] - oldOrgAllocations[key];
+            });
+
+            setTeams(currentTeams => {
+                const primaryTeam = managedTeams[0];
+                const teamIndex = currentTeams.findIndex(t => t.name === primaryTeam.name);
+                if (teamIndex === -1) return currentTeams;
+
+                const newTeams = [...currentTeams];
+                const teamToUpdate = { ...newTeams[teamIndex] };
+                const updatedAllocations = { ...teamToUpdate.financials.budgetAllocations };
+
+                (Object.keys(allocationChanges) as (keyof BudgetAllocations)[]).forEach(key => {
+                    updatedAllocations[key] += allocationChanges[key]!;
+                });
+
+                teamToUpdate.financials = { ...teamToUpdate.financials, budgetAllocations: updatedAllocations };
+                newTeams[teamIndex] = teamToUpdate;
+                return newTeams;
+            });
+        } else {
+            const updatedTeam = { ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations } };
+            updateTeam(updatedTeam);
+        }
     };
 
     const runStudentLifeInitiative = () => {
         if (!userTeam) return;
-        // ... (rest of the function is the same, just guarded)
     };
 
     const startFacilityProject = (projectId: string) => {
         if (!userTeam) return;
-        // ... (rest of the function is the same, just guarded)
+
+        if (managedOrganization) {
+            const project = userTeam.facilities.find(p => p.id === projectId);
+            if (!project) return;
+
+            const cost = project.cost;
+            const currentBudget = userTeam.financials.budgetAllocations.Facilities;
+
+            if (currentBudget < cost) {
+                toast.error("Insufficient Facilities Budget", {
+                    description: `You need £${cost.toLocaleString()} but only have £${(currentBudget).toLocaleString()} available in the organization's budget.`,
+                });
+                return;
+            }
+
+            const newBudgetAllocations = {
+                ...userTeam.financials.budgetAllocations,
+                Facilities: currentBudget - cost,
+            };
+            updateBudgetAllocations(newBudgetAllocations);
+
+            setTeams(currentTeams => {
+                return currentTeams.map(team => {
+                    if (managedTeams.some(mt => mt.name === team.name)) {
+                        const newFacilities = team.facilities.map(p => 
+                            p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress' } : p
+                        );
+                        return { ...team, facilities: newFacilities };
+                    }
+                    return team;
+                });
+            });
+
+            toast.success(`${project.name} project has started!`, {
+                description: `Cost: £${cost.toLocaleString()}.`,
+            });
+
+        } else {
+            const project = userTeam.facilities.find(p => p.id === projectId);
+            if (!project) return;
+
+            const cost = project.cost;
+            const currentBudget = userTeam.financials.budgetAllocations.Facilities;
+
+            if (currentBudget < cost) {
+                toast.error("Insufficient Facilities Budget", {
+                    description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+                });
+                return;
+            }
+
+            const newBudgetAllocations = {
+                ...userTeam.financials.budgetAllocations,
+                Facilities: currentBudget - cost,
+            };
+            const newFacilities = userTeam.facilities.map(p =>
+                p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress' } : p
+            );
+            const updatedTeam = {
+                ...userTeam,
+                financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations },
+                facilities: newFacilities,
+            };
+            updateTeam(updatedTeam);
+            toast.success(`${project.name} project has started!`, {
+                description: `Cost: £${cost.toLocaleString()}.`,
+            });
+        }
     };
 
     const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState) => {

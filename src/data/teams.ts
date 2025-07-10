@@ -138,26 +138,41 @@ export const getOrganizationName = (teamName: string): string => {
     return teamName.replace(/ (B|C|D|E)$/, '').trim();
 };
 
-export const teams: Team[] = teamData.map(team => {
-    const roster = generateRoster(team.leagueDivision, team.name);
-    const lineup = populateLineup(roster);
+const organizations: { [key: string]: { name: string, teamsData: any[] } } = {};
+teamData.forEach(team => {
     const orgName = getOrganizationName(team.name);
-    return {
-        ...team,
-        nationalsDivision: getNationalsDivision(team.leagueDivision),
-        roster: roster,
-        lineup: lineup,
-        tactics: defaultTactics,
-        wins: 0, losses: 0, otLosses: 0, goalsFor: 0, goalsAgainst: 0,
-        logo: teamLogos[orgName],
-        financials: {
-            totalBudget: 15000,
-            iceTimeCostPerGame: 350,
-            equipmentCost: Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500,
-            budgetAllocations: { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 },
-        },
-        facilities: initialFacilityProjects.map(p => ({ ...p })),
-    };
+    if (!organizations[orgName]) {
+        organizations[orgName] = { name: orgName, teamsData: [] };
+    }
+    organizations[orgName].teamsData.push(team);
+});
+
+export const teams: Team[] = Object.values(organizations).flatMap(org => {
+    const isMultiTeamOrg = org.teamsData.length > 1;
+    const orgTotalBudget = 10000 + (org.teamsData.length * 7500);
+
+    return org.teamsData.map(teamInfo => {
+        const roster = generateRoster(teamInfo.leagueDivision, teamInfo.name);
+        const lineup = populateLineup(roster);
+        const teamBudget = isMultiTeamOrg ? orgTotalBudget / org.teamsData.length : 15000;
+
+        return {
+            ...teamInfo,
+            nationalsDivision: getNationalsDivision(teamInfo.leagueDivision),
+            roster: roster,
+            lineup: lineup,
+            tactics: defaultTactics,
+            wins: 0, losses: 0, otLosses: 0, goalsFor: 0, goalsAgainst: 0,
+            logo: teamLogos[org.name],
+            financials: {
+                totalBudget: teamBudget,
+                iceTimeCostPerGame: 350,
+                equipmentCost: Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500,
+                budgetAllocations: { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 },
+            },
+            facilities: initialFacilityProjects.map(p => ({ ...p })),
+        };
+    });
 });
 
 export const getTeamOrganizations = () => {
