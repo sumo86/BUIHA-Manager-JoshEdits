@@ -172,13 +172,23 @@ const eligibilityAgeRanges: Record<Player['eligibility'], { min: number, max: nu
     "Staff": { min: 25, max: 40 },
 };
 
+const getGamesPlayedForDivision = (leagueDivision: string): number => {
+    if (leagueDivision.includes('Checking 1')) return 10;
+    if (leagueDivision.includes('Checking 2')) return 6;
+    if (leagueDivision.includes('Non Checking 1')) return 10;
+    if (leagueDivision.includes('Non Checking 2 - North')) return 6;
+    if (leagueDivision.includes('Non Checking 2 - South')) return 12;
+    if (leagueDivision.includes('Non Checking 3')) return 6;
+    return 10; // Default for any other case
+};
+
 const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDivision: string, seasonYear: number, previousCaptaincy: 'C' | 'A' | null = null): PlayerSeasonStats => {
-    const gamesPlayed = Math.floor(Math.random() * 11) + 15; // 15-25 games
+    const gamesPlayed = getGamesPlayedForDivision(leagueDivision);
     
     if (isSkater) {
-        const goals = Math.floor(Math.random() * 10) + 1;
-        const assists = Math.floor(Math.random() * 15) + 1;
-        const penaltyMinutes = Math.floor(Math.random() * 30) + 5;
+        const goals = Math.floor(Math.random() * (gamesPlayed * 0.8));
+        const assists = Math.floor(Math.random() * (gamesPlayed * 1.2));
+        const penaltyMinutes = Math.floor(Math.random() * gamesPlayed * 2);
         let captaincy: 'C' | 'A' | null = null;
         
         if (previousCaptaincy === 'A') {

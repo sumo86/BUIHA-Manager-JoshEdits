@@ -6,20 +6,31 @@ const formatTime = (seconds: number): string => {
     return `${String(19 - mins).padStart(2, '0')}:${String(59 - secs).padStart(2, '0')}`;
 };
 
+const getGoalFactor = (leagueDivision: string): number => {
+    if (leagueDivision.includes('Non Checking 3')) return 1.8;
+    if (leagueDivision.includes('Non Checking 2')) return 1.5;
+    if (leagueDivision.includes('Non Checking 1')) return 1.2;
+    if (leagueDivision.includes('Checking 2')) return 1.1;
+    if (leagueDivision.includes('Checking 1')) return 1.0;
+    return 1.0; // Default
+};
+
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
 
 const generateGameEvent = (time: number, period: number, userTeam: Team, opponentTeam: Team): GameEvent | null => {
-    // Reduced event probability from 0.06 to 0.025 for a more realistic number of events per game.
-    if (Math.random() > 0.025) return null;
+    // Increased event probability from 0.025 to 0.03 for more events per game.
+    if (Math.random() > 0.03) return null;
 
     const eventTime = formatTime(time);
     const attackingTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
     const defendingTeam = attackingTeam.name === userTeam.name ? opponentTeam : userTeam;
 
     const eventType = Math.random();
+    const goalFactor = getGoalFactor(attackingTeam.leagueDivision);
+    const goalThreshold = 1.0 - (0.05 * goalFactor); // Base 5% chance, modified by division
 
-    // Goal (5% of events)
-    if (eventType > 0.95) {
+    // Goal (5% * goalFactor of events)
+    if (eventType > goalThreshold) {
         const attacker = attackingTeam.roster[Math.floor(Math.random() * attackingTeam.roster.length)];
         
         const potentialAssisters = attackingTeam.roster.filter(p => p.id !== attacker.id && !p.positions.includes('G'));
@@ -42,7 +53,7 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
             description: `GOAL! ${attacker.name} scores. ${assistText}`
         };
     } 
-    // Penalty (10% of events) - Reduced from 20%
+    // Penalty (10% of events)
     else if (eventType > 0.85) {
         const penaltyTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
         const player = penaltyTeam.roster[Math.floor(Math.random() * penaltyTeam.roster.length)];
@@ -54,7 +65,7 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
             description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.`
         };
     }
-    // Shot (50% of events)
+    // Shot (remaining percentage is split between shots and checks)
     else if (eventType > 0.35) {
         const attacker = attackingTeam.roster[Math.floor(Math.random() * attackingTeam.roster.length)];
         const goalie = defendingTeam.roster.find(p => p.positions.includes('G'));
@@ -65,7 +76,7 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
             description: `${attacker.name} takes a shot, saved by ${goalie?.name || 'the goalie'}.`
         };
     } 
-    // Check (35% of events)
+    // Check
     else {
         const attacker = attackingTeam.roster[Math.floor(Math.random() * attackingTeam.roster.length)];
         const defender = defendingTeam.roster[Math.floor(Math.random() * defendingTeam.roster.length)];
