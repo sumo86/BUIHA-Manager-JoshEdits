@@ -16,14 +16,14 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
     const gameWeeks: GameDate[] = [];
     
     // Create an ordered list of all available weeks in the season
+    // Use a single year for the entire season to simplify logic, as suggested.
+    const seasonYear = startDate.year;
     seasonMonths.forEach(month => {
-        let currentYear = startDate.year;
-        // Handle year rollover for the second half of the season
-        if (["January", "February", "March", "April"].includes(month)) {
-            currentYear = startDate.year + 1;
-        }
         for (let week = 1; week <= 4; week++) {
-            gameWeeks.push({ month, week, year: currentYear });
+            // The year for the game date will be the year the season started.
+            // The UI and date advancement logic will still correctly show the calendar year change.
+            const displayYear = (["January", "February", "March", "April"].includes(month)) ? seasonYear + 1 : seasonYear;
+            gameWeeks.push({ month, week, year: displayYear });
         }
     });
 
@@ -53,56 +53,44 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
 
     const remainingMatchups = shuffleArray(allMatchups);
     const schedule: ScheduleEntry[] = [];
-    const teamLastPlayedWeek: { [teamName: string]: number } = {}; // Stores the index of the last week a team played
+    let teamsThatPlayedLastWeek = new Set<string>();
 
-    gameWeeks.forEach((date, weekIndex) => {
+    gameWeeks.forEach(date => {
         const teamsPlayingThisWeek = new Set<string>();
-        const matchupsScheduledInThisIteration: { homeTeam: string, awayTeam: string }[] = [];
-
+        const matchupsThisWeek = [];
+        
         // Pass 1: Prioritize scheduling teams that had a break last week
-        // Iterate backwards to safely remove elements
         for (let i = remainingMatchups.length - 1; i >= 0; i--) {
             const matchup = remainingMatchups[i];
-            const homeTeam = matchup.homeTeam;
-            const awayTeam = matchup.awayTeam;
-
-            const homeLastPlayed = teamLastPlayedWeek[homeTeam] || -2; // -2 ensures they can play in week 0
-            const awayLastPlayed = teamLastPlayedWeek[awayTeam] || -2;
-
-            // Check if both teams are available this week AND had a break last week
             if (
-                !teamsPlayingThisWeek.has(homeTeam) &&
-                !teamsPlayingThisWeek.has(awayTeam) &&
-                homeLastPlayed < weekIndex - 1 && // Played before last week (i.e., at least one week ago)
-                awayLastPlayed < weekIndex - 1
+                !teamsPlayingThisWeek.has(matchup.homeTeam) &&
+                !teamsPlayingThisWeek.has(matchup.awayTeam) &&
+                !teamsThatPlayedLastWeek.has(matchup.homeTeam) &&
+                !teamsThatPlayedLastWeek.has(matchup.awayTeam)
             ) {
-                matchupsScheduledInThisIteration.push(matchup);
-                teamsPlayingThisWeek.add(homeTeam);
-                teamsPlayingThisWeek.add(awayTeam);
-                remainingMatchups.splice(i, 1); // Remove from the pool of remaining matchups
+                matchupsThisWeek.push(matchup);
+                teamsPlayingThisWeek.add(matchup.homeTeam);
+                teamsPlayingThisWeek.add(matchup.awayTeam);
+                remainingMatchups.splice(i, 1);
             }
         }
 
-        // Pass 2: Fill remaining slots with any available team, even if they played last week
-        // Iterate backwards again over the *new* remainingMatchups (after Pass 1 removals)
+        // Pass 2: Fill remaining slots with any available team
         for (let i = remainingMatchups.length - 1; i >= 0; i--) {
             const matchup = remainingMatchups[i];
-            const homeTeam = matchup.homeTeam;
-            const awayTeam = matchup.awayTeam;
-
             if (
-                !teamsPlayingThisWeek.has(homeTeam) &&
-                !teamsPlayingThisWeek.has(awayTeam)
+                !teamsPlayingThisWeek.has(matchup.homeTeam) &&
+                !teamsPlayingThisWeek.has(matchup.awayTeam)
             ) {
-                matchupsScheduledInThisIteration.push(matchup);
-                teamsPlayingThisWeek.add(homeTeam);
-                teamsPlayingThisWeek.add(awayTeam);
-                remainingMatchups.splice(i, 1); // Remove from the pool of remaining matchups
+                matchupsThisWeek.push(matchup);
+                teamsPlayingThisWeek.add(matchup.homeTeam);
+                teamsPlayingThisWeek.add(matchup.awayTeam);
+                remainingMatchups.splice(i, 1);
             }
         }
 
-        // Add the scheduled games for this week to the main schedule and update last played week
-        matchupsScheduledInThisIteration.forEach(matchup => {
+        // Add the scheduled games for this week to the main schedule
+        matchupsThisWeek.forEach(matchup => {
             schedule.push({
                 id: uuidv4(),
                 homeTeam: matchup.homeTeam,
@@ -110,9 +98,10 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
                 date: date,
                 status: 'scheduled',
             });
-            teamLastPlayedWeek[matchup.homeTeam] = weekIndex;
-            teamLastPlayedWeek[matchup.awayTeam] = weekIndex;
         });
+
+        // Update the set for the next week's iteration
+        teamsThatPlayedLastWeek = teamsPlayingThisWeek;
     });
 
 
@@ -122,9 +111,9 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
 
     // Sort the final schedule by date to ensure it's chronological
     schedule.sort((a, b) => {
+        if (a.date.year !== b.date.year) return a.date.year - b.date.year;
         const aMonthIndex = seasonMonths.indexOf(a.date.month);
         const bMonthIndex = seasonMonths.indexOf(b.date.month);
-        if (a.date.year !== b.date.year) return a.date.year - b.date.year;
         if (aMonthIndex !== bMonthIndex) return aMonthIndex - bMonthIndex;
         return a.date.week - b.date.week;
     });
