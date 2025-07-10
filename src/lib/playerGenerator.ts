@@ -6,6 +6,7 @@ import { getRandomNationality } from "@/data/nationalityDistributions";
 import { getRandomNameForNationality } from "@/data/names";
 import { getTierStats, divisionTierStats } from "./leagueUtils";
 import { starRatingDistribution } from "@/data/starRatingDistribution";
+import { skaterAbilityRanges, goalieAbilityRanges } from "@/data/abilityRanges";
 
 const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
 const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
@@ -89,65 +90,6 @@ const generateAttributesForAbility = (archetype: PlayerArchetype, targetAbility:
     return attributes as SkaterAttributes | GoalieAttributes;
 };
 
-const generateAttributes = (archetype: PlayerArchetype, leagueDivision: string, options?: { targetAbility?: number }): SkaterAttributes | GoalieAttributes => {
-    const isSkater = archetype.position !== 'Goaltender';
-    if (options?.targetAbility) {
-        return generateAttributesForAbility(archetype, options.targetAbility, isSkater);
-    }
-
-    const clamp = (value: number) => Math.max(1, Math.min(20, Math.round(value)));
-    const tier = getTierStats(leagueDivision);
-    const avgAbilityForDivision = isSkater ? tier.skater : tier.goalie;
-    const numVisibleAttrs = isSkater ? visibleSkaterKeys.length : visibleGoalieKeys.length;
-    const targetAvgPerAttr = avgAbilityForDivision / numVisibleAttrs;
-    const generateVisibleAttribute = () => targetAvgPerAttr + (Math.random() * 12 - 6);
-    const generateHiddenAttribute = () => Math.floor(Math.random() * 20) + 1;
-
-    if (!isSkater) {
-        const attrs: GoalieAttributes = {
-            blocker: generateVisibleAttribute(), glove: generateVisibleAttribute(), lowShots: generateVisibleAttribute(), positioning: generateVisibleAttribute() + 5,
-            rebound: generateVisibleAttribute(), recovery: generateVisibleAttribute(), reflexes: generateVisibleAttribute() + 3, passing: generateVisibleAttribute(),
-            pokeCheck: generateVisibleAttribute(), puckhandling: generateVisibleAttribute(), skating: generateVisibleAttribute(), mentalToughness: generateVisibleAttribute(),
-            goaltenderStamina: generateVisibleAttribute(),
-            aging: generateHiddenAttribute(), ambition: generateHiddenAttribute(), bigGames: generateHiddenAttribute(), coachability: generateHiddenAttribute(),
-            controversy: generateHiddenAttribute(), developmentRate: generateHiddenAttribute(), greed: generateHiddenAttribute(), handleFailure: generateHiddenAttribute(),
-            handleSuccess: generateHiddenAttribute(), handleCritics: generateHiddenAttribute(), injuryProneness: generateHiddenAttribute(), intelligence: generateHiddenAttribute(),
-            loyalty: generateHiddenAttribute(), mood: generateHiddenAttribute(), sportsmanship: generateHiddenAttribute(),
-            professionalism: generateHiddenAttribute(), determination: generateHiddenAttribute(), leadership: generateHiddenAttribute(),
-        };
-        if (archetype.type === 'Standup') { attrs.positioning += 3; attrs.recovery -= 2; } 
-        else if (archetype.type === 'Butterfly') { attrs.lowShots += 4; attrs.recovery += 2; attrs.positioning -= 2; }
-        if (archetype.physicality === 'Puckhandler') { attrs.puckhandling += 8; attrs.passing += 6; }
-        Object.keys(attrs).forEach(key => { attrs[key as keyof GoalieAttributes] = clamp(attrs[key as keyof GoalieAttributes]); });
-        return attrs;
-    }
-    
-    const attrs: SkaterAttributes = {
-        acceleration: generateVisibleAttribute(), agility: generateVisibleAttribute(), balance: generateVisibleAttribute(), fighting: generateVisibleAttribute(), speed: generateVisibleAttribute(),
-        stamina: generateVisibleAttribute(), strength: generateVisibleAttribute(), hitting: generateVisibleAttribute(), aggression: generateVisibleAttribute(), bravery: generateVisibleAttribute(),
-        gettingOpen: generateVisibleAttribute(), offensiveRead: generateVisibleAttribute(), passing: generateVisibleAttribute(),
-        puckhandling: generateVisibleAttribute(), screening: generateVisibleAttribute(), shootingAccuracy: generateVisibleAttribute(), shootingRange: generateVisibleAttribute(),
-        checking: generateVisibleAttribute(), defensiveRead: generateVisibleAttribute(), faceoffs: generateVisibleAttribute(), positioning: generateVisibleAttribute(),
-        shotBlocking: generateVisibleAttribute(), stickchecking: generateVisibleAttribute(),
-        aging: generateHiddenAttribute(), ambition: generateHiddenAttribute(), bigGames: generateHiddenAttribute(), coachability: generateHiddenAttribute(),
-        controversy: generateHiddenAttribute(), developmentRate: generateHiddenAttribute(), greed: generateHiddenAttribute(), handleFailure: generateHiddenAttribute(),
-        handleSuccess: generateHiddenAttribute(), handleCritics: generateHiddenAttribute(), injuryProneness: generateHiddenAttribute(), intelligence: generateHiddenAttribute(),
-        loyalty: generateHiddenAttribute(), mood: generateHiddenAttribute(), sportsmanship: generateHiddenAttribute(),
-        determination: generateHiddenAttribute(), leadership: generateHiddenAttribute(), professionalism: generateHiddenAttribute(), teamPlayer: generateHiddenAttribute(),
-        temperament: generateHiddenAttribute(), passShootTendency: generateHiddenAttribute(),
-    };
-    if (archetype.type.includes('Offensive')) { attrs.offensiveRead += 5; attrs.puckhandling += 3; attrs.shootingAccuracy += 4; }
-    if (archetype.type.includes('Playmaker')) { attrs.passing += 6; attrs.offensiveRead += 4; }
-    if (archetype.type.includes('Goalscorer')) { attrs.shootingAccuracy += 6; attrs.shootingRange += 4; attrs.gettingOpen += 5; }
-    if (archetype.type.includes('Two-Way')) { attrs.defensiveRead += 4; attrs.positioning += 4; attrs.stickchecking += 3; attrs.offensiveRead += 2; }
-    if (archetype.type.includes('Defensive') || archetype.type.includes('Checking')) { attrs.defensiveRead += 6; attrs.positioning += 5; attrs.stickchecking += 5; attrs.checking += 4; attrs.shotBlocking += 4; attrs.hitting += 3; }
-    if (archetype.type === 'Enforcer') { attrs.fighting += 10; attrs.aggression += 8; attrs.bravery += 6; attrs.hitting += 8; attrs.strength += 5; attrs.passing -= 5; attrs.puckhandling -= 5; attrs.shootingAccuracy -= 5; attrs.offensiveRead -= 6; }
-    if (archetype.physicality === 'Physical') { attrs.strength += 5; attrs.hitting += 4; attrs.balance += 3; attrs.aggression += 3; } 
-    else if (archetype.physicality === 'Non-Physical') { attrs.strength -= 3; attrs.hitting -= 4; attrs.aggression -= 4; attrs.fighting -= 5; }
-    Object.keys(attrs).forEach(key => { attrs[key as keyof SkaterAttributes] = clamp(attrs[key as keyof SkaterAttributes]); });
-    return attrs;
-};
-
 export const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAttributes, isSkater: boolean): number => {
     const keys = isSkater ? visibleSkaterKeys : visibleGoalieKeys;
     return keys.reduce((sum, key) => sum + (attributes as any)[key], 0);
@@ -155,43 +97,35 @@ export const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAtt
 
 export const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDivision: string): number => {
     const tier = getTierStats(leagueDivision);
-    const avgAbility = isSkater ? tier.skater : tier.goalie;
-    const step = isSkater ? tier.step.skater : tier.step.goalie;
-    const diff = currentAbility - avgAbility;
+    const ranges = isSkater ? skaterAbilityRanges[tier.name] : goalieAbilityRanges[tier.name];
 
-    if (diff > step * 1.75) return 5;
-    if (diff > step * 1.25) return 4.5;
-    if (diff > step * 0.75) return 4;
-    if (diff > step * 0.25) return 3.5;
-    if (diff > -0.25 * step) return 3;
-    if (diff > -0.75 * step) return 2.5;
-    if (diff > -1.25 * step) return 2;
-    if (diff > -1.75 * step) return 1.5;
-    return 1;
+    if (!ranges) return 1; // Fallback
+
+    // Iterate from highest star to lowest
+    for (const star of Object.keys(ranges).sort((a, b) => parseFloat(b) - parseFloat(a))) {
+        const { min, max } = ranges[star];
+        if (currentAbility >= min && currentAbility <= max) {
+            return parseFloat(star);
+        }
+    }
+    return 1; // Default to 1 star if no range matches
 };
 
 const getTargetAbilityRange = (starRating: number, isSkater: boolean, leagueDivision: string): { min: number, max: number } => {
     const tier = getTierStats(leagueDivision);
-    const avgAbility = isSkater ? tier.skater : tier.goalie;
-    const step = isSkater ? tier.step.skater : tier.step.goalie;
-
-    const starBoundaries: { [key: number]: { min: number, max: number } } = {
-        5:    { min: step * 1.75, max: Infinity },
-        4.5:  { min: step * 1.25, max: step * 1.75 },
-        4:    { min: step * 0.75, max: step * 1.25 },
-        3.5:  { min: step * 0.25, max: step * 0.75 },
-        3:    { min: -0.25 * step, max: step * 0.25 },
-        2.5:  { min: -0.75 * step, max: -0.25 * step },
-        2:    { min: -1.25 * step, max: -0.75 * step },
-        1.5:  { min: -1.75 * step, max: -1.25 * step },
-        1:    { min: -Infinity,  max: -1.75 * step },
-    };
-
-    const boundary = starBoundaries[starRating];
-    const minAbility = Math.round(avgAbility + boundary.min);
-    const maxAbility = boundary.max === Infinity ? (isSkater ? 560 : 260) : Math.round(avgAbility + boundary.max);
+    const ranges = isSkater ? skaterAbilityRanges[tier.name] : goalieAbilityRanges[tier.name];
     
-    return { min: Math.max(isSkater ? visibleSkaterKeys.length : visibleGoalieKeys.length, minAbility), max: maxAbility };
+    const range = ranges[String(starRating)];
+    if (!range) { // Fallback for safety
+        return isSkater ? { min: 200, max: 220 } : { min: 80, max: 100 };
+    }
+
+    // Handle Infinity for max range
+    const maxAbility = range.max === Infinity 
+        ? range.min + (isSkater ? 40 : 20) // If max is infinity, create a reasonable upper bound for generation
+        : range.max;
+
+    return { min: range.min, max: maxAbility };
 };
 
 const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 'Forward' | 'Defenceman'): { suitabilities: { [key: string]: number }, bestRole: string, highestSuitability: number } => {
@@ -258,7 +192,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
       targetAbility = getRandomValueInRange(min, max);
   }
   
-  attributes = generateAttributes(archetype, leagueDivision, targetAbility ? { targetAbility } : undefined);
+  attributes = generateAttributesForAbility(archetype, targetAbility!, isSkater);
 
   const eligibilitiesToUse = allowedEligibilities || eligibilities;
   const eligibility = getRandomItem(eligibilitiesToUse);
