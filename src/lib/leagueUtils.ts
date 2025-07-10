@@ -62,10 +62,11 @@ const skaterAbilityThresholds: Record<string, Record<number, { min: number; max:
 const goalieAbilityThresholds: Record<string, Record<number, { min: number; max: number }>> = {};
 for (const division in skaterAbilityThresholds) {
     goalieAbilityThresholds[division] = {};
-    for (const star in skaterAbilityThresholds[division]) {
+    for (const starKey in skaterAbilityThresholds[division]) {
+        const star = parseFloat(starKey);
         goalieAbilityThresholds[division][star] = {
-            min: Math.round(skaterAbilityThresholds[division][star].min * 0.46),
-            max: Math.round(skaterAbilityThresholds[division][star].max * 0.46),
+            min: Math.round((skaterAbilityThresholds[division] as any)[starKey].min * 0.46),
+            max: Math.round((skaterAbilityThresholds[division] as any)[starKey].max * 0.46),
         };
     }
 }
