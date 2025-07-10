@@ -309,12 +309,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (week > 4) {
                 week = 1;
                 const monthIndex = months.indexOf(month);
-                if (monthIndex === 11) {
-                    month = months[0];
+                let nextMonthIndex = (monthIndex + 1) % months.length;
+                
+                // Check for year rollover (December to January)
+                if (month === "December" && months[nextMonthIndex] === "January") {
                     year += 1;
-                } else {
-                    month = months[monthIndex + 1];
                 }
+                
+                month = months[nextMonthIndex];
             }
             return { month, week, year };
         });
