@@ -11,15 +11,14 @@ const shuffleArray = <T>(array: T[]): T[] => {
 };
 
 export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): ScheduleEntry[] => {
-    const seasonMonths = ["September", "October", "November", "December", "January", "February", "March", "April"];
+    const seasonMonths = ["September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"]; // Extended season
     const gameWeeks: { month: string, week: number, year: number }[] = [];
     let currentYear = startDate.year;
 
     // Create a list of all available weeks in the season
     seasonMonths.forEach(month => {
-        // If the month is January-April and the season started in the previous calendar year (e.g., Sept 2025 -> Jan 2026)
-        // then increment the year. Otherwise, use the starting year.
-        if (["January", "February", "March", "April"].includes(month) && ["September", "October", "November", "December"].includes(seasonMonths[0])) {
+        // Adjust year for months in the next calendar year
+        if (["January", "February", "March", "April", "May", "June", "July"].includes(month) && ["September", "October", "November", "December"].includes(seasonMonths[0])) {
             currentYear = startDate.year + 1;
         } else {
             currentYear = startDate.year;
