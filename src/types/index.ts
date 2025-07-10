@@ -1,14 +1,13 @@
 export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
-export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
 
-export interface GameDate {
-    month: string;
-    week: number;
-    year: number;
-}
+export type PlayerArchetype = {
+  position: 'Defenceman' | 'Centre' | 'Winger' | 'Goaltender';
+  type: string;
+  physicality: string;
+  description: string;
+};
 
-export interface SkaterAttributes {
-  // Physical
+export type SkaterAttributes = {
   acceleration: number;
   agility: number;
   balance: number;
@@ -17,7 +16,6 @@ export interface SkaterAttributes {
   stamina: number;
   strength: number;
   hitting: number;
-  // Mental
   aggression: number;
   bravery: number;
   determination: number;
@@ -25,7 +23,6 @@ export interface SkaterAttributes {
   professionalism: number;
   teamPlayer: number;
   temperament: number;
-  // Offensive
   gettingOpen: number;
   offensiveRead: number;
   passing: number;
@@ -33,14 +30,12 @@ export interface SkaterAttributes {
   screening: number;
   shootingAccuracy: number;
   shootingRange: number;
-  // Defensive
   checking: number;
   defensiveRead: number;
   faceoffs: number;
   positioning: number;
   shotBlocking: number;
   stickchecking: number;
-  // Hidden
   aging: number;
   ambition: number;
   bigGames: number;
@@ -55,12 +50,11 @@ export interface SkaterAttributes {
   intelligence: number;
   loyalty: number;
   mood: number;
-  passShootTendency: number;
   sportsmanship: number;
-}
+  passShootTendency: number;
+};
 
-export interface GoalieAttributes {
-  // Goaltender
+export type GoalieAttributes = {
   blocker: number;
   glove: number;
   lowShots: number;
@@ -74,7 +68,6 @@ export interface GoalieAttributes {
   skating: number;
   mentalToughness: number;
   goaltenderStamina: number;
-  // Hidden
   aging: number;
   ambition: number;
   bigGames: number;
@@ -87,47 +80,35 @@ export interface GoalieAttributes {
   handleCritics: number;
   injuryProneness: number;
   intelligence: number;
-  leadership: number;
   loyalty: number;
   mood: number;
-  professionalism: number;
   sportsmanship: number;
+  professionalism: number;
   determination: number;
-}
+  leadership: number;
+};
 
-export interface PlayerArchetype {
-  position: 'Defenceman' | 'Centre' | 'Winger' | 'Goaltender';
-  type: string;
-  physicality?: 'Physical' | 'Non-Physical' | 'Puckhandler' | '';
-  description: string;
-}
-
-export interface PlayerSeasonStats {
+export type PlayerSeasonStats = {
   season: string;
   team: string;
   league: string;
   gamesPlayed: number;
-  // Skater stats
   goals?: number;
   assists?: number;
   points?: number;
   penaltyMinutes?: number;
-  // Goalie stats
+  captaincy?: 'C' | 'A' | null;
   goalsAgainstAverage?: number;
   savePercentage?: number;
   shutouts?: number;
-  // Common
-  captaincy?: 'C' | 'A' | null;
-}
+};
 
-export interface CurrentSeasonStats {
+export type CurrentSeasonStats = {
   gamesPlayed: number;
-  // Skater
   goals: number;
   assists: number;
   points: number;
   penaltyMinutes: number;
-  // Goalie
   wins: number;
   losses: number;
   draws: number;
@@ -137,9 +118,11 @@ export interface CurrentSeasonStats {
   savePercentage: number;
   goalsAgainstAverage: number;
   shutouts: number;
-}
+};
 
-export interface Player {
+export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
+
+export type Player = {
   id: string;
   jerseyNumber: number;
   name: string;
@@ -147,41 +130,26 @@ export interface Player {
   nationality: string;
   positions: Position[];
   starRating: number;
-  morale: "Ecstatic" | "Happy" | "Content" | "Unhappy" | "Angry";
-  healthStatus: "Healthy" | "Minor Injury" | "Major Injury";
+  morale: "Content" | "Happy" | "Unhappy" | "Angry";
+  healthStatus: "Healthy" | "Injured" | "Suspended";
   eligibility: "UG Year 1" | "UG Year 2" | "UG Year 3" | "UG Year 4" | "Masters" | "PhD" | "Staff";
   archetype: PlayerArchetype;
   attributes: SkaterAttributes | GoalieAttributes;
   currentAbility: number;
   potentialAbility: number;
-  role?: string;
+  role: string | undefined;
   roleSuitability: { [key: string]: number };
-  captaincy?: 'C' | 'A' | null;
+  captaincy: 'C' | 'A' | null;
   yearsLeftInProgram?: number;
-  history?: PlayerSeasonStats[];
-  source?: 'Local' | 'Transfer' | 'International';
+  history: PlayerSeasonStats[];
+  trainingFocus: TrainingFocus;
+  currentStats: CurrentSeasonStats;
+  source?: 'Local' | 'International' | 'Transfer';
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
   recruitmentCost?: number;
-  trainingFocus?: TrainingFocus;
-  currentStats: CurrentSeasonStats;
-}
+};
 
-export interface Tactic {
-  phase: string;
-  category: string;
-  tactic: string;
-  description: string;
-  bestUsedWith: string;
-  strongVs: string;
-  weakVs:string;
-}
-
-export interface TacticSuitability {
-    score: number; // 1-5
-    explanation: string;
-}
-
-export interface Lineup {
+export type Lineup = {
   forwards: {
     lw: (string | null)[];
     c: (string | null)[];
@@ -195,64 +163,60 @@ export interface Lineup {
     starter: string | null;
     backup: string | null;
   };
-}
+};
 
 export type TacticsSelection = {
-  [category: string]: string;
+  [key: string]: string;
 };
 
 export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities";
 
-export interface BudgetAllocations {
-  Travel: number;
-  Equipment: number;
-  "Ice Time": number;
-  Recruiting: number;
-  "Student Life": number;
-  Facilities: number;
-}
+export type BudgetAllocations = {
+  [key in BudgetCategory]: number;
+};
 
-export interface Financials {
+export type Financials = {
   totalBudget: number;
-  budgetAllocations: BudgetAllocations;
   iceTimeCostPerGame: number;
   equipmentCost: number;
-}
+  budgetAllocations: BudgetAllocations;
+};
 
-export interface FacilityProject {
+export type FacilityProject = {
   id: string;
   name: string;
   description: string;
   cost: number;
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
-}
+};
 
-export interface Team {
+export type Team = {
+  id: string;
   name: string;
+  logo: string;
   leagueDivision: string;
   nationalsDivision: string;
   roster: Player[];
-  lineup: Lineup;
-  tactics: TacticsSelection;
   wins: number;
   losses: number;
   draws: number;
   goalsFor: number;
   goalsAgainst: number;
+  lineup: Lineup;
+  tactics: TacticsSelection;
   financials: Financials;
   facilities: FacilityProject[];
-  logo?: string;
-}
+};
 
-export interface GameEvent {
+export type GameEvent = {
   time: string;
   period: number;
-  team?: string;
+  team: string;
   description: string;
-}
+};
 
-export interface GameState {
+export type GameState = {
   userScore: number;
   opponentScore: number;
   period: number;
@@ -260,35 +224,43 @@ export interface GameState {
   gameLog: GameEvent[];
   isGameOver: boolean;
   isPaused: boolean;
-}
+};
 
-export interface GameResult {
-    homeScore: number;
-    awayScore: number;
-}
+export type GameDate = {
+  year: number;
+  month: string;
+  week: number;
+};
 
-export interface ScheduleEntry {
+export type ScheduleEntry = {
   id: string;
   homeTeam: string;
   awayTeam: string;
-  date: {
-    month: string;
-    week: number;
-    year: number;
-  };
+  date: GameDate;
   status: 'scheduled' | 'completed';
-  result?: GameResult;
-}
+  result?: { homeScore: number; awayScore: number };
+};
 
-export interface DevelopmentLog {
+export type DevelopmentLog = {
   playerId: string;
   playerName: string;
   attribute: string;
   change: number;
   newRating: number;
-  date: {
-    month: string;
-    week: number;
-    year: number;
-  };
-}
+  date: GameDate;
+};
+
+export type Tactic = {
+  phase: string;
+  category: string;
+  tactic: string;
+  description: string;
+  bestUsedWith: string;
+  strongVs: string;
+  weakVs: string;
+};
+
+export type TacticSuitability = {
+  score: number;
+  explanation: string;
+};
