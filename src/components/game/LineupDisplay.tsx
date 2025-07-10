@@ -7,38 +7,16 @@ interface LineupDisplayProps {
   roster: Player[];
 }
 
-const PlayerCard = ({ playerId, roster, slotPosition }: { playerId: string | null, roster: Player[], slotPosition: Position }) => {
+const PlayerCard = ({ playerId, roster }: { playerId: string | null, roster: Player[] }) => {
   const player = playerId ? roster.find(p => p.id === playerId) : null;
   if (!player) {
     return <div className="border rounded-lg p-2 text-center bg-muted/50 h-[60px] flex items-center justify-center text-muted-foreground text-sm">Empty</div>;
   }
 
-  // Creates a stable "random" number based on a seed string (e.g., player ID).
-  // This ensures the penalty is the same every time for the same player in the same slot.
-  const getDeterministicRandom = (seed: string) => {
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-        const char = seed.charCodeAt(i);
-        hash = (hash << 5) - hash + char;
-        hash |= 0; // Convert to 32bit integer
-    }
-    const x = Math.sin(Math.abs(hash)) * 10000;
-    return x - Math.floor(x); // Return a value between 0 and 1
-  };
-
-  const isOutOfPrimaryPosition = player.positions[0] !== slotPosition;
-  let displayRating = player.starRating;
-
-  if (isOutOfPrimaryPosition) {
-    const deterministicRandom = getDeterministicRandom(player.id + slotPosition);
-    const penalty = 1.0 + deterministicRandom * 1.5; // Penalty between 1.0 and 2.5
-    displayRating = Math.max(0.5, player.starRating - penalty);
-  }
-
   return (
     <div className="border rounded-lg p-2 text-center bg-card">
       <div className="font-bold text-sm truncate">{player.name}</div>
-      <div className="text-xs text-muted-foreground">#{player.jerseyNumber} - {displayRating.toFixed(1)} ★</div>
+      <div className="text-xs text-muted-foreground">#{player.jerseyNumber} - {player.starRating.toFixed(1)} ★</div>
     </div>
   );
 };
@@ -59,9 +37,9 @@ export const LineupDisplay = ({ lineup, roster }: LineupDisplayProps) => {
           {[...Array(3)].map((_, i) => (
             <LineRow key={i} title={`Line ${i + 1}`}>
               <div className="grid grid-cols-3 gap-2">
-                <PlayerCard playerId={lineup.forwards.lw[i]} roster={roster} slotPosition="LW" />
-                <PlayerCard playerId={lineup.forwards.c[i]} roster={roster} slotPosition="C" />
-                <PlayerCard playerId={lineup.forwards.rw[i]} roster={roster} slotPosition="RW" />
+                <PlayerCard playerId={lineup.forwards.lw[i]} roster={roster} />
+                <PlayerCard playerId={lineup.forwards.c[i]} roster={roster} />
+                <PlayerCard playerId={lineup.forwards.rw[i]} roster={roster} />
               </div>
             </LineRow>
           ))}
@@ -71,16 +49,16 @@ export const LineupDisplay = ({ lineup, roster }: LineupDisplayProps) => {
           {[...Array(3)].map((_, i) => (
             <LineRow key={i} title={`Pairing ${i + 1}`}>
               <div className="grid grid-cols-2 gap-2">
-                <PlayerCard playerId={lineup.defence.ld[i]} roster={roster} slotPosition="LD" />
-                <PlayerCard playerId={lineup.defence.rd[i]} roster={roster} slotPosition="RD" />
+                <PlayerCard playerId={lineup.defence.ld[i]} roster={roster} />
+                <PlayerCard playerId={lineup.defence.rd[i]} roster={roster} />
               </div>
             </LineRow>
           ))}
         </div>
         <div>
           <h3 className="text-lg font-semibold mb-2">Goalies</h3>
-          <LineRow title="Starter"><PlayerCard playerId={lineup.goalies.starter} roster={roster} slotPosition="G" /></LineRow>
-          <LineRow title="Backup"><PlayerCard playerId={lineup.goalies.backup} roster={roster} slotPosition="G" /></LineRow>
+          <LineRow title="Starter"><PlayerCard playerId={lineup.goalies.starter} roster={roster} /></LineRow>
+          <LineRow title="Backup"><PlayerCard playerId={lineup.goalies.backup} roster={roster} /></LineRow>
         </div>
       </div>
     </ScrollArea>

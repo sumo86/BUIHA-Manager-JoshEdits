@@ -15,12 +15,11 @@ import {
 import { PlayerEditForm } from "@/components/player/PlayerEditForm";
 import { PlayerScoutingReport } from "@/components/player/PlayerScoutingReport";
 import { useState, useMemo } from "react";
-import { PlayerCurrentStatsTable } from "@/components/player/PlayerCurrentStatsTable";
 
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
-  const { teams, userTeam, updateTeam } = useTeam();
+  const { teams, userTeam, updateTeam, currentDate } = useTeam();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const { player, team } = useMemo(() => {
@@ -88,6 +87,7 @@ const PlayerProfile = () => {
   const goalieAttrs: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
   const allUsedJerseyNumbers = userTeam.roster.map(p => p.jerseyNumber);
   const sortedRoles = isSkater ? Object.entries(player.roleSuitability).sort(([, a]: [string, number], [, b]: [string, number]) => b - a).slice(0, 5) : [];
+  const currentSeasonLabel = `${currentDate.year}-${currentDate.year + 1}`;
 
   return (
     <div className="space-y-6">
@@ -122,7 +122,20 @@ const PlayerProfile = () => {
 
       {isUserPlayer && <PlayerScoutingReport player={player} team={team} />}
 
-      <PlayerCurrentStatsTable stats={player.currentStats} isSkater={isSkater} />
+      <Card>
+        <CardHeader><CardTitle>Career Statistics</CardTitle></CardHeader>
+        <CardContent>
+            <PlayerHistoryTable 
+                history={player.history || []} 
+                isSkater={isSkater} 
+                teams={teams}
+                currentStats={player.currentStats}
+                currentSeason={currentSeasonLabel}
+                currentTeamName={team.name}
+                currentLeagueName={team.leagueDivision}
+            />
+        </CardContent>
+      </Card>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {isSkater ? (
@@ -149,10 +162,6 @@ const PlayerProfile = () => {
             ))}
           </CardContent>
         </Card>
-      )}
-
-      {player.history && player.history.length > 0 && (
-        <PlayerHistoryTable history={player.history} isSkater={isSkater} teams={teams} />
       )}
     </div>
   );

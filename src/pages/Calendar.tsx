@@ -34,7 +34,7 @@ const Calendar = () => {
           <CardTitle>{currentDate.year} - {currentDate.year + 1} Season</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {months.map(month => (
               <div key={month} className={cn(
                 "border rounded-lg p-4",
