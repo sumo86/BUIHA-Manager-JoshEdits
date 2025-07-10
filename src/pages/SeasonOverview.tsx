@@ -83,7 +83,7 @@ const SeasonOverview = () => {
                 <CardHeader><CardTitle>{userTeam.leagueDivision} Standings</CardTitle></CardHeader>
                 <CardContent>
                     <Table>
-                        <TableHeader><TableRow><TableHead>Team</TableHead><TableHead>W</TableHead><TableHead>L</TableHead><TableHead>OTL</TableHead><TableHead>GF</TableHead><TableHead>GA</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Team</TableHead><TableHead>GP</TableHead><TableHead>W</TableHead><TableHead>L</TableHead><TableHead>OTL</TableHead><TableHead>GF</TableHead><TableHead>GA</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {divisionTeams.map(team => (
                                 <TableRow key={team.name} className={team.name === userTeam.name ? 'bg-muted/50' : ''}>
@@ -91,6 +91,7 @@ const SeasonOverview = () => {
                                         {team.logo && <img src={team.logo} alt={team.name} className="h-6 w-6 object-contain" />}
                                         {team.name}
                                     </TableCell>
+                                    <TableCell>{team.wins + team.losses + team.otLosses}</TableCell>
                                     <TableCell>{team.wins}</TableCell>
                                     <TableCell>{team.losses}</TableCell>
                                     <TableCell>{team.otLosses}</TableCell>

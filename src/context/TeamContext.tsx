@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, CurrentSeasonStats } from '@/types';
 import { teams as initialTeams, getTeamOrganizations } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
@@ -240,10 +240,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         );
 
         if (gamesThisWeek.length > 0) {
-            // Use a map to store updates, applying them all at once to avoid stale state
             const updatedTeamsMap = new Map<string, Team>();
-
-            // Function to get the latest version of a team for the current simulation step
             const getTeamForSim = (teamName: string): Team => {
                 return updatedTeamsMap.get(teamName) || teams.find(t => t.name === teamName)!;
             };
@@ -254,21 +251,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 if (homeTeam && awayTeam) {
                     const finalGameState = simulateFullGame(homeTeam, awayTeam);
-                    
                     const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState);
                     
-                    // Store the updated teams in the map
                     updatedTeamsMap.set(homeTeam.name, updatedHomeTeam);
                     updatedTeamsMap.set(awayTeam.name, updatedAwayTeam);
 
-                    // Update the schedule entry
                     setSchedule(currentSchedule => currentSchedule.map(g => 
                         g.id === game.id 
                         ? { ...g, status: 'completed', result: { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore } } 
                         : g
                     ));
                     
-                    // Only show toast for user's game to avoid spam
                     if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
                         toast.info("Game Auto-Simulated", {
                             description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}`
@@ -277,19 +270,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
             });
 
-            // Apply all updates from the map to the main teams state
             setTeams(currentTeams => {
                 return currentTeams.map(team => updatedTeamsMap.get(team.name) || team);
             });
         }
 
-        // Placeholder for player development and logging
         if (userTeam) {
             const randomPlayer = userTeam.roster[Math.floor(Math.random() * userTeam.roster.length)];
             if (randomPlayer) {
                 const attributes = Object.keys(randomPlayer.attributes);
                 const randomAttribute = attributes[Math.floor(Math.random() * attributes.length)];
-                const change = Math.random() > 0.5 ? 0.1 : -0.1; // Small random change
+                const change = Math.random() > 0.5 ? 0.1 : -0.1;
                 
                 const updatedRoster = userTeam.roster.map(p => {
                     if (p.id === randomPlayer.id) {
@@ -331,7 +322,53 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return { month, week, year };
         })(currentDate);
 
-        // Trigger new season schedule generation when we advance to August, Week 2
+        if (newDate.month === 'August' && newDate.week === 1 && !(currentDate.month === 'August' && currentDate.week === 1)) {
+            toast.info("Season Ended", { description: `The ${currentDate.year}-${currentDate.year + 1} season has concluded. Stats are being archived.` });
+
+            setTeams(currentTeams => {
+                return currentTeams.map(team => {
+                    const updatedRoster = team.roster.map(player => {
+                        const isSkater = !player.positions.includes('G');
+                        const seasonStats = player.currentStats;
+
+                        if (seasonStats.gamesPlayed > 0) {
+                            const historyEntry: PlayerSeasonStats = {
+                                season: `${currentDate.year}-${currentDate.year + 1}`,
+                                team: team.name,
+                                league: team.leagueDivision,
+                                gamesPlayed: seasonStats.gamesPlayed,
+                                captaincy: player.captaincy,
+                            };
+
+                            if (isSkater) {
+                                historyEntry.goals = seasonStats.goals;
+                                historyEntry.assists = seasonStats.assists;
+                                historyEntry.points = seasonStats.points;
+                                historyEntry.penaltyMinutes = seasonStats.penaltyMinutes;
+                            } else {
+                                historyEntry.goalsAgainstAverage = seasonStats.goalsAgainstAverage;
+                                historyEntry.savePercentage = seasonStats.savePercentage;
+                                historyEntry.shutouts = seasonStats.shutouts;
+                            }
+                            
+                            const newHistory = player.history ? [...player.history, historyEntry] : [historyEntry];
+                            
+                            const newCurrentStats: CurrentSeasonStats = {
+                                gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0,
+                                wins: 0, losses: 0, otLosses: 0, goalsAgainst: 0, shotsAgainst: 0,
+                                saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0,
+                            };
+
+                            return { ...player, history: newHistory, currentStats: newCurrentStats };
+                        }
+                        return player;
+                    });
+
+                    return { ...team, roster: updatedRoster, wins: 0, losses: 0, otLosses: 0, goalsFor: 0, goalsAgainst: 0 };
+                });
+            });
+        }
+
         if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
             const newSchedule = generateSeasonSchedule(teams, newDate);
             setSchedule(newSchedule);

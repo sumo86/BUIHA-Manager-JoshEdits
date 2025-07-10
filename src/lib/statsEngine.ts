@@ -45,6 +45,21 @@ export const processGameResults = (
                 else player.currentStats.losses += 1;
                 player.currentStats.goalsAgainst += opponentScore;
                 if (opponentScore === 0) player.currentStats.shutouts += 1;
+
+                const shootingTeamName = isUserTeam ? opponentTeam.name : userTeam.name;
+                const shotsSavedThisGame = gameState.gameLog.filter(e => e.team === shootingTeamName && e.description.includes('saved by')).length;
+                
+                player.currentStats.saves += shotsSavedThisGame;
+                player.currentStats.shotsAgainst += (shotsSavedThisGame + opponentScore);
+
+                if (player.currentStats.gamesPlayed > 0) {
+                    // Simplified GAA: Goals Against per Game.
+                    player.currentStats.goalsAgainstAverage = player.currentStats.goalsAgainst / player.currentStats.gamesPlayed;
+                }
+
+                if (player.currentStats.shotsAgainst > 0) {
+                    player.currentStats.savePercentage = player.currentStats.saves / player.currentStats.shotsAgainst;
+                }
             }
         });
 
