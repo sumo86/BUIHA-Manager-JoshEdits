@@ -266,6 +266,7 @@ const getStarCountsForRoster = (tierName: string, rosterSize: number): Record<st
 export const generateRoster = (leagueDivision: string, teamName: string): Player[] => {
   const roster: Player[] = [];
   const usedJerseyNumbers = new Set<number>();
+  // Explicitly type the array elements as Position
   const rosterPositions: Position[] = [ "G", "G", "LD", "LD", "LD", "LD", "RD", "RD", "RD", "RD", "C", "C", "C", "C", "LW", "LW", "LW", "LW", "RW", "RW", "RW", "RW" ];
   
   const tier = getTierStats(leagueDivision);
@@ -299,7 +300,8 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         let estimatedQuality: Player['estimatedQuality'];
         if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else estimatedQuality = 'Elite';
         
-        const position = getRandomItem([...skaterPositions, 'G']);
+        // Ensure the array passed to getRandomItem is explicitly typed as Position[]
+        const position = getRandomItem([...skaterPositions, 'G'] as Position[]);
         const isSkater = position !== 'G';
 
         let targetCurrentAbilityMin: number, targetCurrentAbilityMax: number;

@@ -62,11 +62,6 @@ const Game = () => {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
-        }
-        return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-            }
         };
     }, [gameState.isPaused, gameState.isGameOver, gameUserTeam, opponentTeam]); // Depend on gameUserTeam
 
@@ -89,7 +84,7 @@ const Game = () => {
             period: prev.period + 1,
             time: 0,
             isPaused: true,
-            gameLog: [{ time: "00:00", period: prev.period + 1, description: `Start of Period ${prev.period + 1}` }, ...prev.gameLog],
+            gameLog: [{ time: "00:00", period: prev.period + 1, description: `Start of Period ${prev.period + 1}`, team: "System" }, ...prev.gameLog],
         }));
     };
 
@@ -118,7 +113,8 @@ const Game = () => {
         const newLogEntry = {
             time: formatClockTime(1200 - gameState.time),
             period: gameState.period,
-            description: `Instruction to ${targetName}: ${instruction}`
+            description: `Instruction to ${targetName}: ${instruction}`,
+            team: "System" // Added team property
         };
         setGameState(prev => ({
             ...prev,
