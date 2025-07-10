@@ -10,7 +10,7 @@ const skaterAbilityThresholds: Record<string, Record<number, { min: number; max:
         3.5: { min: 261, max: 280 },
         4: { min: 281, max: 300 },
         4.5: { min: 301, max: 320 },
-        5: { min: 321, max: 9999 }
+        5: { min: 321, max: 999 }
     },
     "Non-Checking 2": {
         1: { min: 0, max: 200 },
@@ -21,7 +21,7 @@ const skaterAbilityThresholds: Record<string, Record<number, { min: number; max:
         3.5: { min: 281, max: 300 },
         4: { min: 301, max: 320 },
         4.5: { min: 321, max: 340 },
-        5: { min: 341, max: 9999 }
+        5: { min: 341, max: 999 }
     },
     "Non-Checking 1": {
         1: { min: 0, max: 230 },
@@ -32,7 +32,7 @@ const skaterAbilityThresholds: Record<string, Record<number, { min: number; max:
         3.5: { min: 311, max: 330 },
         4: { min: 331, max: 350 },
         4.5: { min: 351, max: 370 },
-        5: { min: 371, max: 9999 }
+        5: { min: 371, max: 999 }
     },
     "Checking 2": {
         1: { min: 0, max: 245 },
@@ -43,18 +43,18 @@ const skaterAbilityThresholds: Record<string, Record<number, { min: number; max:
         3.5: { min: 326, max: 345 },
         4: { min: 346, max: 365 },
         4.5: { min: 366, max: 385 },
-        5: { min: 386, max: 9999 }
+        5: { min: 386, max: 999 }
     },
     "Checking 1": {
         1: { min: 0, max: 295 },
-        1.5: { min: 286, max: 305 },
+        1.5: { min: 296, max: 305 },
         2: { min: 306, max: 325 },
         2.5: { min: 326, max: 345 },
         3: { min: 346, max: 365 },
         3.5: { min: 366, max: 385 },
         4: { min: 386, max: 410 },
         4.5: { min: 411, max: 467 },
-        5: { min: 468, max: 9999 }
+        5: { min: 468, max: 999 }
     }
 };
 
