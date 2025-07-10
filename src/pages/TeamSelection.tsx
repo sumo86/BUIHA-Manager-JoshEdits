@@ -5,11 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const TeamSelection = () => {
-    const { selectTeam } = useTeam();
+    const { selectTeam, selectOrganization } = useTeam();
     const organizations = getTeamOrganizations();
 
     const handleSelectTeam = (teamName: string) => {
         selectTeam(teamName);
+    };
+
+    const handleSelectOrganization = (orgName: string) => {
+        selectOrganization(orgName);
     };
 
     return (
@@ -17,7 +21,7 @@ const TeamSelection = () => {
             <Card className="w-full max-w-2xl">
                 <CardHeader>
                     <CardTitle className="text-2xl">Start a New Game</CardTitle>
-                    <CardDescription>Select a team to begin your managerial career.</CardDescription>
+                    <CardDescription>Select a team or an entire organization to begin your managerial career.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Accordion type="single" collapsible className="w-full">
@@ -53,7 +57,7 @@ const TeamSelection = () => {
                                                         <p className="font-semibold">Manage Entire {org.name} Organization</p>
                                                         <p className="text-sm text-muted-foreground">Oversee all teams in the organization.</p>
                                                     </div>
-                                                    <Button disabled>Coming Soon</Button>
+                                                    <Button onClick={() => handleSelectOrganization(org.name)}>Manage Organization</Button>
                                                 </div>
                                             </>
                                         )}

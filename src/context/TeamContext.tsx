@@ -1,6 +1,6 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState } from '@/types';
-import { teams as initialTeams } from '@/data/teams';
+import { teams as initialTeams, getTeamOrganizations } from '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
@@ -39,28 +39,72 @@ interface TeamContextType {
     processGameResults: (userTeam: Team, opponentTeam: Team, gameState: GameState) => void;
     movePlayer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
     requestPlayerTransfer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
+    // New properties for organization management
+    managedOrganization: string | null;
+    managedTeams: Team[];
+    selectOrganization: (orgName: string | null) => void;
+    setActiveTeam: (teamName: string) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
 export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element => {
     const [teams, setTeams] = useState<Team[]>(initialTeams);
-    const [selectedTeamName, setSelectedTeamName] = useState<string | null>(() => localStorage.getItem('selectedTeamName') || null);
+    const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
+    const [managedOrganization, setManagedOrganization] = useState<string | null>(() => localStorage.getItem('managedOrganization') || null);
+
+    const managedTeams = useMemo(() => {
+        if (!managedOrganization) return [];
+        const organizations = getTeamOrganizations();
+        const org = organizations.find(o => o.name === managedOrganization);
+        if (!org) return [];
+        const orgTeamNames = org.teams.map(t => t.name);
+        return teams.filter(t => orgTeamNames.includes(t.name));
+    }, [managedOrganization, teams]);
 
     const userTeam = useMemo(() => {
-        if (!selectedTeamName) return null;
-        return teams.find(t => t.name === selectedTeamName) || null;
-    }, [selectedTeamName, teams]);
+        if (!activeTeamName) return null;
+        return teams.find(t => t.name === activeTeamName) || null;
+    }, [activeTeamName, teams]);
 
     const selectTeam = (teamName: string | null) => {
         if (teamName) {
-            localStorage.setItem('selectedTeamName', teamName);
+            localStorage.setItem('activeTeamName', teamName);
         } else {
-            localStorage.removeItem('selectedTeamName');
+            localStorage.removeItem('activeTeamName');
         }
-        setSelectedTeamName(teamName);
+        localStorage.removeItem('managedOrganization');
+        setActiveTeamName(teamName);
+        setManagedOrganization(null);
     };
-    
+
+    const selectOrganization = (orgName: string | null) => {
+        if (orgName) {
+            const organizations = getTeamOrganizations();
+            const org = organizations.find(o => o.name === orgName);
+            if (org && org.teams.length > 0) {
+                const mainTeam = org.teams[0];
+                localStorage.setItem('managedOrganization', orgName);
+                localStorage.setItem('activeTeamName', mainTeam.name);
+                setManagedOrganization(orgName);
+                setActiveTeamName(mainTeam.name);
+            }
+        } else {
+            localStorage.removeItem('managedOrganization');
+            localStorage.removeItem('activeTeamName');
+            setManagedOrganization(null);
+            setActiveTeamName(null);
+        }
+    };
+
+    const setActiveTeam = (teamName: string) => {
+        const teamExistsInOrg = managedTeams.some(t => t.name === teamName);
+        if (managedOrganization && teamExistsInOrg) {
+            localStorage.setItem('activeTeamName', teamName);
+            setActiveTeamName(teamName);
+        }
+    };
+
     const [scoutingPool, setScoutingPool] = useState<Player[]>(() => {
         try {
             const saved = localStorage.getItem('scoutingPool');
@@ -103,6 +147,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => { localStorage.setItem('fairHosted', JSON.stringify(fairHosted)); }, [fairHosted]);
     useEffect(() => { localStorage.setItem('currentDate', JSON.stringify(currentDate)); }, [currentDate]);
     useEffect(() => { localStorage.setItem('developmentHistory', JSON.stringify(developmentHistory)); }, [developmentHistory]);
+    useEffect(() => {
+        if (managedOrganization) {
+            localStorage.setItem('managedOrganization', managedOrganization);
+        } else {
+            localStorage.removeItem('managedOrganization');
+        }
+    }, [managedOrganization]);
 
     const updateTeam = (updatedTeam: Team) => {
         setTeams(currentTeams =>
@@ -337,7 +388,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             generateScoutingPool, recruitPlayer, assignPlayerToRoster, discardRecruit,
             updateBudgetAllocations, runStudentLifeInitiative, startFacilityProject,
             currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
-            autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer
+            autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
+            managedOrganization, managedTeams, selectOrganization, setActiveTeam
         }}>
             {children}
         </TeamContext.Provider>
