@@ -111,6 +111,12 @@ const generatePlayer = (
 
     const isSkater = position !== 'G';
     const thresholds = getAbilityThresholds(isSkater, leagueDivision);
+    
+    if (!thresholds[targetStarRating]) {
+        console.error(`No threshold found for star rating ${targetStarRating} in division ${leagueDivision}. Defaulting to 3 stars.`);
+        targetStarRating = 3;
+    }
+
     const { min, max } = thresholds[targetStarRating];
     const currentAbility = getRandomValueInRange(min, max);
 
@@ -187,6 +193,12 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
 
     rosterComposition.forEach(comp => {
         for (let i = 0; i < comp.count; i++) {
+            if (starRatingPool.length === 0) {
+                console.error("Star rating pool exhausted. Assigning default star rating.");
+                const targetStarRating = 3.0; // Default fallback to prevent crash
+                roster.push(generatePlayer(usedJerseyNumbers, comp.pos as Position, leagueDivision, teamName, targetStarRating));
+                continue;
+            }
             const poolIndex = Math.floor(Math.random() * starRatingPool.length);
             const targetStarRating = starRatingPool.splice(poolIndex, 1)[0];
             roster.push(generatePlayer(usedJerseyNumbers, comp.pos as Position, leagueDivision, teamName, targetStarRating));

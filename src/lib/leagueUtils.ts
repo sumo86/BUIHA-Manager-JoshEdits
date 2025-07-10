@@ -73,12 +73,14 @@ export const starRatingDistribution: Record<string, Record<number, { min: number
 // --- Helper Functions ---
 
 export const getDivisionBaseName = (leagueDivision: string): string => {
-    if (leagueDivision.includes("Checking 1")) return "Checking 1";
-    if (leagueDivision.includes("Checking 2")) return "Checking 2";
+    // Check for more specific names first to avoid incorrect partial matches
     if (leagueDivision.includes("Non-Checking 1")) return "Non-Checking 1";
     if (leagueDivision.includes("Non-Checking 2")) return "Non-Checking 2";
     if (leagueDivision.includes("Non-Checking 3")) return "Non-Checking 3";
-    return "Non-Checking 3"; // Default
+    if (leagueDivision.includes("Checking 1")) return "Checking 1";
+    if (leagueDivision.includes("Checking 2")) return "Checking 2";
+    
+    return "Non-Checking 3"; // Default for safety, e.g., for "Unattached" recruits
 };
 
 export const getAbilityThresholds = (isSkater: boolean, leagueDivision: string) => {
@@ -90,7 +92,7 @@ export const calculateStarRating = (currentAbility: number, isSkater: boolean, l
     const thresholds = getAbilityThresholds(isSkater, leagueDivision);
     // Iterate from highest star to lowest
     for (const star of [5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1]) {
-        if (currentAbility >= thresholds[star].min) {
+        if (thresholds[star] && currentAbility >= thresholds[star].min) {
             return star;
         }
     }
