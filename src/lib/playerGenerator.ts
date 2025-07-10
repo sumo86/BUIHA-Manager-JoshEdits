@@ -1,7 +1,17 @@
 import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes, PlayerSeasonStats } from "@/types";
 import { archetypes } from "@/data/archetypes";
-import { roles } => <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+import { roles } from "@/data/roles"; // Corrected import for roles
+import { teams as allTeamsData } from "@/data/teams";
+import { getRandomNationality } from "@/data/nationalityDistributions";
+import { getRandomNameForNationality } from "@/data/names";
+import { divisionTiers, getGamesPlayedForDivision } from "./leagueUtils";
+
+// Re-added helper functions
+const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
+const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
 
 const getArchetypeForPosition = (position: Position): PlayerArchetype => {
     let positionGroup: PlayerArchetype['position'];
@@ -315,18 +325,18 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
 
       if (isForward) {
           const { suitabilities, bestRole, highestSuitability } = calculateRoleSuitability(skaterAttributes, 'Forward');
-          finalSuitabilities = { ...finalSuitabilities, ...suitabilities };
+          finalSuitabilities = { ...suitabilities, ...suitabilities };
           if (highestSuitability > highestSuitabilityOverall) {
               highestSuitabilityOverall = highestSuitability;
               bestRoleOverall = bestRole;
           }
       }
       if (isDefenceman) {
-          const { suitabilities, bestRole, highestSuitability } = calculateRoleSuitability(skaterAttributes, 'Defenceman');
+          const { suitabilities, bestRole: defBestRole, highestSuitability } = calculateRoleSuitability(skaterAttributes, 'Defenceman');
           finalSuitabilities = { ...finalSuitabilities, ...suitabilities };
           if (highestSuitability > highestSuitabilityOverall) {
               highestSuitabilityOverall = highestSuitability;
-              bestRoleOverall = bestRole;
+              bestRoleOverall = defBestRole;
           }
       }
       
@@ -507,20 +517,20 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         let targetCurrentAbilityMax: number;
 
         if (estimatedQuality === 'Beginner') {
-            targetCurrentAbilityMin = divisionTiers['Non-Checking 3'].skater;
-            targetCurrentAbilityMax = divisionTiers['Non-Checking 2'].skater;
+            targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 3'].skater : divisionTiers['Non-Checking 3'].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTiers['Non-Checking 2'].skater : divisionTiers['Non-Checking 2'].goalie;
             player.recruitmentCost = getRandomValueInRange(75, 150);
         } else if (estimatedQuality === 'Moderate') {
-            targetCurrentAbilityMin = divisionTiers['Non-Checking 2'].skater;
-            targetCurrentAbilityMax = divisionTiers['Non-Checking 1'].skater;
+            targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 2'].skater : divisionTiers['Non-Checking 2'].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTiers['Non-Checking 1'].skater : divisionTiers['Non-Checking 1'].goalie;
             player.recruitmentCost = getRandomValueInRange(150, 300);
         } else if (estimatedQuality === 'Intermediate') {
-            targetCurrentAbilityMin = divisionTiers['Non-Checking 1'].skater;
-            targetCurrentAbilityMax = divisionTiers['Checking 2'].skater;
+            targetCurrentAbilityMin = isSkater ? divisionTiers['Non-Checking 1'].skater : divisionTiers['Non-Checking 1'].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 2'].skater : divisionTiers['Checking 2'].goalie;
             player.recruitmentCost = getRandomValueInRange(300, 500);
         } else if (estimatedQuality === 'Experienced') {
-            targetCurrentAbilityMin = divisionTiers['Checking 2'].skater;
-            targetCurrentAbilityMax = divisionTiers['Checking 1'].skater;
+            targetCurrentAbilityMin = isSkater ? divisionTiers['Checking 2'].skater : divisionTiers['Checking 2'].goalie;
+            targetCurrentAbilityMax = isSkater ? divisionTiers['Checking 1'].skater : divisionTiers['Checking 1'].goalie;
             player.recruitmentCost = getRandomValueInRange(500, 750);
         } else { // Elite
             const checking1Tier = divisionTiers['Checking 1'];
