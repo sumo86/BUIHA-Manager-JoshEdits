@@ -182,29 +182,52 @@ const getGamesPlayedForDivision = (leagueDivision: string): number => {
     return 10; // Default for any other case
 };
 
-const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDivision: string, seasonYear: number, previousCaptaincy: 'C' | 'A' | null = null): PlayerSeasonStats => {
+const generateRandomSeasonStats = (
+    isSkater: boolean, 
+    teamName: string, 
+    leagueDivision: string, 
+    seasonYear: number, 
+    previousCaptaincy: 'C' | 'A' | null = null,
+    attributes?: SkaterAttributes | GoalieAttributes
+): PlayerSeasonStats => {
     const gamesPlayed = getGamesPlayedForDivision(leagueDivision);
     
-    if (isSkater) {
-        const goals = Math.floor(Math.random() * (gamesPlayed * 0.8));
-        const assists = Math.floor(Math.random() * (gamesPlayed * 1.2));
+    if (isSkater && attributes) {
+        const skaterAttrs = attributes as SkaterAttributes;
+        const offensiveSkill = (skaterAttrs.offensiveRead + skaterAttrs.shootingAccuracy + skaterAttrs.gettingOpen + skaterAttrs.passing) / 4;
+
+        const minPpg = 0.1;
+        const maxPpg = 3.0;
+        const ppg = minPpg + Math.pow((offensiveSkill - 1) / 19, 2) * (maxPpg - minPpg);
+
+        const finalPpg = ppg * (0.8 + Math.random() * 0.4); // +/- 20% randomness
+        const points = Math.round(finalPpg * gamesPlayed);
+
+        const goalTendency = skaterAttrs.shootingAccuracy / (skaterAttrs.shootingAccuracy + skaterAttrs.passing + 0.1);
+        let goals = Math.round(points * goalTendency);
+        
+        if (goals > points) {
+            goals = points;
+        }
+        const assists = points - goals;
+
         const penaltyMinutes = Math.floor(Math.random() * gamesPlayed * 2);
         let captaincy: 'C' | 'A' | null = null;
         
         if (previousCaptaincy === 'A') {
             const roll = Math.random();
-            if (roll < 0.75) captaincy = 'A'; // 75% chance to stay A
-            else if (roll < 0.90) captaincy = 'C'; // 15% chance to become C
-            else captaincy = null; // 10% chance to lose captaincy
+            if (roll < 0.75) captaincy = 'A';
+            else if (roll < 0.90) captaincy = 'C';
+            else captaincy = null;
         } else if (previousCaptaincy === 'C') {
             const roll = Math.random();
-            if (roll < 0.95) captaincy = 'C'; // 95% chance to stay C
-            else if (roll < 0.99) captaincy = 'A'; // 4% chance to become A
-            else captaincy = null; // 1% chance to lose captaincy
-        } else { // previousCaptaincy is null
+            if (roll < 0.95) captaincy = 'C';
+            else if (roll < 0.99) captaincy = 'A';
+            else captaincy = null;
+        } else {
             const captaincyRoll = Math.random();
-            if (captaincyRoll < 0.02) captaincy = 'C'; // 2% chance to become C
-            else if (captaincyRoll < 0.07) captaincy = 'A'; // 5% chance to become A
+            if (captaincyRoll < 0.02) captaincy = 'C';
+            else if (captaincyRoll < 0.07) captaincy = 'A';
         }
 
         return {
@@ -214,24 +237,41 @@ const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDi
             gamesPlayed,
             goals,
             assists,
-            points: goals + assists,
+            points,
             penaltyMinutes,
             captaincy,
         };
-    } else { // Goalie
-        const goalsAgainstAverage = parseFloat((Math.random() * (5.50 - 2.00) + 2.00).toFixed(2));
-        const savePercentage = parseFloat((Math.random() * (0.930 - 0.880) + 0.880).toFixed(3));
-        const shutouts = Math.random() < 0.2 ? Math.floor(Math.random() * 3) + 1 : 0;
+    } else { // Fallback for goalies or if attributes are not passed
+        if (isSkater) {
+            const goals = Math.floor(Math.random() * (gamesPlayed * 0.8));
+            const assists = Math.floor(Math.random() * (gamesPlayed * 1.2));
+            const penaltyMinutes = Math.floor(Math.random() * gamesPlayed * 2);
+            return {
+                season: `${seasonYear}-${seasonYear + 1}`,
+                team: teamName,
+                league: leagueDivision,
+                gamesPlayed,
+                goals,
+                assists,
+                points: goals + assists,
+                penaltyMinutes,
+                captaincy: null,
+            };
+        } else { // Goalie
+            const goalsAgainstAverage = parseFloat((Math.random() * (5.50 - 2.00) + 2.00).toFixed(2));
+            const savePercentage = parseFloat((Math.random() * (0.930 - 0.880) + 0.880).toFixed(3));
+            const shutouts = Math.random() < 0.2 ? Math.floor(Math.random() * 3) + 1 : 0;
 
-        return {
-            season: `${seasonYear}-${seasonYear + 1}`,
-            team: teamName,
-            league: leagueDivision,
-            gamesPlayed,
-            goalsAgainstAverage,
-            savePercentage,
-            shutouts,
-        };
+            return {
+                season: `${seasonYear}-${seasonYear + 1}`,
+                team: teamName,
+                league: leagueDivision,
+                gamesPlayed,
+                goalsAgainstAverage,
+                savePercentage,
+                shutouts,
+            };
+        }
     }
 };
 
@@ -367,7 +407,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   }
 
   for (let i = 0; i < numPriorSeasons; i++) {
-      const seasonStats = generateRandomSeasonStats(isSkater, teamName, leagueDivision, currentYear - (numPriorSeasons - i), lastSeasonCaptaincy);
+      const seasonStats = generateRandomSeasonStats(isSkater, teamName, leagueDivision, currentYear - (numPriorSeasons - i), lastSeasonCaptaincy, attributes);
       history.push(seasonStats);
       lastSeasonCaptaincy = seasonStats.captaincy;
   }
@@ -610,7 +650,7 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
             let lastSeasonCaptaincy: 'C' | 'A' | null = null;
 
             for (let j = 0; j < numPriorSeasons; j++) {
-                const seasonStats = generateRandomSeasonStats(player.positions[0] !== 'G', otherTeamName, otherTeamLeagueDivision, currentYear - (numPriorSeasons - j), lastSeasonCaptaincy);
+                const seasonStats = generateRandomSeasonStats(player.positions[0] !== 'G', otherTeamName, otherTeamLeagueDivision, currentYear - (numPriorSeasons - j), lastSeasonCaptaincy, player.attributes);
                 history.push(seasonStats);
                 lastSeasonCaptaincy = seasonStats.captaincy;
             }
