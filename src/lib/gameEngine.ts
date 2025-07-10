@@ -1,4 +1,5 @@
 import { Team, GameEvent, GameState } from '@/types';
+import { getGamesPlayedForDivision } from './leagueUtils';
 
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -7,12 +8,24 @@ const formatTime = (seconds: number): string => {
 };
 
 const getGoalFactor = (leagueDivision: string): number => {
-    if (leagueDivision.includes('Non Checking 3')) return 1.8;
-    if (leagueDivision.includes('Non Checking 2')) return 1.5;
-    if (leagueDivision.includes('Non Checking 1')) return 1.2;
-    if (leagueDivision.includes('Checking 2')) return 1.1;
-    if (leagueDivision.includes('Checking 1')) return 1.0;
-    return 1.0; // Default
+    const gamesPlayed = getGamesPlayedForDivision(leagueDivision);
+    let targetGoalsPerGame: number;
+
+    // Aim for ~65 goals per season on average, distributed by games played
+    // This allows for natural variance but keeps the average within the 52-78 range.
+    const baseSeasonalGoals = 65; 
+    targetGoalsPerGame = baseSeasonalGoals / gamesPlayed;
+
+    // Total ticks in a game: 3 periods * 20 minutes/period * 60 seconds/minute = 3600 ticks
+    // Overall event probability per tick: 0.03
+    // So, total expected events per game = 3600 * 0.03 = 108 events
+    
+    // Required ratio of goals among all events: targetGoalsPerGame / totalExpectedEventsPerGame
+    const requiredGoalRatio = targetGoalsPerGame / (3600 * 0.03); 
+    
+    // The base goal probability within an event is 0.05 (from the original logic: 1.0 - (0.05 * goalFactor))
+    // So, goalFactor = requiredGoalRatio / 0.05
+    return requiredGoalRatio / 0.05;
 };
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];

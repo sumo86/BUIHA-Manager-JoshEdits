@@ -1,7 +1,18 @@
-export const divisionTiers: { [key: string]: { skater: number, goalie: number, step: { skater: number, goalie: number } } } = {
-    "Checking 1":       { skater: 335, goalie: 155, step: { skater: 80, goalie: 38 } },
-    "Checking 2":       { skater: 285, goalie: 135, step: { skater: 30, goalie: 14 } },
-    "Non-Checking 1":   { skater: 244, goalie: 113, step: { skater: 20, goalie: 10 } },
-    "Non-Checking 2":   { skater: 222, goalie: 103, step: { skater: 19, goalie: 9 } },
-    "Non-Checking 3":   { skater: 250, goalie: 115, step: { skater: 20, goalie: 9 } }, // Significantly increased skater/goalie values
+export const divisionTiers = {
+    'Checking 1': { skater: 350, goalie: 160, step: { skater: 20, goalie: 10 } },
+    'Checking 2': { skater: 300, goalie: 140, step: { skater: 20, goalie: 10 } },
+    'Non Checking 1': { skater: 300, goalie: 140, step: { skater: 20, goalie: 10 } },
+    'Non Checking 2': { skater: 250, goalie: 120, step: { skater: 20, goalie: 10 } },
+    'Non Checking 3': { skater: 200, goalie: 100, step: { skater: 20, goalie: 10 } },
+};
+
+export const getGamesPlayedForDivision = (leagueDivision: string): number => {
+    if (leagueDivision.includes('Checking 1')) return 10;
+    if (leagueDivision === 'Checking 2 - North') return 6;
+    if (leagueDivision === 'Checking 2 - South') return 12;
+    if (leagueDivision.includes('Non Checking 1')) return 10;
+    if (leagueDivision === 'Non Checking 2 - North') return 6;
+    if (leagueDivision === 'Non Checking 2 - South') return 12;
+    if (leagueDivision.includes('Non Checking 3')) return 6;
+    return 10; // Default for any other case
 };
