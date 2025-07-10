@@ -363,7 +363,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   }
 
   const gender = Math.random() < 0.8 ? 'Male' : 'Female';
-  const nationality = getRandomNationality();
+  const nationality = getRandomNationality(teamName); // Pass teamName here
   const name = getRandomNameForNationality(nationality, gender);
 
   const currentStats: Player['currentStats'] = {
@@ -374,7 +374,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     penaltyMinutes: 0,
     wins: 0,
     losses: 0,
-    draws: 0, // Changed from otLosses
+    draws: 0, 
     goalsAgainst: 0,
     shotsAgainst: 0,
     saves: 0,

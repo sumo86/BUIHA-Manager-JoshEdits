@@ -83,7 +83,7 @@ const SeasonOverview = () => {
                 <CardHeader><CardTitle>{userTeam.leagueDivision} Standings</CardTitle></CardHeader>
                 <CardContent>
                     <Table>
-                        <TableHeader><TableRow><TableHead>Team</TableHead><TableHead>GP</TableHead><TableHead>W</TableHead><TableHead>L</TableHead><TableHead>D</TableHead><TableHead>GF</TableHead><TableHead>GA</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Team</TableHead><TableHead>GP</TableHead><TableHead>W</TableHead><TableHead>L</TableHead><TableHead>D</TableHead><TableHead>Pts</TableHead><TableHead>GF</TableHead><TableHead>GA</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {divisionTeams.map(team => (
                                 <TableRow key={team.name} className={team.name === userTeam.name ? 'bg-muted/50' : ''}>
@@ -95,6 +95,7 @@ const SeasonOverview = () => {
                                     <TableCell>{team.wins}</TableCell>
                                     <TableCell>{team.losses}</TableCell>
                                     <TableCell>{team.draws}</TableCell>
+                                    <TableCell>{team.wins * 2 + team.draws}</TableCell>
                                     <TableCell>{team.goalsFor}</TableCell>
                                     <TableCell>{team.goalsAgainst}</TableCell>
                                 </TableRow>

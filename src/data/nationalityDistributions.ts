@@ -41,8 +41,22 @@ for (const group in nationalityGroups) {
     }
 }
 
-export const getRandomNationality = (): keyof typeof nameData => {
+const scottishTeams = ["St Andrews Typhoons", "Edinburgh Eagles", "Glasgow Stags"];
+
+export const getRandomNationality = (teamName?: string): keyof typeof nameData => {
     const randomGroup = getRandomItem(weightedNationalities) as keyof typeof specificNationalities;
+    
+    // Apply Scottish bias if it's a Scottish team and a UK group was initially selected
+    if (teamName && scottishTeams.includes(teamName) && 
+        ['English', 'Scottish', 'Welsh', 'NorthernIrish'].includes(randomGroup)) {
+        
+        const roll = Math.random();
+        // 75% chance for UK-born players to be Scottish for these teams
+        if (roll < 0.75) { 
+            return "Scottish";
+        }
+    }
+
     const specificList = specificNationalities[randomGroup];
     return getRandomItem(specificList) as keyof typeof nameData;
 };
