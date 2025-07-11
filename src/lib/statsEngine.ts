@@ -110,20 +110,38 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
     const userWon = gameState.userScore > gameState.opponentScore;
     const opponentWon = gameState.opponentScore > gameState.userScore;
 
-    const applyMoraleChange = (team: Team, change: 1 | -1) => {
+    const processTeamMorale = (team: Team, won: boolean) => {
+        const leadershipRoster = team.roster.filter(p => (p.attributes as SkaterAttributes).leadership);
+        const highestLeadership = leadershipRoster.length > 0 
+            ? Math.max(...leadershipRoster.map(p => (p.attributes as SkaterAttributes).leadership)) 
+            : 10;
+        
+        const leadershipModifier = (highestLeadership - 10) / 40; // +/- 25%
+
         team.roster.forEach((player: Player) => {
-            if (Math.random() < 0.3) { // 30% chance for morale change
-                player.morale = updateMorale(player.morale, change);
+            const handleAttr = won ? player.attributes.handleSuccess : player.attributes.handleFailure;
+            const baseChance = 0.3;
+            const personalityModifier = (handleAttr - 10) / 50; // +/- 20%
+            
+            let finalChance = baseChance + personalityModifier;
+            if (won) {
+                finalChance += leadershipModifier;
+            } else {
+                finalChance -= leadershipModifier;
+            }
+
+            if (Math.random() < finalChance) {
+                player.morale = updateMorale(player.morale, won ? 1 : -1);
             }
         });
     };
 
     if (userWon) {
-        applyMoraleChange(updatedUserTeam, 1);
-        applyMoraleChange(updatedOpponentTeam, -1);
+        processTeamMorale(updatedUserTeam, true);
+        processTeamMorale(updatedOpponentTeam, false);
     } else if (opponentWon) {
-        applyMoraleChange(updatedUserTeam, -1);
-        applyMoraleChange(updatedOpponentTeam, 1);
+        processTeamMorale(updatedUserTeam, false);
+        processTeamMorale(updatedOpponentTeam, true);
     }
 
     return { updatedUserTeam, updatedOpponentTeam };

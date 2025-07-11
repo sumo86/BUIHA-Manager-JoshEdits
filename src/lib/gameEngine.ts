@@ -80,7 +80,7 @@ const getSkaterOffensiveRating = (player: Player, isBigGame?: boolean): number =
     if (player.positions.includes('G')) return 0;
     const attrs = player.attributes as SkaterAttributes;
     const instructionMods = getInstructionModifiers(player);
-    const baseRating = (attrs.shootingAccuracy + attrs.shootingRange + attrs.offensiveRead + attrs.gettingOpen + attrs.passing + attrs.puckhandling) / 6;
+    const baseRating = (attrs.shootingAccuracy + attrs.shootingRange + attrs.offensiveRead + attrs.gettingOpen + attrs.passing + attrs.puckhandling + (attrs.intelligence / 2)) / 6.5;
     const moraleMod = getMoraleModifier(player.morale, instructionMods.morale);
 
     let bigGameMod = 1.0;
@@ -97,7 +97,7 @@ const getSkaterDefensiveRating = (player: Player, isBigGame?: boolean): number =
     if (player.positions.includes('G')) return 0;
     const attrs = player.attributes as SkaterAttributes;
     const instructionMods = getInstructionModifiers(player);
-    const baseRating = (attrs.defensiveRead + attrs.positioning + attrs.stickchecking + attrs.checking + attrs.shotBlocking) / 5;
+    const baseRating = (attrs.defensiveRead + attrs.positioning + attrs.stickchecking + attrs.checking + attrs.shotBlocking + (attrs.intelligence / 2)) / 5.5;
     const moraleMod = getMoraleModifier(player.morale, instructionMods.morale);
     
     let bigGameMod = 1.0;
@@ -114,7 +114,7 @@ const getGoalieRating = (player: Player, isBigGame?: boolean): number => {
     if (!player.positions.includes('G')) return 0;
     const attrs = player.attributes as GoalieAttributes;
     const instructionMods = getInstructionModifiers(player);
-    const baseRating = (attrs.blocker + attrs.glove + attrs.lowShots + attrs.positioning + attrs.rebound + attrs.recovery + attrs.reflexes) / 7;
+    const baseRating = (attrs.blocker + attrs.glove + attrs.lowShots + attrs.positioning + attrs.rebound + attrs.recovery + attrs.reflexes + (attrs.mentalToughness / 2)) / 7.5;
     const moraleMod = getMoraleModifier(player.morale, instructionMods.morale);
     
     let bigGameMod = 1.0;
@@ -180,13 +180,12 @@ const getTacticalModifier = (attackingTeam: Team, defendingTeam: Team): number =
 };
 
 const generateGameEvent = (time: number, period: number, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): GameEvent | null => {
-    if (Math.random() > 0.05) return null;
+    if (Math.random() > 0.08) return null; // Increased event frequency slightly
 
     const eventTime = formatTime(time);
     const attackingTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
     const defendingTeam = attackingTeam.name === userTeam.name ? opponentTeam : userTeam;
 
-    // Calculate tactical modifier for this event
     const tacticalModifier = getTacticalModifier(attackingTeam, defendingTeam);
 
     const eventType = Math.random();
@@ -204,61 +203,88 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
         ? defendingSkaters.reduce((sum, p) => sum + getSkaterDefensiveRating(p, isBigGame), 0) / defendingSkaters.length
         : 10;
     
-    const defendingGoalieAbility = defendingGoalie ? getGoalieRating(defendingGoalie, isBigGame) : 10;
+    let defendingGoalieAbility = defendingGoalie ? getGoalieRating(defendingGoalie, isBigGame) : 10;
 
-    // Apply the tactical modifier to the team ratings for this event
     const modifiedAttackRating = avgAttackingOffense * tacticalModifier;
-    const modifiedDefenseRating = avgDefendingDefense / tacticalModifier; // Defending rating is inversely affected
+    const modifiedDefenseRating = avgDefendingDefense / tacticalModifier;
 
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
-    const goalieFactor = (defendingGoalieAbility - 10) / 10;
-
+    
+    // --- GOAL PROBABILITY ---
     const baseProb = 0.1 * divisionGoalFactor;
-    let goalProbability = baseProb * (1 + offenseFactor * 1.5 - (defenseFactor * 0.5) - (goalieFactor * 0.5));
-    goalProbability = Math.max(0.01, Math.min(0.25, goalProbability));
-
+    let goalProbability = baseProb * (1 + offenseFactor * 1.5 - (defenseFactor * 0.5));
+    
     if (eventType < goalProbability) {
-        const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4));
-        if (!attacker) return null;
-
-        const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
-        let assists: string[] = [];
+        // --- SHOT EVENT ---
+        const avgScreening = attackingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).screening, 0) / attackingSkaters.length;
+        const screeningModifier = 1 - ((avgScreening - 10) / 150); // Max 6.6% debuff
+        defendingGoalieAbility *= screeningModifier;
+        const goalieFactor = (defendingGoalieAbility - 10) / 10;
         
-        if (potentialAssisters.length > 0 && Math.random() > 0.2) { 
-            const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead, 4));
-            if (assist1) {
-                assists.push(assist1.name);
-                const remainingAssisters = potentialAssisters.filter(p => p.id !== assist1.id);
-                if (remainingAssisters.length > 0 && Math.random() > 0.5) { 
-                    const assist2 = selectPlayerWeighted(remainingAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead, 4));
-                    if (assist2) {
-                        assists.push(assist2.name);
+        const shotSuccessProb = Math.max(0.05, Math.min(0.95, 0.5 - (goalieFactor * 0.5)));
+        
+        if (Math.random() < shotSuccessProb) {
+            // --- GOAL! ---
+            const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4));
+            if (!attacker) return null;
+
+            const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
+            let assists: string[] = [];
+            
+            const passTendency = (attacker.attributes as SkaterAttributes).passShootTendency || 10;
+            if (potentialAssisters.length > 0 && Math.random() < (0.3 + passTendency / 25)) { 
+                const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead, 4));
+                if (assist1) {
+                    assists.push(assist1.name);
+                    const remainingAssisters = potentialAssisters.filter(p => p.id !== assist1.id);
+                    if (remainingAssisters.length > 0 && Math.random() < (0.2 + passTendency / 30)) { 
+                        const assist2 = selectPlayerWeighted(remainingAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing + (p.attributes as SkaterAttributes).offensiveRead, 4));
+                        if (assist2) assists.push(assist2.name);
                     }
                 }
             }
+            const assistText = assists.length > 0 ? `Assists: ${assists.join(', ')}` : "Unassisted";
+            return { time: eventTime, period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` };
+        } else {
+            // --- SAVE ---
+            const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame));
+            if (!attacker) return null;
+            return { time: eventTime, period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` };
         }
-
-        const assistText = assists.length > 0 ? `Assists: ${assists.join(', ')}` : "Unassisted";
-        return { time: eventTime, period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` };
     } 
-    else if (eventType > 0.85) {
+    else if (eventType < 0.35) {
+        // --- SHOT BLOCK ---
+        const avgBravery = defendingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).bravery, 0) / defendingSkaters.length;
+        const blockChance = (avgBravery - 5) / 100; // Max 15% chance
+        if (Math.random() < blockChance) {
+            const blocker = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).shotBlocking + (p.attributes as SkaterAttributes).bravery);
+            if (!blocker) return null;
+            return { time: eventTime, period, team: defendingTeam.name, description: `Shot blocked by ${blocker.name}!` };
+        }
+        return null;
+    }
+    else if (eventType > 0.90) {
+        // --- PENALTY ---
         const penaltyTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
         const player = penaltyTeam.roster[Math.floor(Math.random() * penaltyTeam.roster.length)];
         const instructionMods = getInstructionModifiers(player);
+        
+        const aggression = (player.attributes as SkaterAttributes).aggression || 10;
+        const sportsmanship = (player.attributes as SkaterAttributes).sportsmanship || 10;
+        
+        const basePenaltyChance = 0.1;
+        const personalityModifier = (1 + (aggression - 10) / 20) * (1 - (sportsmanship - 10) / 30);
+        const finalPenaltyChance = basePenaltyChance * personalityModifier * instructionMods.penaltyChance;
 
-        if (Math.random() < instructionMods.penaltyChance) {
+        if (Math.random() < finalPenaltyChance) {
             const infraction = infractions[Math.floor(Math.random() * infractions.length)];
             return { time: eventTime, period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` };
         }
         return null;
     }
-    else if (eventType > 0.35) {
-        const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame));
-        if (!attacker) return null;
-        return { time: eventTime, period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` };
-    } 
     else {
+        // --- HIT ---
         const attacker = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).hitting + (p.attributes as SkaterAttributes).strength);
         const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
         if (!attacker || !defender) return null;

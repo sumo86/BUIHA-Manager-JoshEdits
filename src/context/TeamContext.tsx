@@ -382,11 +382,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 return project;
             });
 
-            // 3. Morale Drift
+            // 3. Morale Drift & Controversy Events
             newRoster = newRoster.map(player => {
+                // Morale Drift
                 if (Math.random() < 0.1) { // 10% chance of morale drift per week
                     if (player.morale === 'Happy') return { ...player, morale: 'Content' as 'Content' };
                     if (player.morale === 'Unhappy') return { ...player, morale: 'Content' as 'Content' };
+                }
+                // Controversy Event
+                if (isUserManagedTeam) {
+                    const controversyChance = ((player.attributes.controversy || 10) - 10) / 200; // Max 5% chance
+                    if (Math.random() < controversyChance) {
+                        toast.warning("Team Controversy!", {
+                            description: `${player.name} has caused a stir with off-ice antics, slightly affecting team morale.`
+                        });
+                        // Apply a small morale drop to the whole team
+                        newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, -1) }));
+                    }
                 }
                 return player;
             });
@@ -406,11 +418,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const devRate = (player.attributes as SkaterAttributes | GoalieAttributes).developmentRate || 10;
                     const professionalism = (player.attributes as SkaterAttributes | GoalieAttributes).professionalism || 10;
                     const determination = (player.attributes as SkaterAttributes | GoalieAttributes).determination || 10;
+                    const coachability = (player.attributes as SkaterAttributes | GoalieAttributes).coachability || 10;
                     
                     const baseDevChance = 0.2;
                     const paBonus = Math.max(0, paGap / 50);
                     const workEthicBonus = (professionalism + determination - 20) / 100;
-                    const devChance = baseDevChance + paBonus + workEthicBonus;
+                    const coachabilityBonus = (coachability - 10) / 100;
+                    const devChance = baseDevChance + paBonus + workEthicBonus + coachabilityBonus;
 
                     if (Math.random() < devChance) {
                         let attributesToDevelop: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
@@ -660,19 +674,30 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
 
-        const successChance = 0.3;
+        const baseSuccessChance = 0.3;
+        const loyaltyModifier = (player.attributes.loyalty - 10) / 25; // +/- 40%
+        const ambitionModifier = (player.attributes.ambition - 10) / 25; // +/- 40%
+        
+        // A simple prestige check could be added here later
+        // For now, ambition helps moves, loyalty hinders them.
+        const successChance = baseSuccessChance - loyaltyModifier + ambitionModifier;
+
         if (Math.random() < successChance) {
             toast.success("Transfer Approved!", {
                 description: `${player.name} has agreed to the move and their coach has approved the transfer.`
             });
             movePlayer(playerId, fromTeamName, toTeamName);
         } else {
-            const reason = Math.random() < 0.5 ? 'coach' : 'player';
-            toast.error("Transfer Denied", {
-                description: reason === 'coach'
-                    ? `The manager of ${fromTeamName} has blocked the transfer.`
-                    : `${player.name} has declined the offer to move to ${toTeamName}.`
-            });
+            const reasonRoll = Math.random();
+            let reasonText: string;
+            if (reasonRoll < 0.4) {
+                reasonText = `The manager of ${fromTeamName} has blocked the transfer, wanting to keep the player.`;
+            } else if (reasonRoll < 0.8) {
+                reasonText = `${player.name} has declined the offer to move to ${toTeamName}, citing loyalty to their current team.`;
+            } else {
+                reasonText = `${player.name} is happy where they are and does not wish to move at this time.`;
+            }
+            toast.error("Transfer Denied", { description: reasonText });
         }
     };
 
@@ -950,7 +975,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
             managedOrganization, managedTeams, selectOrganization, setActiveTeam,
             schedule, gameForCurrentWeek, nationalsData,
-            markGameAsCompleted // Add the new function here
+            markGameAsCompleted
         }}>
             {children}
         </TeamContext.Provider>
