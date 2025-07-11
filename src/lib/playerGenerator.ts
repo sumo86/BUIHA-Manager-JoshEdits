@@ -28,6 +28,11 @@ const getArchetypeForPosition = (position: Position): PlayerArchetype => {
 const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament', 'gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
 const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
 
+// Helper function to get a random skater position with explicit type
+const getRandomSkaterPosition = (): Position => {
+    return getRandomItem(skaterPositions);
+};
+
 const generateAttributesForAbility = (archetype: PlayerArchetype, targetAbility: number, isSkater: boolean): SkaterAttributes | GoalieAttributes => {
     const clamp = (value: number) => Math.max(1, Math.min(20, Math.round(value)));
     const visibleKeys = isSkater ? visibleSkaterKeys : visibleGoalieKeys;
@@ -185,8 +190,8 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     if (Math.random() > 0.5) { 
       let secondaryPosition: Position; 
       while (true) {
-        secondaryPosition = getRandomItem<Position>(skaterPositions); 
-        if (!positions.includes(secondaryPosition)) {
+        secondaryPosition = getRandomSkaterPosition(); 
+        if (!positions.some(p => p === secondaryPosition)) {
           break;
         }
       }
@@ -195,8 +200,8 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     if (positions.length === 2 && Math.random() > 0.8) { 
       let tertiaryPosition: Position; 
       while (true) {
-        tertiaryPosition = getRandomItem<Position>(skaterPositions); 
-        if (!positions.includes(tertiaryPosition)) {
+        tertiaryPosition = getRandomSkaterPosition(); 
+        if (!positions.some(p => p === tertiaryPosition)) {
           break;
         }
       }

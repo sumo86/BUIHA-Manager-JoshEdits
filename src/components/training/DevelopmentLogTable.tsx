@@ -99,8 +99,9 @@ export const DevelopmentLogTable = ({ logs }: DevelopmentLogTableProps) => {
                             <TableRow>
                               <TableHead>Date</TableHead>
                               <TableHead>Attribute</TableHead>
-                              <TableHead className="text-center">Change</TableHead>
+                              <TableHead>Original Rating</TableHead>
                               <TableHead>New Rating</TableHead>
+                              <TableHead className="text-center">Change</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -110,6 +111,8 @@ export const DevelopmentLogTable = ({ logs }: DevelopmentLogTableProps) => {
                                   {log.date.month} {log.date.year}, W{log.date.week}
                                 </TableCell>
                                 <TableCell>{log.attribute}</TableCell>
+                                <TableCell>{(log.newRating - log.change).toFixed(1)}</TableCell>
+                                <TableCell>{log.newRating.toFixed(1)}</TableCell>
                                 <TableCell className="text-center">
                                   {log.change > 0 ? (
                                     <Badge variant="outline" className="text-green-600 border-green-600">
@@ -121,7 +124,6 @@ export const DevelopmentLogTable = ({ logs }: DevelopmentLogTableProps) => {
                                     </Badge>
                                   )}
                                 </TableCell>
-                                <TableCell>{log.newRating.toFixed(1)}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
