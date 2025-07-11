@@ -14,28 +14,31 @@ import Game from './pages/Game';
 import PlayGame from './pages/PlayGame';
 import TeamSelection from './pages/TeamSelection';
 import NotFound from './pages/NotFound';
+import { TeamProvider } from './context/TeamContext'; // Import TeamProvider
 
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/team-selection" element={<TeamSelection />} />
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="roster" element={<Roster />} />
-          <Route path="player/:playerId" element={<PlayerProfile />} />
-          <Route path="lineup" element={<Lineup />} />
-          <Route path="training" element={<Training />} />
-          <Route path="calendar" element={<Calendar />} />
-          <Route path="morale" element={<Morale />} />
-          <Route path="finances" element={<Finances />} />
-          <Route path="facilities" element={<Facilities />} />
-          <Route path="recruitment" element={<Recruitment />} />
-          <Route path="play" element={<PlayGame />} />
-          <Route path="game/:opponentName" element={<Game />} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
+      <TeamProvider> {/* Wrap your routes with TeamProvider */}
+        <Routes>
+          <Route path="/team-selection" element={<TeamSelection />} />
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="roster" element={<Roster />} />
+            <Route path="player/:playerId" element={<PlayerProfile />} />
+            <Route path="lineup" element={<Lineup />} />
+            <Route path="training" element={<Training />} />
+            <Route path="calendar" element={<Calendar />} />
+            <Route path="morale" element={<Morale />} />
+            <Route path="finances" element={<Finances />} />
+            <Route path="facilities" element={<Facilities />} />
+            <Route path="recruitment" element={<Recruitment />} />
+            <Route path="play" element={<PlayGame />} />
+            <Route path="game/:opponentName" element={<Game />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+      </TeamProvider>
     </Router>
   );
 }
