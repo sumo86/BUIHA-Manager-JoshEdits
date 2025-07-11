@@ -1,6 +1,6 @@
 import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes, PlayerSeasonStats } from "@/types";
 import { archetypes } from "@/data/archetypes";
-import { roles } from "@/data/roles"; // Corrected '=>' to 'from'
+import { roles } from "@/data/roles";
 import { teams as allTeamsData } from "@/data/teams";
 import { getRandomNationality } from "@/data/nationalityDistributions";
 import { getRandomNameForNationality } from "@/data/names";
@@ -184,22 +184,16 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   if (isSkater) {
     if (Math.random() > 0.5) { 
       let secondaryPosition: Position; 
-      while (true) {
+      do { // Changed to do...while
         secondaryPosition = getRandomItem<Position>(skaterPositions); 
-        if (!positions.includes(secondaryPosition)) { // Changed to .includes()
-          break;
-        }
-      }
+      } while (positions.includes(secondaryPosition)); // No 'as Position' needed here
       positions.push(secondaryPosition);
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       let tertiaryPosition: Position; 
-      while (true) {
+      do { // Changed to do...while
         tertiaryPosition = getRandomItem<Position>(skaterPositions); 
-        if (!positions.includes(tertiaryPosition)) { // Changed to .includes()
-          break;
-        }
-      }
+      } while (positions.includes(tertiaryPosition)); // No 'as Position' needed here
       positions.push(tertiaryPosition);
     }
   }
