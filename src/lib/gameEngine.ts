@@ -74,33 +74,54 @@ const getMoraleModifier = (morale: Player['morale'], instructionMoraleMod: numbe
 };
 
 // Helper to get a player's offensive rating
-const getSkaterOffensiveRating = (player: Player): number => {
+const getSkaterOffensiveRating = (player: Player, isBigGame?: boolean): number => {
     if (player.positions.includes('G')) return 0;
     const attrs = player.attributes as SkaterAttributes;
     const instructionMods = getInstructionModifiers(player);
     const baseRating = (attrs.shootingAccuracy + attrs.shootingRange + attrs.offensiveRead + attrs.gettingOpen + attrs.passing + attrs.puckhandling) / 6;
     const moraleMod = getMoraleModifier(player.morale, instructionMods.morale);
-    return baseRating * moraleMod * instructionMods.offense;
+
+    let bigGameMod = 1.0;
+    if (isBigGame) {
+        const bigGamesAttr = attrs.bigGames || 10;
+        bigGameMod = 1 + (bigGamesAttr - 10) / 50; // +/- 20% modifier
+    }
+
+    return baseRating * moraleMod * instructionMods.offense * bigGameMod;
 };
 
 // Helper to get a player's defensive rating
-const getSkaterDefensiveRating = (player: Player): number => {
+const getSkaterDefensiveRating = (player: Player, isBigGame?: boolean): number => {
     if (player.positions.includes('G')) return 0;
     const attrs = player.attributes as SkaterAttributes;
     const instructionMods = getInstructionModifiers(player);
     const baseRating = (attrs.defensiveRead + attrs.positioning + attrs.stickchecking + attrs.checking + attrs.shotBlocking) / 5;
     const moraleMod = getMoraleModifier(player.morale, instructionMods.morale);
-    return baseRating * moraleMod * instructionMods.defense;
+    
+    let bigGameMod = 1.0;
+    if (isBigGame) {
+        const bigGamesAttr = attrs.bigGames || 10;
+        bigGameMod = 1 + (bigGamesAttr - 10) / 50;
+    }
+
+    return baseRating * moraleMod * instructionMods.defense * bigGameMod;
 };
 
 // Helper to get a goalie's rating
-const getGoalieRating = (player: Player): number => {
+const getGoalieRating = (player: Player, isBigGame?: boolean): number => {
     if (!player.positions.includes('G')) return 0;
     const attrs = player.attributes as GoalieAttributes;
     const instructionMods = getInstructionModifiers(player);
     const baseRating = (attrs.blocker + attrs.glove + attrs.lowShots + attrs.positioning + attrs.rebound + attrs.recovery + attrs.reflexes) / 7;
     const moraleMod = getMoraleModifier(player.morale, instructionMods.morale);
-    return baseRating * moraleMod * instructionMods.goalie;
+    
+    let bigGameMod = 1.0;
+    if (isBigGame) {
+        const bigGamesAttr = attrs.bigGames || 10;
+        bigGameMod = 1 + (bigGamesAttr - 10) / 50;
+    }
+
+    return baseRating * moraleMod * instructionMods.goalie * bigGameMod;
 };
 
 // Weighted random selection for players
@@ -120,7 +141,7 @@ const selectPlayerWeighted = (players: Player[], getWeight: (p: Player) => numbe
     return null; // Should not happen if totalWeight > 0
 };
 
-const generateGameEvent = (time: number, period: number, userTeam: Team, opponentTeam: Team): GameEvent | null => {
+const generateGameEvent = (time: number, period: number, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): GameEvent | null => {
     if (Math.random() > 0.05) return null;
 
     const eventTime = formatTime(time);
@@ -135,14 +156,14 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     const defendingGoalie = defendingTeam.roster.find(p => p.id === defendingTeam.lineup.goalies.starter);
 
     const avgAttackingOffense = attackingSkaters.length > 0 
-        ? attackingSkaters.reduce((sum, p) => sum + getSkaterOffensiveRating(p), 0) / attackingSkaters.length
+        ? attackingSkaters.reduce((sum, p) => sum + getSkaterOffensiveRating(p, isBigGame), 0) / attackingSkaters.length
         : 10;
     
     const avgDefendingDefense = defendingSkaters.length > 0
-        ? defendingSkaters.reduce((sum, p) => sum + getSkaterDefensiveRating(p), 0) / defendingSkaters.length
+        ? defendingSkaters.reduce((sum, p) => sum + getSkaterDefensiveRating(p, isBigGame), 0) / defendingSkaters.length
         : 10;
     
-    const defendingGoalieAbility = defendingGoalie ? getGoalieRating(defendingGoalie) : 10;
+    const defendingGoalieAbility = defendingGoalie ? getGoalieRating(defendingGoalie, isBigGame) : 10;
 
     const offenseFactor = (avgAttackingOffense - 10) / 10;
     const defenseFactor = (avgDefendingDefense - 10) / 10;
@@ -153,7 +174,7 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     goalProbability = Math.max(0.01, Math.min(0.25, goalProbability));
 
     if (eventType < goalProbability) {
-        const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p), 4));
+        const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4));
         if (!attacker) return null;
 
         const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
@@ -188,7 +209,7 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
         return null;
     }
     else if (eventType > 0.35) {
-        const attacker = selectPlayerWeighted(attackingSkaters, getSkaterOffensiveRating);
+        const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame));
         if (!attacker) return null;
         return { time: eventTime, period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` };
     } 
@@ -200,7 +221,7 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     }
 };
 
-export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam: Team) => {
+export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam: Team, isBigGame?: boolean) => {
     const newGameState = { ...gameState };
     newGameState.time += 1;
 
@@ -217,7 +238,7 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
     processInstructions(userTeam);
     processInstructions(opponentTeam);
 
-    const newEvent = generateGameEvent(newGameState.time, newGameState.period, userTeam, opponentTeam);
+    const newEvent = generateGameEvent(newGameState.time, newGameState.period, userTeam, opponentTeam, isBigGame);
     if (newEvent) {
         newGameState.gameLog = [newEvent, ...newGameState.gameLog];
         if (newEvent.description.startsWith('GOAL!')) {
@@ -279,7 +300,7 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
     return newGameState;
 };
 
-export const simulateFullGame = (homeTeam: Team, awayTeam: Team): GameState => {
+export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boolean): GameState => {
     let gameState: GameState = {
         userScore: 0,
         opponentScore: 0,
@@ -295,7 +316,7 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team): GameState => {
         gameState.period = p;
         gameState.time = 0;
         for (let t = 0; t < 1200; t++) {
-            gameState = simulateTick(gameState, homeTeam, awayTeam);
+            gameState = simulateTick(gameState, homeTeam, awayTeam, isBigGame);
         }
     }
 

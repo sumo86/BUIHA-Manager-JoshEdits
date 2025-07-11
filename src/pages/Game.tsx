@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useBlocker } from 'react-router-dom';
 import { useTeam } from '@/context/TeamContext';
-import { GameState, Team, Lineup } from '@/types'; // Added Lineup import
+import { GameState, Team, Lineup } from '@/types';
 import { simulateTick } from '@/lib/gameEngine';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { InstructionsManager } from '@/components/game/InstructionsManager';
 import { GameSummary } from '@/components/game/GameSummary';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { isRivalryGame } from '@/lib/rivalries'; // Import isRivalryGame
 
 const formatClockTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -27,7 +28,7 @@ const formatClockTime = (seconds: number) => {
 };
 
 const Game = () => {
-    const { userTeam, teams, updateTeam, processGameResults } = useTeam(); // Added updateTeam
+    const { userTeam, teams, updateTeam, processGameResults } = useTeam();
     const { opponentName } = useParams<{ opponentName: string }>();
     const opponentTeam = teams.find(t => t.name === opponentName);
     const [gameProcessed, setGameProcessed] = useState(false);
@@ -35,10 +36,24 @@ const Game = () => {
     // Local state for user team modifications during the game
     const [gameUserTeam, setGameUserTeam] = useState<Team>(userTeam);
 
+    // Determine if it's a big game (rivalry)
+    const isBigGame = useMemo(() => {
+        if (!userTeam || !opponentTeam) return false;
+        return isRivalryGame(userTeam.name, opponentTeam.name);
+    }, [userTeam, opponentTeam]);
+
     // Update gameUserTeam if userTeam from context changes (e.g., on initial load or external update)
     useEffect(() => {
         setGameUserTeam(userTeam);
     }, [userTeam]);
+
+    useEffect(() => {
+        if (isBigGame) {
+            toast.info("It's a Rivalry Game!", {
+                description: `The atmosphere is electric for ${userTeam.name} vs ${opponentTeam.name}. Players' performance may be affected by the pressure!`
+            });
+        }
+    }, [isBigGame, userTeam, opponentTeam]);
 
     const [gameState, setGameState] = useState<GameState>({
         userScore: 0,
@@ -57,14 +72,14 @@ const Game = () => {
     useEffect(() => {
         if (!gameState.isPaused && !gameState.isGameOver) {
             intervalRef.current = setInterval(() => {
-                setGameState(prev => simulateTick(prev, gameUserTeam, opponentTeam!)); // Use gameUserTeam for simulation
+                setGameState(prev => simulateTick(prev, gameUserTeam, opponentTeam!, isBigGame)); // Pass isBigGame
             }, 50); // Simulates a tick every 50ms
         } else {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
         };
-    }, [gameState.isPaused, gameState.isGameOver, gameUserTeam, opponentTeam]); // Depend on gameUserTeam
+    }, [gameState.isPaused, gameState.isGameOver, gameUserTeam, opponentTeam, isBigGame]); // Depend on isBigGame
 
     useEffect(() => {
         if (gameState.isGameOver && !gameProcessed) {
@@ -115,7 +130,7 @@ const Game = () => {
             time: formatClockTime(1200 - gameState.time),
             period: gameState.period,
             description: `Instruction to ${targetName}: ${instruction}`,
-            team: "System" // Added team property
+            team: "System"
         };
         setGameState(prev => ({
             ...prev,
@@ -227,7 +242,10 @@ const Game = () => {
                         {gameState.isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
                         {gameState.isPaused ? 'Resume' : 'Pause'}
                     </Button>
-                    {gameState.isPaused && !isEndOfPeriod && (
+                    {isEndOfPeriod && gameState.period < 3 && (
+                        <Button size="lg" onClick={handleNextPeriod}>Start Period {gameState.period + 1}</Button>
+                    )}
+                    {gameState.isPaused && (
                         <Dialog>
                             <DialogTrigger asChild>
                                 <Button size="lg" variant="secondary">
@@ -271,9 +289,6 @@ const Game = () => {
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
-                    )}
-                    {isEndOfPeriod && gameState.period < 3 && (
-                        <Button size="lg" onClick={handleNextPeriod}>Start Period {gameState.period + 1}</Button>
                     )}
                 </div>
             )}

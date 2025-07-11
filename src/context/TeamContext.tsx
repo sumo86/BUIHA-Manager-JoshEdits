@@ -13,6 +13,7 @@ import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament } from '@/lib/nationalsGenerator';
 import { nationalsSchedule } from '@/data/nationalsSchedule';
 import { NationalsTournament } from '@/types';
+import { isRivalryGame } from '@/lib/rivalries';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -295,7 +296,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const homeTeam = tempTeams[homeTeamIndex];
                 const awayTeam = tempTeams[awayTeamIndex];
 
-                const finalGameState = simulateFullGame(homeTeam, awayTeam);
+                const isBigGame = isRivalryGame(homeTeam.name, awayTeam.name);
+
+                if (isBigGame && (homeTeam.name === userTeam?.name || awayTeam.name === userTeam?.name)) {
+                    toast.info("It's a Rivalry Game!", {
+                        description: `The atmosphere is electric for ${homeTeam.name} vs ${awayTeam.name}. Players' performance may be affected by the pressure!`
+                    });
+                }
+
+                const finalGameState = simulateFullGame(homeTeam, awayTeam, isBigGame);
 
                 if (userTeam) {
                     finalGameState.injuries.forEach(injury => {
