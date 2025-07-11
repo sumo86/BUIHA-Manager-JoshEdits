@@ -113,6 +113,7 @@ export type CurrentSeasonStats = {
   losses: number;
   draws: number;
   goalsAgainst: number;
+  goalsFor: number; // Added this line
   shotsAgainst: number;
   saves: number;
   savePercentage: number;

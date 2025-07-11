@@ -370,7 +370,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 // Development for younger players
                 const paGap = player.potentialAbility - player.currentAbility;
-                if (player.age < 30 && paGap > 0) {
+                if (player.age < 30 && paGap > 0 && player.morale !== 'Angry') {
                     const devRate = (player.attributes as SkaterAttributes | GoalieAttributes).developmentRate || 10;
                     const professionalism = (player.attributes as SkaterAttributes | GoalieAttributes).professionalism || 10;
                     const determination = (player.attributes as SkaterAttributes | GoalieAttributes).determination || 10;
@@ -398,7 +398,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const currentAttrValue = player.attributes[attrToImprove as keyof typeof player.attributes] as number;
 
                             if (currentAttrValue < 20) {
-                                const improvement = (Math.random() * 0.2) + (devRate / 100);
+                                let moraleModifier = 1.0;
+                                if (player.morale === 'Happy') {
+                                    moraleModifier = 1.2; // 20% boost
+                                } else if (player.morale === 'Unhappy') {
+                                    moraleModifier = 0.5; // 50% penalty
+                                }
+
+                                const improvement = ((Math.random() * 0.2) + (devRate / 100)) * moraleModifier;
                                 const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                 (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                 changed = true;
@@ -508,8 +515,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 
                                 const newCurrentStats: CurrentSeasonStats = {
                                     gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0,
-                                    wins: 0, losses: 0, draws: 0, goalsAgainst: 0, shotsAgainst: 0,
-                                    saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0,
+                                    wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0,
+                                    shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0,
                                 };
 
                                 return { ...player, history: newHistory, currentStats: newCurrentStats };
