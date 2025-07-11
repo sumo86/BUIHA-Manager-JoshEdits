@@ -28,7 +28,7 @@ const formatClockTime = (seconds: number) => {
 };
 
 const Game = () => {
-    const { userTeam, teams, updateTeam, processGameResults } = useTeam();
+    const { userTeam, teams, updateTeam, processGameResults, gameForCurrentWeek, markGameAsCompleted } = useTeam();
     const { opponentName } = useParams<{ opponentName: string }>();
     const opponentTeam = teams.find(t => t.name === opponentName);
     const [gameProcessed, setGameProcessed] = useState(false);
@@ -86,8 +86,16 @@ const Game = () => {
             processGameResults(userTeam, opponentTeam!, gameState);
             setGameProcessed(true);
             toast.success("Game finished and stats have been updated.");
+
+            // Mark the game as completed in the schedule
+            if (gameForCurrentWeek) { // Ensure it's the scheduled game for the current week
+                const userIsHome = userTeam.name === gameForCurrentWeek.homeTeam;
+                const finalHomeScore = userIsHome ? gameState.userScore : gameState.opponentScore;
+                const finalAwayScore = userIsHome ? gameState.opponentScore : gameState.userScore;
+                markGameAsCompleted(gameForCurrentWeek.id, finalHomeScore, finalAwayScore);
+            }
         }
-    }, [gameState.isGameOver, gameProcessed, processGameResults, userTeam, opponentTeam, gameState]);
+    }, [gameState.isGameOver, gameProcessed, processGameResults, userTeam, opponentTeam, gameState, gameForCurrentWeek, markGameAsCompleted]);
 
     const handlePlayPause = () => {
         if (gameState.isGameOver) return;

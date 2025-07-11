@@ -58,6 +58,7 @@ interface TeamContextType {
     schedule: ScheduleEntry[];
     gameForCurrentWeek: ScheduleEntry | null;
     nationalsData: { [year: number]: { [division: string]: NationalsTournament } };
+    markGameAsCompleted: (gameId: string, homeScore: number, awayScore: number) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -928,6 +929,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
     };
 
+    const markGameAsCompleted = (gameId: string, homeScore: number, awayScore: number) => {
+        setSchedule(prevSchedule =>
+            prevSchedule.map(entry =>
+                entry.id === gameId
+                    ? { ...entry, status: 'completed', result: { homeScore, awayScore } }
+                    : entry
+            )
+        );
+    };
+
     return (
         <TeamContext.Provider value={{ 
             teams, updateTeam, userTeam, 
@@ -938,7 +949,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
             autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
             managedOrganization, managedTeams, selectOrganization, setActiveTeam,
-            schedule, gameForCurrentWeek, nationalsData
+            schedule, gameForCurrentWeek, nationalsData,
+            markGameAsCompleted // Add the new function here
         }}>
             {children}
         </TeamContext.Provider>
