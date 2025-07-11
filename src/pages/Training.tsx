@@ -5,18 +5,34 @@ import { TrendingUp } from "lucide-react";
 import { DevelopmentLogTable } from "@/components/training/DevelopmentLogTable";
 import { PlayerFocusTable } from "@/components/training/PlayerFocusTable";
 import { Button } from "@/components/ui/button";
-import { TeamMorale } from "@/components/training/TeamMorale";
+import { useMemo, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 const Training = () => {
   const { userTeam, currentDate, developmentHistory, updatePlayerTrainingFocus, autoAssignTrainingFocuses } = useTeam();
+  const [selectedLogPlayer, setSelectedLogPlayer] = useState('all');
 
   const handleAutoAssign = () => {
     autoAssignTrainingFocuses();
   };
 
-  if (!userTeam) {
-    return <div>Loading...</div>;
-  }
+  const filteredLogs = useMemo(() => {
+    if (selectedLogPlayer === 'all') {
+      return developmentHistory;
+    }
+    return developmentHistory.filter(log => log.playerId === selectedLogPlayer);
+  }, [developmentHistory, selectedLogPlayer]);
+
+  const playerOptions = useMemo(() => {
+    if (!userTeam) return [];
+    return [
+      { id: 'all', name: 'All Players' },
+      ...userTeam.roster
+        .map(p => ({ id: p.id, name: p.name }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    ];
+  }, [userTeam]);
 
   return (
     <div className="space-y-6">
@@ -31,11 +47,10 @@ const Training = () => {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="focuses">Player Focuses</TabsTrigger>
           <TabsTrigger value="log">Development Log</TabsTrigger>
-          <TabsTrigger value="morale">Team Morale</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
           <Card>
@@ -72,15 +87,29 @@ const Training = () => {
         <TabsContent value="log">
             <Card>
                 <CardHeader>
-                    <CardTitle>Recent Attribute Changes</CardTitle>
+                    <div className="flex justify-between items-center">
+                        <CardTitle>Recent Attribute Changes</CardTitle>
+                        <div className="w-64">
+                            <Label htmlFor="player-log-filter" className="sr-only">Filter by player</Label>
+                            <Select value={selectedLogPlayer} onValueChange={setSelectedLogPlayer}>
+                                <SelectTrigger id="player-log-filter">
+                                    <SelectValue placeholder="Filter by player..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {playerOptions.map(player => (
+                                        <SelectItem key={player.id} value={player.id}>
+                                            {player.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <DevelopmentLogTable logs={developmentHistory} roster={userTeam.roster} />
+                    <DevelopmentLogTable logs={filteredLogs} />
                 </CardContent>
             </Card>
-        </TabsContent>
-        <TabsContent value="morale">
-            <TeamMorale />
         </TabsContent>
       </Tabs>
     </div>

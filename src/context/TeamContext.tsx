@@ -13,13 +13,14 @@ import { validateLineup } from '@/lib/lineupValidation';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
-const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['morale'] => {
     const currentIndex = moraleLevels.indexOf(currentMorale);
     const newIndex = Math.max(0, Math.min(moraleLevels.length - 1, currentIndex + change));
     return moraleLevels[newIndex];
 };
+
+const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 interface TeamContextType {
     teams: Team[];
@@ -253,7 +254,157 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         let tempTeams = JSON.parse(JSON.stringify(teams)) as Team[];
         let tempSchedule = JSON.parse(JSON.stringify(schedule)) as ScheduleEntry[];
-        let newDevelopmentLogs: DevelopmentLog[] = [];
+        const weeklyDevelopmentLogs: DevelopmentLog[] = [];
+
+        const gamesThisWeek = tempSchedule.filter(game =>
+            game.date.month === currentDate.month &&
+            game.date.week === currentDate.week &&
+            game.status === 'scheduled'
+        );
+
+        if (gamesThisWeek.length > 0) {
+            gamesThisWeek.forEach(game => {
+                const homeTeamIndex = tempTeams.findIndex(t => t.name === game.homeTeam);
+                const awayTeamIndex = tempTeams.findIndex(t => t.name === game.awayTeam);
+                
+                if (homeTeamIndex === -1 || awayTeamIndex === -1) return;
+
+                const homeTeam = tempTeams[homeTeamIndex];
+                const awayTeam = tempTeams[awayTeamIndex];
+
+                const finalGameState = simulateFullGame(homeTeam, awayTeam);
+
+                if (userTeam) {
+                    finalGameState.injuries.forEach(injury => {
+                        if (injury.teamName === userTeam.name) {
+                            const injuredPlayer = userTeam.roster.find(p => p.id === injury.playerId);
+                            if (injuredPlayer) {
+                                toast.warning("Player Injured!", {
+                                    description: `${injuredPlayer.name} was injured during the game. (${injury.injuryType}, out for ${injury.duration} weeks)`,
+                                });
+                            }
+                        }
+                    });
+                }
+
+                const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState);
+                
+                tempTeams[homeTeamIndex] = updatedHomeTeam;
+                tempTeams[awayTeamIndex] = updatedAwayTeam;
+
+                const scheduleGameIndex = tempSchedule.findIndex(g => g.id === game.id);
+                if (scheduleGameIndex !== -1) {
+                    tempSchedule[scheduleGameIndex].status = 'completed';
+                    tempSchedule[scheduleGameIndex].result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                }
+                
+                if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
+                    toast.info("Game Auto-Simulated", {
+                        description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}`
+                    });
+                }
+            });
+        }
+
+        // Weekly updates for all teams
+        tempTeams = tempTeams.map(team => {
+            let newRoster = [...team.roster];
+            let newFacilities = [...team.facilities];
+
+            // 1. Injury Recovery
+            newRoster = newRoster.map(player => {
+                if (player.injury && player.injury.duration > 0) {
+                    const hasPhysio = team.facilities.some(f => f.id === 'physio_office_1' && f.status === 'Completed');
+                    player.injury.duration -= (hasPhysio ? 2 : 1);
+
+                    if (player.injury.duration <= 0) {
+                        if (team.name === userTeam?.name) {
+                            toast.success("Player Recovered", { description: `${player.name} has recovered from their injury.` });
+                        }
+                        return { ...player, injury: null, healthStatus: 'Healthy' as 'Healthy' };
+                    }
+                }
+                return player;
+            });
+
+            // 2. Facility Completion
+            newFacilities = newFacilities.map(project => {
+                if (project.status === 'In Progress' && project.weeksToComplete) {
+                    project.weeksToComplete -= 1;
+                    if (project.weeksToComplete <= 0) {
+                        project.status = 'Completed';
+                        if (team.name === userTeam?.name) {
+                            toast.info("Facility Project Completed", { description: `${project.name} is now complete.` });
+                        }
+                        // Apply one-time benefits
+                        if (project.id === 'locker_room_1') {
+                            newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
+                            if (team.name === userTeam?.name) {
+                                toast.success("Morale Boost!", { description: "The new locker room has boosted team morale." });
+                            }
+                        }
+                    }
+                }
+                return project;
+            });
+
+            // 3. Morale Drift
+            newRoster = newRoster.map(player => {
+                if (Math.random() < 0.1) { // 10% chance of morale drift per week
+                    if (player.morale === 'Happy') return { ...player, morale: 'Content' as 'Content' };
+                    if (player.morale === 'Unhappy') return { ...player, morale: 'Content' as 'Content' };
+                }
+                return player;
+            });
+
+            // 4. Player Development
+            newRoster = newRoster.map(player => {
+                if (player.healthStatus === 'Injured' || player.currentAbility >= player.potentialAbility) {
+                    return player;
+                }
+
+                const isSkater = !player.positions.includes('G');
+                const attributes = player.attributes as SkaterAttributes | GoalieAttributes;
+                const devRate = attributes.developmentRate || 10;
+                const professionalism = attributes.professionalism || 10;
+                const determination = attributes.determination || 10;
+
+                const devChance = (devRate + professionalism + determination) / 60 * (1 - (player.age / 40));
+                
+                if (Math.random() < devChance) {
+                    let possibleImprovements = Object.keys(attributes).filter(attr => !['injuryProneness', 'aging'].includes(attr));
+                    
+                    if (player.trainingFocus && trainingFocusesMap[player.trainingFocus]) {
+                        const focusedAttrs = trainingFocusesMap[player.trainingFocus];
+                        possibleImprovements.push(...focusedAttrs, ...focusedAttrs, ...focusedAttrs); // Weight focused attributes
+                    }
+
+                    const attrToImprove = getRandomItem(possibleImprovements);
+                    const currentValue = attributes[attrToImprove as keyof typeof attributes] as number;
+
+                    if (currentValue < 20) {
+                        const change = (Math.random() * 0.25) + 0.05; // Small random increase
+                        (attributes[attrToImprove as keyof typeof attributes] as number) += change;
+                        
+                        const newAbility = calculateCurrentAbility(attributes, isSkater);
+                        player.currentAbility = newAbility;
+                        player.starRating = calculateStarRating(newAbility, isSkater, team.leagueDivision);
+
+                        weeklyDevelopmentLogs.push({
+                            playerId: player.id,
+                            playerName: player.name,
+                            attribute: attrToImprove,
+                            change: change,
+                            newRating: attributes[attrToImprove as keyof typeof attributes] as number,
+                            date: currentDate,
+                        });
+                    }
+                }
+                return player;
+            });
+
+            return { ...team, roster: newRoster, facilities: newFacilities };
+        });
 
         const newDate = ((prevDate) => {
             let { month, week, year } = prevDate;
@@ -314,161 +465,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return { month, week, year };
         })(currentDate);
 
-        const gamesThisWeek = tempSchedule.filter(game =>
-            game.date.month === currentDate.month &&
-            game.date.week === currentDate.week &&
-            game.status === 'scheduled'
-        );
-
-        if (gamesThisWeek.length > 0) {
-            gamesThisWeek.forEach(game => {
-                const homeTeamIndex = tempTeams.findIndex(t => t.name === game.homeTeam);
-                const awayTeamIndex = tempTeams.findIndex(t => t.name === game.awayTeam);
-                
-                if (homeTeamIndex === -1 || awayTeamIndex === -1) return;
-
-                const homeTeam = tempTeams[homeTeamIndex];
-                const awayTeam = tempTeams[awayTeamIndex];
-
-                const finalGameState = simulateFullGame(homeTeam, awayTeam);
-
-                if (userTeam) {
-                    finalGameState.injuries.forEach(injury => {
-                        if (injury.teamName === userTeam.name) {
-                            const injuredPlayer = userTeam.roster.find(p => p.id === injury.playerId);
-                            if (injuredPlayer) {
-                                toast.warning("Player Injured!", {
-                                    description: `${injuredPlayer.name} was injured during the game. (${injury.injuryType}, out for ${injury.duration} weeks)`,
-                                });
-                            }
-                        }
-                    });
-                }
-
-                const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState);
-                
-                tempTeams[homeTeamIndex] = updatedHomeTeam;
-                tempTeams[awayTeamIndex] = updatedAwayTeam;
-
-                const scheduleGameIndex = tempSchedule.findIndex(g => g.id === game.id);
-                if (scheduleGameIndex !== -1) {
-                    tempSchedule[scheduleGameIndex].status = 'completed';
-                    tempSchedule[scheduleGameIndex].result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
-                }
-                
-                if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
-                    toast.info("Game Auto-Simulated", {
-                        description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}`
-                    });
-                }
-            });
-        }
-
-        // Weekly updates for all teams
-        tempTeams = tempTeams.map(team => {
-            let newRoster = [...team.roster];
-            let newFacilities = [...team.facilities];
-
-            // 1. Injury Recovery & Lingering Effects
-            newRoster = newRoster.map(player => {
-                if (player.injury && player.injury.duration > 0) {
-                    const wasSevere = player.injury.duration > 8;
-                    const hasPhysio = team.facilities.some(f => f.id === 'physio_office_1' && f.status === 'Completed');
-                    player.injury.duration -= (hasPhysio ? 2 : 1);
-
-                    if (player.injury.duration <= 0) {
-                        if (team.name === userTeam?.name) {
-                            toast.success("Player Recovered", { description: `${player.name} has recovered from their injury.` });
-                        }
-                        
-                        if (wasSevere && Math.random() < 0.1) {
-                            const physicalAttrs = ['speed', 'acceleration', 'strength', 'stamina', 'agility', 'balance'];
-                            const attrToDrop = getRandomItem(physicalAttrs.filter(a => (player.attributes as any)[a]));
-                            if (attrToDrop && (player.attributes as any)[attrToDrop] > 5) {
-                                (player.attributes as any)[attrToDrop] -= 1;
-                                if (team.name === userTeam?.name) {
-                                    toast.warning("Lingering Effects", { description: `${player.name} seems to have lost a step after their severe injury.` });
-                                }
-                            }
-                        }
-                        return { ...player, injury: null, healthStatus: 'Healthy' as 'Healthy' };
-                    }
-                }
-                return player;
-            });
-
-            // 2. Facility Completion
-            newFacilities = newFacilities.map(project => {
-                if (project.status === 'In Progress' && project.weeksToComplete) {
-                    project.weeksToComplete -= 1;
-                    if (project.weeksToComplete <= 0) {
-                        project.status = 'Completed';
-                        if (team.name === userTeam?.name) {
-                            toast.info("Facility Project Completed", { description: `${project.name} is now complete.` });
-                        }
-                        if (project.id === 'locker_room_1') {
-                            newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
-                            if (team.name === userTeam?.name) {
-                                toast.success("Morale Boost!", { description: "The new locker room has boosted team morale." });
-                            }
-                        }
-                    }
-                }
-                return project;
-            });
-
-            // 3. Morale Drift
-            newRoster = newRoster.map(player => {
-                if (Math.random() < 0.1) {
-                    if (player.morale === 'Happy') return { ...player, morale: 'Content' as 'Content' };
-                    if (player.morale === 'Unhappy') return { ...player, morale: 'Content' as 'Content' };
-                }
-                return player;
-            });
-
-            // 4. Player Development
-            newRoster = newRoster.map(player => {
-                if (player.healthStatus === 'Injured' || player.currentAbility >= player.potentialAbility) {
-                    return player;
-                }
-
-                const devChance = ((30 - player.age) / 150) + (player.attributes.professionalism / 200) + (player.attributes.determination / 200);
-
-                if (Math.random() < devChance) {
-                    const isSkater = !player.positions.includes('G');
-                    const focusAttrs = player.trainingFocus ? trainingFocusesMap[player.trainingFocus] : [];
-                    const allAttrs = isSkater ? Object.keys(player.attributes as SkaterAttributes) : Object.keys(player.attributes as GoalieAttributes);
-                    const possibleAttrs = allAttrs.filter(attr => (player.attributes as any)[attr] < 20 && !['aging', 'injuryProneness', 'controversy'].includes(attr));
-
-                    if (possibleAttrs.length > 0) {
-                        let attrToImprove: string;
-                        const possibleFocusAttrs = focusAttrs.filter(attr => possibleAttrs.includes(attr));
-                        if (possibleFocusAttrs.length > 0 && Math.random() < 0.6) {
-                            attrToImprove = getRandomItem(possibleFocusAttrs);
-                        } else {
-                            attrToImprove = getRandomItem(possibleAttrs);
-                        }
-
-                        (player.attributes as any)[attrToImprove] += 1;
-                        player.currentAbility = calculateCurrentAbility(player.attributes, isSkater);
-                        player.starRating = calculateStarRating(player.currentAbility, isSkater, team.leagueDivision);
-
-                        newDevelopmentLogs.push({
-                            playerId: player.id,
-                            playerName: player.name,
-                            attribute: attrToImprove,
-                            change: 1,
-                            newRating: (player.attributes as any)[attrToImprove],
-                            date: newDate,
-                        });
-                    }
-                }
-                return player;
-            });
-
-            return { ...team, roster: newRoster, facilities: newFacilities };
-        });
-
         if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
             tempSchedule = generateSeasonSchedule(tempTeams, newDate);
             toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
@@ -477,9 +473,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setTeams(tempTeams);
         setSchedule(tempSchedule);
         setCurrentDate(newDate);
-        if (newDevelopmentLogs.length > 0) {
-            setDevelopmentHistory(prev => [...newDevelopmentLogs, ...prev]);
-        }
+        setDevelopmentHistory(prev => [...weeklyDevelopmentLogs, ...prev].slice(0, 200));
     };
 
     const movePlayer = (playerId: string, fromTeamName: string, toTeamName: string) => {

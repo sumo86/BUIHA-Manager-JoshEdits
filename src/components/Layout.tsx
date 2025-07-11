@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
-import Sidebar from "./Sidebar";
+import { Sidebar } from "./Sidebar"; // Changed to named import
 import { Button } from "./ui/button";
 import { useTeam } from "@/context/TeamContext";
 import { Calendar, ArrowRight } from "lucide-react";
