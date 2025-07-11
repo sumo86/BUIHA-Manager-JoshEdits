@@ -69,11 +69,12 @@ export const LineupManager = ({ lineup, roster, onLineupChange, onRoleChange }: 
     const currentPlayer = roster.find(p => p.id === value);
     const availablePlayers = getAvailablePlayers(position, value);
     const applicableRoles = currentPlayer ? getApplicableRoles(currentPlayer) : [];
+    const isInjured = currentPlayer?.healthStatus === 'Injured';
 
     return (
-      <div className="p-2 border rounded-md bg-muted/30 space-y-2">
+      <div className={`p-2 border rounded-md bg-muted/30 space-y-2 ${isInjured ? 'border-red-500 bg-red-100 dark:bg-red-900/20' : ''}`}>
         <Select value={value || 'empty'} onValueChange={(val) => handlePlayerChange(group, posKey, index, val === 'empty' ? null : val)}>
-          <SelectTrigger>
+          <SelectTrigger className={isInjured ? 'border-red-500' : ''}>
             <SelectValue placeholder="Empty" />
           </SelectTrigger>
           <SelectContent>

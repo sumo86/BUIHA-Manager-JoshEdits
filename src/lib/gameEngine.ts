@@ -20,25 +20,38 @@ const getGoalFactor = (leagueDivision: string): number => {
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
 
+const getMoraleModifier = (morale: Player['morale']): number => {
+    switch (morale) {
+        case 'Happy': return 1.05;
+        case 'Content': return 1.0;
+        case 'Unhappy': return 0.95;
+        case 'Angry': return 0.90;
+        default: return 1.0;
+    }
+};
+
 // Helper to get a player's offensive rating
 const getSkaterOffensiveRating = (player: Player): number => {
     if (player.positions.includes('G')) return 0;
     const attrs = player.attributes as SkaterAttributes;
-    return (attrs.shootingAccuracy + attrs.shootingRange + attrs.offensiveRead + attrs.gettingOpen + attrs.passing + attrs.puckhandling) / 6;
+    const baseRating = (attrs.shootingAccuracy + attrs.shootingRange + attrs.offensiveRead + attrs.gettingOpen + attrs.passing + attrs.puckhandling) / 6;
+    return baseRating * getMoraleModifier(player.morale);
 };
 
 // Helper to get a player's defensive rating
 const getSkaterDefensiveRating = (player: Player): number => {
     if (player.positions.includes('G')) return 0;
     const attrs = player.attributes as SkaterAttributes;
-    return (attrs.defensiveRead + attrs.positioning + attrs.stickchecking + attrs.checking + attrs.shotBlocking) / 5;
+    const baseRating = (attrs.defensiveRead + attrs.positioning + attrs.stickchecking + attrs.checking + attrs.shotBlocking) / 5;
+    return baseRating * getMoraleModifier(player.morale);
 };
 
 // Helper to get a goalie's rating
 const getGoalieRating = (player: Player): number => {
     if (!player.positions.includes('G')) return 0;
     const attrs = player.attributes as GoalieAttributes;
-    return (attrs.blocker + attrs.glove + attrs.lowShots + attrs.positioning + attrs.rebound + attrs.recovery + attrs.reflexes) / 7;
+    const baseRating = (attrs.blocker + attrs.glove + attrs.lowShots + attrs.positioning + attrs.rebound + attrs.recovery + attrs.reflexes) / 7;
+    return baseRating * getMoraleModifier(player.morale);
 };
 
 // Weighted random selection for players
