@@ -29,6 +29,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerMovement } from "@/components/roster/PlayerMovement";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -201,7 +202,27 @@ const Roster = () => {
         { accessorKey: 'nationality', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Nationality<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
         { accessorKey: 'starRating', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Rating<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => renderStars(row.original.starRating) },
         { accessorKey: 'morale', header: 'Morale', cell: ({ row }) => <Badge variant="outline">{row.original.morale}</Badge> },
-        { accessorKey: 'healthStatus', header: 'Status', cell: ({ row }) => <Badge variant={row.original.healthStatus === 'Healthy' ? 'secondary' : 'destructive'}>{row.original.healthStatus}</Badge> },
+        { 
+            accessorKey: 'healthStatus', 
+            header: 'Status', 
+            cell: ({ row }) => {
+                const player = row.original;
+                const badge = <Badge variant={player.healthStatus === 'Healthy' ? 'secondary' : 'destructive'}>{player.healthStatus}</Badge>;
+                if (player.injury) {
+                    return (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>{badge}</TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{player.injury.type} ({player.injury.duration} weeks left)</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    );
+                }
+                return badge;
+            } 
+        },
         { accessorKey: 'eligibility', header: 'Eligibility', cell: ({ row }) => renderEligibility(row.original) },
         {
             id: 'actions',

@@ -132,6 +132,7 @@ export type Player = {
   starRating: number;
   morale: "Content" | "Happy" | "Unhappy" | "Angry";
   healthStatus: "Healthy" | "Injured" | "Suspended";
+  injury: { type: string; duration: number } | null;
   eligibility: "UG Year 1" | "UG Year 2" | "UG Year 3" | "UG Year 4" | "Masters" | "PhD" | "Staff";
   archetype: PlayerArchetype;
   attributes: SkaterAttributes | GoalieAttributes;
@@ -189,6 +190,7 @@ export type FacilityProject = {
   cost: number;
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
+  weeksToComplete?: number;
 };
 
 export type Team = {
@@ -224,6 +226,7 @@ export type GameState = {
   gameLog: GameEvent[];
   isGameOver: boolean;
   isPaused: boolean;
+  injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
 };
 
 export type GameDate = {

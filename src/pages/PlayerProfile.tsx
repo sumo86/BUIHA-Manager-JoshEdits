@@ -3,7 +3,7 @@ import { useTeam } from "@/context/TeamContext";
 import { Player, SkaterAttributes, GoalieAttributes } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit } from "lucide-react";
+import { ArrowLeft, Edit, AlertCircle } from "lucide-react";
 import { PlayerHistoryTable } from "@/components/player/PlayerHistoryTable";
 import {
   Dialog,
@@ -15,6 +15,7 @@ import {
 import { PlayerEditForm } from "@/components/player/PlayerEditForm";
 import { PlayerScoutingReport } from "@/components/player/PlayerScoutingReport";
 import { useState, useMemo } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
@@ -119,6 +120,16 @@ const PlayerProfile = () => {
             </div>
         </CardHeader>
       </Card>
+
+      {player.injury && (
+        <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Injured</AlertTitle>
+            <AlertDescription>
+                {player.injury.type} - Out for {player.injury.duration} more week(s).
+            </AlertDescription>
+        </Alert>
+      )}
 
       {isUserPlayer && <PlayerScoutingReport player={player} team={team} />}
 

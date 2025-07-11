@@ -1,5 +1,8 @@
 import { Team, GameEvent, GameState, SkaterAttributes, GoalieAttributes, Player } from '@/types';
 
+const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -141,6 +144,49 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
             if (newEvent.team === userTeam.name) newGameState.userScore++;
             else newGameState.opponentScore++;
         }
+        // If the event was a hit, check for an injury
+        if (newEvent.description.includes('lays a big hit on')) {
+            const defenderName = newEvent.description.split('on ')[1].replace('.', '');
+            const attackingTeamName = newEvent.team;
+            const defendingTeam = attackingTeamName === userTeam.name ? opponentTeam : userTeam;
+            const defender = defendingTeam.roster.find(p => p.name === defenderName);
+
+            if (defender && defender.healthStatus === 'Healthy') {
+                const injuryProneness = (defender.attributes as SkaterAttributes).injuryProneness || 10;
+                const injuryChance = 0.01 + (injuryProneness / 2000); // Base 1% chance on a hit event
+                if (Math.random() < injuryChance) {
+                    const injuryRoll = Math.random();
+                    let injuryType: string;
+                    let duration: number;
+                    if (injuryRoll < 0.6) {
+                        injuryType = getRandomItem(["Bruised Ribs", "Minor Strain", "Day-to-Day"]);
+                        duration = getRandomValueInRange(1, 3);
+                    } else if (injuryRoll < 0.9) {
+                        injuryType = getRandomItem(["Sprained Ankle", "Mild Concussion", "Groin Injury"]);
+                        duration = getRandomValueInRange(4, 8);
+                    } else {
+                        injuryType = getRandomItem(["Broken Arm", "Torn ACL", "Severe Concussion"]);
+                        duration = getRandomValueInRange(10, 24);
+                    }
+                    
+                    if (!newGameState.injuries.some(i => i.playerId === defender.id)) {
+                        newGameState.injuries.push({
+                            teamName: defendingTeam.name,
+                            playerId: defender.id,
+                            injuryType,
+                            duration
+                        });
+                        const injuryLogEvent: GameEvent = {
+                            time: newEvent.time,
+                            period: newEvent.period,
+                            team: defendingTeam.name,
+                            description: `INJURY! ${defender.name} is injured after the hit. (${injuryType})`
+                        };
+                        newGameState.gameLog = [injuryLogEvent, ...newGameState.gameLog];
+                    }
+                }
+            }
+        }
     }
 
     if (newGameState.time >= 1200) {
@@ -162,6 +208,7 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team): GameState => {
         gameLog: [],
         isGameOver: false,
         isPaused: false,
+        injuries: [],
     };
 
     for (let p = 1; p <= 3; p++) {

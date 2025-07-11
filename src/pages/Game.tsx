@@ -48,6 +48,7 @@ const Game = () => {
         gameLog: [],
         isGameOver: false,
         isPaused: true,
+        injuries: [],
     });
 
     const intervalRef = useRef<NodeJS.Timeout | null>(null);

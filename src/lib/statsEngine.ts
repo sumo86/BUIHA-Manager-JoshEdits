@@ -1,104 +1,95 @@
 import { Team, GameState, Player } from '@/types';
 
-const parseGoalEvent = (description: string): { scorer: string, assisters: string[] } => {
-    const scorerMatch = description.match(/GOAL! (.*?) scores./);
-    const scorer = scorerMatch ? scorerMatch[1] : '';
+const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
 
-    const assisters: string[] = [];
-    const assistMatch = description.match(/Assists: (.*)/);
-    if (assistMatch && assistMatch[1] !== 'Unassisted') {
-        assisters.push(...assistMatch[1].split(', '));
-    }
-
-    return { scorer, assisters };
+const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['morale'] => {
+    const currentIndex = moraleLevels.indexOf(currentMorale);
+    const newIndex = Math.max(0, Math.min(moraleLevels.length - 1, currentIndex + change));
+    return moraleLevels[newIndex];
 };
 
-export const processGameResults = (
-    homeTeam: Team,
-    awayTeam: Team,
-    gameState: GameState
-): { updatedUserTeam: Team, updatedOpponentTeam: Team } => {
-    const updatedHomeTeam = JSON.parse(JSON.stringify(homeTeam)) as Team;
-    const updatedAwayTeam = JSON.parse(JSON.stringify(awayTeam)) as Team;
+export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState) => {
+    const updatedUserTeam = JSON.parse(JSON.stringify(userTeam));
+    const updatedOpponentTeam = JSON.parse(JSON.stringify(opponentTeam));
 
-    // 1. Increment games played for all players on both rosters
-    updatedHomeTeam.roster.forEach(p => { p.currentStats.gamesPlayed += 1; });
-    updatedAwayTeam.roster.forEach(p => { p.currentStats.gamesPlayed += 1; });
-
-    // 2. Update team-level stats
+    // Update team records
     if (gameState.userScore > gameState.opponentScore) {
-        updatedHomeTeam.wins += 1;
-        updatedAwayTeam.losses += 1;
+        updatedUserTeam.wins += 1;
+        updatedOpponentTeam.losses += 1;
     } else if (gameState.opponentScore > gameState.userScore) {
-        updatedAwayTeam.wins += 1;
-        updatedHomeTeam.losses += 1;
+        updatedOpponentTeam.wins += 1;
+        updatedUserTeam.losses += 1;
     } else {
-        updatedHomeTeam.draws += 1;
-        updatedAwayTeam.draws += 1;
+        updatedUserTeam.draws += 1;
+        updatedOpponentTeam.draws += 1;
     }
-    updatedHomeTeam.goalsFor += gameState.userScore;
-    updatedHomeTeam.goalsAgainst += gameState.opponentScore;
-    updatedAwayTeam.goalsFor += gameState.opponentScore;
-    updatedAwayTeam.goalsAgainst += gameState.userScore;
 
-    // 3. Process game log for individual skater stats
+    updatedUserTeam.goalsFor += gameState.userScore;
+    updatedUserTeam.goalsAgainst += gameState.opponentScore;
+    updatedOpponentTeam.goalsFor += gameState.opponentScore;
+    updatedOpponentTeam.goalsAgainst += gameState.userScore;
+
+    // Process player stats from game log
+    const allPlayers = [...updatedUserTeam.roster, ...updatedOpponentTeam.roster];
     gameState.gameLog.forEach(event => {
         if (event.description.startsWith('GOAL!')) {
-            const { scorer, assisters } = parseGoalEvent(event.description);
-            const scoringTeamRoster = event.team === updatedHomeTeam.name 
-                ? updatedHomeTeam.roster 
-                : updatedAwayTeam.roster;
-
-            const scorerPlayer = scoringTeamRoster.find(p => p.name === scorer);
-            if (scorerPlayer && !scorerPlayer.positions.includes('G')) {
-                scorerPlayer.currentStats.goals += 1;
-                scorerPlayer.currentStats.points += 1;
+            const scorerName = event.description.split(' scores.')[0].split('GOAL! ')[1];
+            const scorer = allPlayers.find(p => p.name === scorerName);
+            if (scorer) {
+                scorer.currentStats.goals += 1;
+                scorer.currentStats.points += 1;
             }
 
-            assisters.forEach(assistName => {
-                const assisterPlayer = scoringTeamRoster.find(p => p.name === assistName);
-                if (assisterPlayer && !assisterPlayer.positions.includes('G')) {
-                    assisterPlayer.currentStats.assists += 1;
-                    assisterPlayer.currentStats.points += 1;
-                }
-            });
-        }
-    });
-    
-    // 4. Update goalie stats
-    const homeGoalie = updatedHomeTeam.roster.find(p => p.id === updatedHomeTeam.lineup.goalies.starter);
-    const awayGoalie = updatedAwayTeam.roster.find(p => p.id === updatedAwayTeam.lineup.goalies.starter);
-
-    let homeShotsAgainst = 0;
-    let awayShotsAgainst = 0;
-
-    gameState.gameLog.forEach(event => {
-        if (event.description.startsWith('GOAL!') || event.description.includes("takes a shot, saved by")) {
-            if (event.team === updatedHomeTeam.name) {
-                awayShotsAgainst++;
-            } else {
-                homeShotsAgainst++;
+            if (event.description.includes('Assists: ')) {
+                const assistsString = event.description.split('Assists: ')[1];
+                const assisterNames = assistsString.split(', ');
+                assisterNames.forEach(name => {
+                    const assister = allPlayers.find(p => p.name === name);
+                    if (assister) {
+                        assister.currentStats.assists += 1;
+                        assister.currentStats.points += 1;
+                    }
+                });
             }
         }
     });
 
-    if (homeGoalie) {
-        if (gameState.userScore > gameState.opponentScore) homeGoalie.currentStats.wins += 1;
-        else if (gameState.opponentScore > gameState.userScore) homeGoalie.currentStats.losses += 1;
-        else homeGoalie.currentStats.draws += 1;
-        homeGoalie.currentStats.goalsAgainst += gameState.opponentScore;
-        homeGoalie.currentStats.shotsAgainst += homeShotsAgainst;
-        homeGoalie.currentStats.saves += (homeShotsAgainst - gameState.opponentScore);
+    // Update games played for all players in the game
+    updatedUserTeam.roster.forEach((p: Player) => { p.currentStats.gamesPlayed += 1; });
+    updatedOpponentTeam.roster.forEach((p: Player) => { p.currentStats.gamesPlayed += 1; });
+
+    // Process injuries
+    gameState.injuries.forEach(injuryInfo => {
+        const teamToUpdate = injuryInfo.teamName === userTeam.name ? updatedUserTeam : updatedOpponentTeam;
+        const playerIndex = teamToUpdate.roster.findIndex((p: Player) => p.id === injuryInfo.playerId);
+        if (playerIndex !== -1) {
+            teamToUpdate.roster[playerIndex].healthStatus = 'Injured';
+            teamToUpdate.roster[playerIndex].injury = {
+                type: injuryInfo.injuryType,
+                duration: injuryInfo.duration,
+            };
+        }
+    });
+
+    // Process morale
+    const userWon = gameState.userScore > gameState.opponentScore;
+    const opponentWon = gameState.opponentScore > gameState.userScore;
+
+    const applyMoraleChange = (team: Team, change: 1 | -1) => {
+        team.roster.forEach((player: Player) => {
+            if (Math.random() < 0.3) { // 30% chance for morale change
+                player.morale = updateMorale(player.morale, change);
+            }
+        });
+    };
+
+    if (userWon) {
+        applyMoraleChange(updatedUserTeam, 1);
+        applyMoraleChange(updatedOpponentTeam, -1);
+    } else if (opponentWon) {
+        applyMoraleChange(updatedUserTeam, -1);
+        applyMoraleChange(updatedOpponentTeam, 1);
     }
 
-    if (awayGoalie) {
-        if (gameState.opponentScore > gameState.userScore) awayGoalie.currentStats.wins += 1;
-        else if (gameState.userScore > gameState.opponentScore) awayGoalie.currentStats.losses += 1;
-        else awayGoalie.currentStats.draws += 1;
-        awayGoalie.currentStats.goalsAgainst += gameState.userScore;
-        awayGoalie.currentStats.shotsAgainst += awayShotsAgainst;
-        awayGoalie.currentStats.saves += (awayShotsAgainst - gameState.userScore);
-    }
-
-    return { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam };
+    return { updatedUserTeam, updatedOpponentTeam };
 };

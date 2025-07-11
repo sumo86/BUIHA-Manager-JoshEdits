@@ -11,6 +11,13 @@ import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
+const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
+
+const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['morale'] => {
+    const currentIndex = moraleLevels.indexOf(currentMorale);
+    const newIndex = Math.max(0, Math.min(moraleLevels.length - 1, currentIndex + change));
+    return moraleLevels[newIndex];
+};
 
 interface TeamContextType {
     teams: Team[];
@@ -271,6 +278,60 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             });
         }
 
+        // Weekly updates for all teams
+        tempTeams = tempTeams.map(team => {
+            let newRoster = [...team.roster];
+            let newFacilities = [...team.facilities];
+
+            // 1. Injury Recovery
+            newRoster = newRoster.map(player => {
+                if (player.injury && player.injury.duration > 0) {
+                    const hasPhysio = team.facilities.some(f => f.id === 'physio_office_1' && f.status === 'Completed');
+                    player.injury.duration -= (hasPhysio ? 2 : 1);
+
+                    if (player.injury.duration <= 0) {
+                        if (team.name === userTeam?.name) {
+                            toast.success("Player Recovered", { description: `${player.name} has recovered from their injury.` });
+                        }
+                        return { ...player, injury: null, healthStatus: 'Healthy' as 'Healthy' };
+                    }
+                }
+                return player;
+            });
+
+            // 2. Facility Completion
+            newFacilities = newFacilities.map(project => {
+                if (project.status === 'In Progress' && project.weeksToComplete) {
+                    project.weeksToComplete -= 1;
+                    if (project.weeksToComplete <= 0) {
+                        project.status = 'Completed';
+                        if (team.name === userTeam?.name) {
+                            toast.info("Facility Project Completed", { description: `${project.name} is now complete.` });
+                        }
+                        // Apply one-time benefits
+                        if (project.id === 'locker_room_1') {
+                            newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
+                            if (team.name === userTeam?.name) {
+                                toast.success("Morale Boost!", { description: "The new locker room has boosted team morale." });
+                            }
+                        }
+                    }
+                }
+                return project;
+            });
+
+            // 3. Morale Drift
+            newRoster = newRoster.map(player => {
+                if (Math.random() < 0.1) { // 10% chance of morale drift per week
+                    if (player.morale === 'Happy') return { ...player, morale: 'Content' as 'Content' };
+                    if (player.morale === 'Unhappy') return { ...player, morale: 'Content' as 'Content' };
+                }
+                return player;
+            });
+
+            return { ...team, roster: newRoster, facilities: newFacilities };
+        });
+
         const newDate = ((prevDate) => {
             let { month, week, year } = prevDate;
             week += 1;
@@ -424,7 +485,35 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         updateTeam(updatedOpponentTeam);
     };
 
-    const runStudentLifeInitiative = () => {};
+    const runStudentLifeInitiative = () => {
+        if (!userTeam) return;
+        const cost = 500;
+        const budgetCategory = "Student Life";
+        const currentBudget = userTeam.financials.budgetAllocations[budgetCategory];
+
+        if (currentBudget < cost) {
+            toast.error("Insufficient Student Life Budget", {
+                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+            });
+            return;
+        }
+
+        const newBudgetAllocations = {
+            ...userTeam.financials.budgetAllocations,
+            [budgetCategory]: currentBudget - cost,
+        };
+        
+        const newRoster = userTeam.roster.map(player => ({
+            ...player,
+            morale: updateMorale(player.morale, 1)
+        }));
+
+        updateTeam({ ...userTeam, roster: newRoster, financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations } });
+        toast.success("Student Life Initiative Successful!", {
+            description: `Team morale has improved. Cost: £${cost.toLocaleString()}.`,
+        });
+    };
+
     const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
         if (!userTeam) return;
         const newRoster = userTeam.roster.map(p => p.id === playerId ? { ...p, trainingFocus: focus } : p);
@@ -598,7 +687,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 return currentTeams.map(team => {
                     if (managedTeams.some(mt => mt.name === team.name)) {
                         const newFacilities = team.facilities.map(p => 
-                            p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress' } : p
+                            p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress', weeksToComplete: 12 } : p
                         );
                         return { ...team, facilities: newFacilities };
                     }
@@ -629,7 +718,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 Facilities: Math.round(currentBudget - cost),
             };
             const newFacilities = userTeam.facilities.map(p =>
-                p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress' } : p
+                p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress', weeksToComplete: 12 } : p
             );
             const updatedTeam = {
                 ...userTeam,
