@@ -197,12 +197,12 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      const newPosition = getUniqueSkaterPosition(positions);
-      positions.push(newPosition as any as Position); // Assert as any then as Position
+      const newPosition: Position = getUniqueSkaterPosition(positions); // Explicitly type
+      positions.push(newPosition);
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      const anotherNewPosition = getUniqueSkaterPosition(positions);
-      positions.push(anotherNewPosition as any as Position); // Assert as any then as Position
+      const anotherNewPosition: Position = getUniqueSkaterPosition(positions); // Explicitly type
+      positions.push(anotherNewPosition);
     }
   }
 

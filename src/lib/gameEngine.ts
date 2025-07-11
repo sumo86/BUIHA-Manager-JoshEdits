@@ -1,5 +1,6 @@
 import { Team, GameEvent, GameState, SkaterAttributes, GoalieAttributes, Player } from '@/types';
 import { tactics } from '@/data/tactics';
+import { roles, Role } from '@/data/roles';
 import { calculateTacticSuitability } from '@/lib/tactics';
 import { aiMakeAdjustments } from '@/lib/aiManager';
 
@@ -10,6 +11,22 @@ const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${String(19 - mins).padStart(2, '0')}:${String(59 - secs).padStart(2, '0')}`;
+};
+
+const defaultModifiers: Role['behavioralModifiers'] = {
+    shootTendency: 1.0,
+    passTendency: 1.0,
+    hitTendency: 1.0,
+    shotBlockTendency: 1.0,
+    penaltyTendency: 1.0,
+};
+
+const getRoleModifiers = (player: Player | null): Role['behavioralModifiers'] => {
+    if (!player || !player.role) {
+        return defaultModifiers;
+    }
+    const roleData = roles.find(r => r.name === player.role);
+    return roleData ? roleData.behavioralModifiers : defaultModifiers;
 };
 
 const getGoalFactor = (leagueDivision: string): number => {
@@ -128,7 +145,7 @@ const selectPlayerWeighted = (players: Player[], getWeight: (p: Player) => numbe
     const weightedPlayers = players.map(p => ({ player: p, weight: getWeight(p) }));
     const totalWeight = weightedPlayers.reduce((sum, wp) => sum + wp.weight, 0);
 
-    if (totalWeight === 0) return players.length > 0 ? players[0] : null;
+    if (totalWeight <= 0) return players.length > 0 ? getRandomItem(players) : null;
 
     let random = Math.random() * totalWeight;
     for (const wp of weightedPlayers) {
@@ -221,26 +238,26 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const shotSuccessProb = Math.max(0.05, Math.min(0.95, 0.5 - (goalieFactor * 0.5)));
         
         if (Math.random() < shotSuccessProb) {
-            const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4));
+            const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4) * getRoleModifiers(p).shootTendency);
             if (!attacker) return { event: null, possessionChange: true };
             const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
             let assists: string[] = [];
             const passTendency = (attacker.attributes as SkaterAttributes).passShootTendency || 10;
             if (potentialAssisters.length > 0 && Math.random() < (0.3 + passTendency / 25)) { 
-                const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing, 4));
+                const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing, 4) * getRoleModifiers(p).passTendency);
                 if (assist1) assists.push(assist1.name);
             }
             const assistText = assists.length > 0 ? `Assists: ${assists.join(', ')}` : "Unassisted";
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` }, possessionChange };
         } else {
-            const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame));
+            const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame) * getRoleModifiers(p).shootTendency);
             if (!attacker) return { event: null, possessionChange: true };
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` }, possessionChange };
         }
     } else if (eventType < 0.35) {
         const avgBravery = defendingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).bravery, 0) / defendingSkaters.length;
         if (Math.random() < (avgBravery - 5) / 100) {
-            const blocker = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).shotBlocking + (p.attributes as SkaterAttributes).bravery);
+            const blocker = selectPlayerWeighted(defendingSkaters, p => ((p.attributes as SkaterAttributes).shotBlocking + (p.attributes as SkaterAttributes).bravery) * getRoleModifiers(p).shotBlockTendency);
             if (!blocker) return { event: null, possessionChange: false };
             return { event: { time: eventTime, period: gameState.period, team: defendingTeam.name, description: `Shot blocked by ${blocker.name}!` }, possessionChange: false };
         }
@@ -248,7 +265,8 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const player1 = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).puckhandling);
         if (!player1) return { event: null, possessionChange: false };
         const movementType = Math.random();
-        if (movementType < 0.6) {
+        const player1Modifiers = getRoleModifiers(player1);
+        if (movementType < 0.6 * player1Modifiers.passTendency) {
             const player2 = selectPlayerWeighted(attackingSkaters.filter(p => p.id !== player1.id), p => (p.attributes as SkaterAttributes).gettingOpen);
             if (player2) return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} passes to ${player2.name}.` }, possessionChange: false };
         } else {
@@ -260,16 +278,17 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const penaltyTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
         const player = penaltyTeam.roster[Math.floor(Math.random() * penaltyTeam.roster.length)];
         const instructionMods = getInstructionModifiers(player);
+        const roleMods = getRoleModifiers(player);
         const aggression = (player.attributes as SkaterAttributes).aggression || 10;
         const sportsmanship = (player.attributes as SkaterAttributes).sportsmanship || 10;
         const basePenaltyChance = 0.1;
         const personalityModifier = (1 + (aggression - 10) / 20) * (1 - (sportsmanship - 10) / 30);
-        if (Math.random() < basePenaltyChance * personalityModifier * instructionMods.penaltyChance) {
+        if (Math.random() < basePenaltyChance * personalityModifier * instructionMods.penaltyChance * roleMods.penaltyTendency) {
             const infraction = getRandomItem(infractions);
             return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange };
         }
     } else {
-        const attacker = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).hitting + (p.attributes as SkaterAttributes).strength);
+        const attacker = selectPlayerWeighted(attackingSkaters, p => ((p.attributes as SkaterAttributes).hitting + (p.attributes as SkaterAttributes).strength) * getRoleModifiers(p).hitTendency);
         const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
         if (!attacker || !defender) return { event: null, possessionChange: false };
         const hitDescriptions = [`${attacker.name} lays a big hit on ${defender.name}.`, `${attacker.name} delivers a crushing check to ${defender.name}.`, `${defender.name} is rocked by a huge hit from ${attacker.name}.`, `${attacker.name} finishes his check on ${defender.name} with authority.`, `${defender.name} gets stood up at the blue line by ${attacker.name}.`];
