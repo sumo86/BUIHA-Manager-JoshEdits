@@ -276,3 +276,21 @@ export type TacticSuitability = {
   score: number;
   explanation: string;
 };
+
+export type TeamRecord = {
+  playerName: string;
+  teamName: string;
+  value: number;
+  season?: string;
+};
+
+export type RecordCategory = 'Goals' | 'Assists' | 'Points' | 'PenaltyMinutes' | 'GAA' | 'SavePercentage' | 'Shutouts';
+
+export type LegacyRecord = {
+  playerName: string;
+  teamName: string;
+  category: RecordCategory;
+  type: 'season' | 'career';
+  value: number;
+  season?: string;
+};

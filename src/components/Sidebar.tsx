@@ -18,6 +18,7 @@ import {
   Settings,
   Play,
   Smile,
+  BookOpen,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -39,6 +40,7 @@ const navItems = [
   { href: "/facilities", label: "Facilities", icon: Building },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/standings", label: "Standings", icon: Trophy },
+  { href: "/history", label: "History", icon: BookOpen },
   { href: "/buiha-overview", label: "BUIHA", icon: Swords },
 ];
 

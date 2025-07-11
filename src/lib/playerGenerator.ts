@@ -188,26 +188,22 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      let secondaryPosition: Position; 
       while (true) {
-        const candidatePosition: Position = getRandomSkaterPosition() as Position; // Explicitly cast here
+        const candidatePosition: Position = getRandomSkaterPosition();
         if (!positions.some(p => p === candidatePosition)) {
-          secondaryPosition = candidatePosition;
+          positions.push(candidatePosition);
           break;
         }
       }
-      positions.push(secondaryPosition); // Remove 'as Position'
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      let tertiaryPosition: Position; 
       while (true) {
-        const candidatePosition: Position = getRandomSkaterPosition() as Position; // Explicitly cast here
+        const candidatePosition: Position = getRandomSkaterPosition();
         if (!positions.some(p => p === candidatePosition)) {
-          tertiaryPosition = candidatePosition;
+          positions.push(candidatePosition);
           break;
         }
       }
-      positions.push(tertiaryPosition); // Remove 'as Position'
     }
   }
 
@@ -329,7 +325,7 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         
         const qualityRoll = Math.random();
         let estimatedQuality: Player['estimatedQuality'];
-        if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else estimatedQuality = 'Elite';
+        if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else if (qualityRoll < 0.99) estimatedQuality = 'Elite'; else estimatedQuality = 'Elite'; // Ensure Elite is possible
         
         const allRecruitPositions: Position[] = [...skaterPositions, 'G'];
         const position = getRandomItem<Position>(allRecruitPositions);
