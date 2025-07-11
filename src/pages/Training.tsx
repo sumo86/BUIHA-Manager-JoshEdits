@@ -5,6 +5,7 @@ import { TrendingUp } from "lucide-react";
 import { DevelopmentLogTable } from "@/components/training/DevelopmentLogTable";
 import { PlayerFocusTable } from "@/components/training/PlayerFocusTable";
 import { Button } from "@/components/ui/button";
+import { TeamMorale } from "@/components/training/TeamMorale";
 
 const Training = () => {
   const { userTeam, currentDate, developmentHistory, updatePlayerTrainingFocus, autoAssignTrainingFocuses } = useTeam();
@@ -12,6 +13,10 @@ const Training = () => {
   const handleAutoAssign = () => {
     autoAssignTrainingFocuses();
   };
+
+  if (!userTeam) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -26,10 +31,11 @@ const Training = () => {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="focuses">Player Focuses</TabsTrigger>
           <TabsTrigger value="log">Development Log</TabsTrigger>
+          <TabsTrigger value="morale">Team Morale</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
           <Card>
@@ -69,9 +75,12 @@ const Training = () => {
                     <CardTitle>Recent Attribute Changes</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <DevelopmentLogTable logs={developmentHistory} />
+                    <DevelopmentLogTable logs={developmentHistory} roster={userTeam.roster} />
                 </CardContent>
             </Card>
+        </TabsContent>
+        <TabsContent value="morale">
+            <TeamMorale />
         </TabsContent>
       </Tabs>
     </div>
