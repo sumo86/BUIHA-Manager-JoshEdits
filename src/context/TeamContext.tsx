@@ -9,6 +9,7 @@ import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
 import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
 import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
+import { validateLineup } from '@/lib/lineupValidation';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -239,6 +240,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const advanceWeek = () => {
+        if (gameForCurrentWeek && userTeam) {
+            const validationError = validateLineup(userTeam);
+            if (validationError) {
+                toast.error("Cannot Advance Week", {
+                    description: `Your lineup is invalid: ${validationError}`,
+                });
+                return;
+            }
+        }
+
         let tempTeams = JSON.parse(JSON.stringify(teams)) as Team[];
         let tempSchedule = JSON.parse(JSON.stringify(schedule)) as ScheduleEntry[];
 
@@ -259,6 +270,20 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const awayTeam = tempTeams[awayTeamIndex];
 
                 const finalGameState = simulateFullGame(homeTeam, awayTeam);
+
+                if (userTeam) {
+                    finalGameState.injuries.forEach(injury => {
+                        if (injury.teamName === userTeam.name) {
+                            const injuredPlayer = userTeam.roster.find(p => p.id === injury.playerId);
+                            if (injuredPlayer) {
+                                toast.warning("Player Injured!", {
+                                    description: `${injuredPlayer.name} was injured during the game. (${injury.injuryType}, out for ${injury.duration} weeks)`,
+                                });
+                            }
+                        }
+                    });
+                }
+
                 const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState);
                 
                 tempTeams[homeTeamIndex] = updatedHomeTeam;
