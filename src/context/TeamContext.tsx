@@ -370,7 +370,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 // Development for younger players
                 const paGap = player.potentialAbility - player.currentAbility;
-                if (player.age < 30 && paGap > 0 && player.morale !== 'Angry') {
+                if (player.age < 33 && paGap > 0 && player.morale !== 'Angry') {
                     const devRate = (player.attributes as SkaterAttributes | GoalieAttributes).developmentRate || 10;
                     const professionalism = (player.attributes as SkaterAttributes | GoalieAttributes).professionalism || 10;
                     const determination = (player.attributes as SkaterAttributes | GoalieAttributes).determination || 10;

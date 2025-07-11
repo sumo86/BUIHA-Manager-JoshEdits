@@ -320,10 +320,10 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         const sourceRoll = Math.random();
         const source: Player['source'] = sourceRoll < 0.6 ? 'Local' : (sourceRoll < 0.9 ? 'International' : 'Transfer');
         const eligibility = source === 'Transfer' 
-            ? getRandomItem(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"] as Player['eligibility'][]) 
+            ? getRandomItem<Player['eligibility']>(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"]) 
             : (Math.random() < 0.85 
                 ? "UG Year 1" 
-                : getRandomItem(["UG Year 2", "Masters"] as Player['eligibility'][]));
+                : getRandomItem<Player['eligibility']>(["UG Year 2", "Masters"]));
         
         const qualityRoll = Math.random();
         let estimatedQuality: Player['estimatedQuality'];
