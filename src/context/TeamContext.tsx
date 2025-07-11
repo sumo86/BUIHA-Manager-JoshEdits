@@ -1,6 +1,6 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, CurrentSeasonStats } from '@/types';
-import { teams as initialTeams, getTeamOrganizations } from '@/data/teams';
+import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams'; // Added getOrganizationName import
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
@@ -141,13 +141,20 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const selectTeam = (teamName: string | null) => {
         if (teamName) {
-            localStorage.setItem('activeTeamName', teamName);
+            const team = teams.find(t => t.name === teamName);
+            if (team) {
+                const orgName = getOrganizationName(team.name);
+                localStorage.setItem('activeTeamName', teamName);
+                localStorage.setItem('managedOrganization', orgName); // Set managedOrganization even for single teams
+                setActiveTeamName(teamName);
+                setManagedOrganization(orgName);
+            }
         } else {
             localStorage.removeItem('activeTeamName');
+            localStorage.removeItem('managedOrganization');
+            setActiveTeamName(null);
+            setManagedOrganization(null);
         }
-        localStorage.removeItem('managedOrganization');
-        setActiveTeamName(teamName);
-        setManagedOrganization(null);
     };
 
     const selectOrganization = (orgName: string | null) => {
@@ -626,9 +633,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState) => {
-        const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(userTeam, opponentTeam, gameState);
-        updateTeam(updatedUserTeam);
-        updateTeam(updatedOpponentTeam);
+        const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(userTeam, opponentTeam, gameState);
+        updateTeam(updatedHomeTeam);
+        updateTeam(updatedAwayTeam);
     };
 
     const runStudentLifeInitiative = () => {
@@ -766,7 +773,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {
         if (!userTeam) return;
 
-        if (managedOrganization && managedTeams.length > 0) {
+        if (managedOrganization) { // Simplified condition
             const oldOrgAllocations = managedTeams.reduce((acc, t) => {
                 (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
                     acc[key] = (acc[key] || 0) + t.financials.budgetAllocations[key];
