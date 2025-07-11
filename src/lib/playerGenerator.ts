@@ -329,7 +329,8 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         let estimatedQuality: Player['estimatedQuality'];
         if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else estimatedQuality = 'Elite';
         
-        const position = getRandomItem([...skaterPositions, 'G']) as Position;
+        const allRecruitPositions: Position[] = [...skaterPositions, 'G'];
+        const position = getRandomItem<Position>(allRecruitPositions);
         const isSkater = position !== 'G';
 
         let targetCurrentAbilityMin: number, targetCurrentAbilityMax: number;

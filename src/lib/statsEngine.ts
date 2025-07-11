@@ -1,4 +1,4 @@
-import { Team, GameState, Player } from '@/types';
+import { Team, GameState, Player, SkaterAttributes, GoalieAttributes } from '@/types';
 
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
 
@@ -63,11 +63,46 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
         const teamToUpdate = injuryInfo.teamName === userTeam.name ? updatedUserTeam : updatedOpponentTeam;
         const playerIndex = teamToUpdate.roster.findIndex((p: Player) => p.id === injuryInfo.playerId);
         if (playerIndex !== -1) {
-            teamToUpdate.roster[playerIndex].healthStatus = 'Injured';
-            teamToUpdate.roster[playerIndex].injury = {
+            const player = teamToUpdate.roster[playerIndex];
+            player.healthStatus = 'Injured';
+            player.injury = {
                 type: injuryInfo.injuryType,
                 duration: injuryInfo.duration,
             };
+
+            // Stat regression for serious injuries
+            const seriousInjuryTypes = ["Broken Arm", "Torn ACL", "Severe Concussion"];
+            if (seriousInjuryTypes.includes(injuryInfo.injuryType)) {
+                const isSkater = !player.positions.includes('G');
+                let affectedAttributes: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
+
+                switch (injuryInfo.injuryType) {
+                    case "Torn ACL":
+                        affectedAttributes = ['speed', 'acceleration', 'agility', 'balance'];
+                        break;
+                    case "Severe Concussion":
+                        affectedAttributes = isSkater ? ['bravery', 'offensiveRead', 'defensiveRead'] : ['mentalToughness', 'reflexes'];
+                        break;
+                    case "Broken Arm":
+                        affectedAttributes = isSkater ? ['puckhandling', 'shootingAccuracy', 'stickchecking', 'strength'] : ['glove', 'blocker'];
+                        break;
+                }
+
+                // Apply regression to one or two of the affected attributes
+                const numAttributesToRegress = Math.random() < 0.7 ? 1 : 2;
+                for (let i = 0; i < numAttributesToRegress; i++) {
+                    if (affectedAttributes.length > 0) {
+                        const attrToRegress = affectedAttributes.splice(Math.floor(Math.random() * affectedAttributes.length), 1)[0];
+                        const currentAttrValue = player.attributes[attrToRegress as keyof typeof player.attributes] as number;
+                        
+                        if (currentAttrValue > 1) {
+                            const regression = 0.5 + Math.random(); // Regress by 0.5 to 1.5
+                            const newAttrValue = Math.max(1, currentAttrValue - regression);
+                            (player.attributes[attrToRegress as keyof typeof player.attributes] as number) = newAttrValue;
+                        }
+                    }
+                }
+            }
         }
     });
 
