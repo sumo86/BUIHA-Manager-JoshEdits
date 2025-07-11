@@ -1,5 +1,5 @@
-import { Outlet, useLocation } from "react-router-dom";
-import { Sidebar } from "./Sidebar"; // Changed to named import
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Sidebar } from "./Sidebar";
 import { Button } from "./ui/button";
 import { useTeam } from "@/context/TeamContext";
 import { Calendar, ArrowRight } from "lucide-react";
@@ -7,9 +7,11 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEffect } from "react"; // Import useEffect
 
 const Layout = () => {
   const location = useLocation();
+  const navigate = useNavigate(); // Initialize useNavigate hook
   const { 
     currentDate, 
     advanceWeek, 
@@ -20,7 +22,19 @@ const Layout = () => {
   } = useTeam();
   const isMobile = useIsMobile();
 
+  // Redirect to team selection if no user team is selected
+  useEffect(() => {
+    if (!userTeam && location.pathname !== '/team-selection') {
+      navigate('/team-selection');
+    }
+  }, [userTeam, location.pathname, navigate]);
+
   const showHeaderButton = !location.pathname.startsWith("/game/");
+
+  // Render nothing or a loading state while redirecting or waiting for userTeam
+  if (!userTeam && location.pathname !== '/team-selection') {
+    return null; // Or a loading spinner if you prefer
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">

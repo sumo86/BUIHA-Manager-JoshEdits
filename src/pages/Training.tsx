@@ -34,6 +34,10 @@ const Training = () => {
     ];
   }, [userTeam]);
 
+  if (!userTeam) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -107,7 +111,7 @@ const Training = () => {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <DevelopmentLogTable logs={filteredLogs} />
+                    <DevelopmentLogTable logs={filteredLogs} roster={userTeam.roster} />
                 </CardContent>
             </Card>
         </TabsContent>
