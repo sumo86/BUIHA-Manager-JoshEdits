@@ -240,7 +240,7 @@ const Lineup = () => {
             const player = rosterMap.get(playerId);
             if (player) {
                 const bestRole = findBestRole(player, defenceRoles);
-                if (bestBestRole) {
+                if (bestRole) { // Corrected typo here
                     player.role = bestRole;
                 }
             }
@@ -436,6 +436,7 @@ const Lineup = () => {
                                                                 <TooltipContent side="bottom" className="max-w-xs">
                                                                     <p className="font-bold mb-1">{selectedTactic.tactic}</p>
                                                                     <p className="text-sm text-muted-foreground mb-2">{suitability.explanation}</p>
+                                                                    <p className="text-xs"><span className="font-semibold">Description:</span> {selectedTactic.description}</p>
                                                                 </TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
