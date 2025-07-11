@@ -129,11 +129,23 @@ const Lineup = () => {
             });
     };
 
-    const handleLineupChange = (posType: 'forwards' | 'defence', pos: keyof (LineupType['forwards'] | LineupType['defence']), index: number, playerId: string | null) => {
+    // Function Overloads for handleLineupChange
+    function handleLineupChange(posType: 'forwards', pos: keyof LineupType['forwards'], index: number, playerId: string | null): void;
+    function handleLineupChange(posType: 'defence', pos: keyof LineupType['defence'], index: number, playerId: string | null): void;
+    function handleLineupChange(
+        posType: 'forwards' | 'defence',
+        pos: keyof LineupType['forwards'] | keyof LineupType['defence'],
+        index: number,
+        playerId: string | null
+    ): void {
         const newLineup = JSON.parse(JSON.stringify(team.lineup)) as LineupType;
-        (newLineup[posType][pos] as (string | null)[])[index] = playerId;
+        if (posType === 'forwards') {
+            newLineup.forwards[pos as keyof LineupType['forwards']][index] = playerId;
+        } else { // posType === 'defence'
+            newLineup.defence[pos as keyof LineupType['defence']][index] = playerId;
+        }
         updateTeam({ ...team, lineup: newLineup });
-    };
+    }
 
     const handleGoalieChange = (role: 'starter' | 'backup', playerId: string | null) => {
         const newLineup = { ...team.lineup };
@@ -228,7 +240,7 @@ const Lineup = () => {
             const player = rosterMap.get(playerId);
             if (player) {
                 const bestRole = findBestRole(player, defenceRoles);
-                if (bestRole) {
+                if (bestBestRole) {
                     player.role = bestRole;
                 }
             }
@@ -265,13 +277,19 @@ const Lineup = () => {
         let placeholderText: string;
         let positionForFilter: Position;
 
-        if (posType === 'forwards' || posType === 'defence') {
-            const typedPos = pos as keyof (LineupType['forwards'] | LineupType['defence']);
-            currentId = team.lineup[typedPos][index!];
-            onValueChangeHandler = (val) => handleLineupChange(posType, typedPos, index!, val);
+        if (posType === 'forwards') {
+            const typedPos = pos as keyof LineupType['forwards'];
+            currentId = team.lineup.forwards[typedPos][index!];
+            onValueChangeHandler = (val) => handleLineupChange('forwards', typedPos, index!, val);
             positionForFilter = pos.toUpperCase() as Position;
             placeholderText = `Select ${pos.toUpperCase()}`;
-        } else {
+        } else if (posType === 'defence') {
+            const typedPos = pos as keyof LineupType['defence'];
+            currentId = team.lineup.defence[typedPos][index!];
+            onValueChangeHandler = (val) => handleLineupChange('defence', typedPos, index!, val);
+            positionForFilter = pos.toUpperCase() as Position;
+            placeholderText = `Select ${pos.toUpperCase()}`;
+        } else { // goalies
             const typedPos = pos as keyof LineupType['goalies'];
             currentId = team.lineup.goalies[typedPos];
             onValueChangeHandler = (val) => handleGoalieChange(typedPos, val);
@@ -418,7 +436,6 @@ const Lineup = () => {
                                                                 <TooltipContent side="bottom" className="max-w-xs">
                                                                     <p className="font-bold mb-1">{selectedTactic.tactic}</p>
                                                                     <p className="text-sm text-muted-foreground mb-2">{suitability.explanation}</p>
-                                                                    <p className="text-xs"><span className="font-semibold">Description:</span> {selectedTactic.description}</p>
                                                                 </TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
