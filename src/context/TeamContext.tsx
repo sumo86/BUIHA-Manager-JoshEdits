@@ -10,6 +10,9 @@ import { processGameResults as processGameResultsEngine } from '@/lib/statsEngin
 import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
+import { createNationalsTournament } from '@/lib/nationalsGenerator';
+import { nationalsSchedule } from '@/data/nationalsSchedule';
+import { NationalsTournament } from '@/types';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -53,6 +56,7 @@ interface TeamContextType {
     setActiveTeam: (teamName: string) => void;
     schedule: ScheduleEntry[];
     gameForCurrentWeek: ScheduleEntry | null;
+    nationalsData: { [year: number]: { [division: string]: NationalsTournament } };
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -88,6 +92,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => {
         localStorage.setItem('schedule', JSON.stringify(schedule));
     }, [schedule]);
+
+    const [nationalsData, setNationalsData] = useState<{ [year: number]: { [division: string]: NationalsTournament } }>(() => {
+        try {
+            const saved = localStorage.getItem('nationalsData');
+            return saved ? JSON.parse(saved) : {};
+        } catch (error) { return {}; }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('nationalsData', JSON.stringify(nationalsData));
+    }, [nationalsData]);
 
     const managedTeams = useMemo(() => {
         if (!managedOrganization) return [];
@@ -548,6 +563,25 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             tempSchedule = generateSeasonSchedule(tempTeams, newDate);
             toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
         }
+
+        // Generate Nationals in April Week 4
+        if (newDate.month === 'April' && newDate.week === 4 && !(currentDate.month === 'April' && currentDate.week === 4)) {
+            toast.info("Nationals Draws Being Made", { description: "Groups for the BUIHA National Championships are being generated." });
+            const allNationalsDivisions = [...new Set(tempTeams.map(t => t.nationalsDivision))];
+            const newNationalsDataForYear: { [division: string]: NationalsTournament } = {};
+
+            allNationalsDivisions.forEach(division => {
+                const teamsInDivision = tempTeams.filter(t => t.nationalsDivision === division);
+                if (teamsInDivision.length >= 2) {
+                    const week = Object.keys(nationalsSchedule).find(w => nationalsSchedule[parseInt(w)].includes(division));
+                    if (week) {
+                        const tournament = createNationalsTournament(division, teamsInDivision, newDate.year, parseInt(week));
+                        newNationalsDataForYear[division] = tournament;
+                    }
+                }
+            });
+            setNationalsData(prev => ({ ...prev, [newDate.year]: newNationalsDataForYear }));
+        }
         
         setTeams(tempTeams);
         setSchedule(tempSchedule);
@@ -895,7 +929,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
             autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
             managedOrganization, managedTeams, selectOrganization, setActiveTeam,
-            schedule, gameForCurrentWeek
+            schedule, gameForCurrentWeek, nationalsData
         }}>
             {children}
         </TeamContext.Provider>

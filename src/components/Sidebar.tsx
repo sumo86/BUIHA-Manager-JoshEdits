@@ -19,6 +19,7 @@ import {
   Play,
   Smile,
   BookOpen,
+  Swords as NationalsIcon, // Renaming to avoid conflict
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -41,6 +42,7 @@ const navItems = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/standings", label: "Standings", icon: Trophy },
   { href: "/history", label: "History", icon: BookOpen },
+  { href: "/nationals", label: "Nationals", icon: NationalsIcon },
   { href: "/buiha-overview", label: "BUIHA", icon: Swords },
 ];
 

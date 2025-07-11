@@ -294,3 +294,42 @@ export type LegacyRecord = {
   value: number;
   season?: string;
 };
+
+// Nationals Types
+export type NationalsStanding = {
+  teamName: string;
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+};
+
+export type NationalsGroup = {
+  name: string; // e.g., "Group A"
+  teams: string[]; // team names
+  standings: NationalsStanding[];
+};
+
+export type NationalsPlayoffMatch = {
+  id: string;
+  round: 'Quarter-Final' | 'Semi-Final' | 'Final';
+  bracket: 'Gold' | 'Silver';
+  homeTeam: string | { winnerOf: string };
+  awayTeam: string | { winnerOf: string };
+  winner?: string;
+  result?: { homeScore: number; awayScore: number };
+  status: 'scheduled' | 'completed';
+};
+
+export type NationalsTournament = {
+  division: string;
+  year: number;
+  groups: NationalsGroup[];
+  groupStageSchedule: ScheduleEntry[];
+  playoffSchedule: NationalsPlayoffMatch[];
+  status: 'pending' | 'group-stage' | 'playoffs' | 'completed';
+  winner?: string;
+};
