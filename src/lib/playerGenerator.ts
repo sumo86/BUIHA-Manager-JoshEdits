@@ -185,8 +185,8 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     if (Math.random() > 0.5) { 
       let secondaryPosition: Position; 
       while (true) {
-        secondaryPosition = getRandomItem(skaterPositions); 
-        if (!(positions as string[]).includes(secondaryPosition)) { // Cast positions to string[] for includes check
+        secondaryPosition = getRandomItem<Position>(skaterPositions); 
+        if (!positions.includes(secondaryPosition)) {
           break;
         }
       }
@@ -195,8 +195,8 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     if (positions.length === 2 && Math.random() > 0.8) { 
       let tertiaryPosition: Position; 
       while (true) {
-        tertiaryPosition = getRandomItem(skaterPositions); 
-        if (!(positions as string[]).includes(tertiaryPosition)) { // Cast positions to string[] for includes check
+        tertiaryPosition = getRandomItem<Position>(skaterPositions); 
+        if (!positions.includes(tertiaryPosition)) {
           break;
         }
       }

@@ -14,6 +14,8 @@ import { validateLineup } from '@/lib/lineupValidation';
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
 
+const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
 const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['morale'] => {
     const currentIndex = moraleLevels.indexOf(currentMorale);
     const newIndex = Math.max(0, Math.min(moraleLevels.length - 1, currentIndex + change));
@@ -252,6 +254,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         let tempTeams = JSON.parse(JSON.stringify(teams)) as Team[];
         let tempSchedule = JSON.parse(JSON.stringify(schedule)) as ScheduleEntry[];
+        let newDevelopmentLogs: DevelopmentLog[] = [];
+        const managedTeamNames = managedTeams.map(t => t.name);
 
         const gamesThisWeek = tempSchedule.filter(game =>
             game.date.month === currentDate.month &&
@@ -307,6 +311,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         tempTeams = tempTeams.map(team => {
             let newRoster = [...team.roster];
             let newFacilities = [...team.facilities];
+            const isUserManagedTeam = team.name === userTeam?.name || managedTeamNames.includes(team.name);
 
             // 1. Injury Recovery
             newRoster = newRoster.map(player => {
@@ -357,19 +362,104 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             // 4. Player Development (only for healthy players)
             newRoster = newRoster.map(player => {
                 if (player.healthStatus === 'Injured') {
-                    return player; // Injured players do not develop
+                    return player;
                 }
-                // Existing development logic (simplified for example, actual logic would be here)
-                // For now, just a placeholder to show where the check would apply
-                // if (Math.random() < 0.05) { // 5% chance of minor development
-                //     const isSkater = !player.positions.includes('G');
-                //     const attributesToDevelop = isSkater ? Object.keys(player.attributes).filter(key => !['aging', 'injuryProneness'].includes(key)) : Object.keys(player.attributes).filter(key => !['aging', 'injuryProneness'].includes(key));
-                //     const attrToImprove = getRandomItem(attributesToDevelop);
-                //     if (player.attributes[attrToImprove as keyof typeof player.attributes] < 20) {
-                //         (player.attributes[attrToImprove as keyof typeof player.attributes] as number)++;
-                //         // Log development
-                //     }
-                // }
+
+                const isSkater = !player.positions.includes('G');
+                let changed = false;
+
+                // Development for younger players
+                const paGap = player.potentialAbility - player.currentAbility;
+                if (player.age < 30 && paGap > 0) {
+                    const devRate = (player.attributes as SkaterAttributes | GoalieAttributes).developmentRate || 10;
+                    const professionalism = (player.attributes as SkaterAttributes | GoalieAttributes).professionalism || 10;
+                    const determination = (player.attributes as SkaterAttributes | GoalieAttributes).determination || 10;
+                    
+                    const baseDevChance = 0.2;
+                    const paBonus = Math.max(0, paGap / 50);
+                    const workEthicBonus = (professionalism + determination - 20) / 100;
+                    const devChance = baseDevChance + paBonus + workEthicBonus;
+
+                    if (Math.random() < devChance) {
+                        let attributesToDevelop: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
+                        if (player.trainingFocus && trainingFocusesMap[player.trainingFocus]) {
+                            attributesToDevelop = trainingFocusesMap[player.trainingFocus];
+                        } else {
+                            const allAttrs = Object.keys(player.attributes).filter(
+                                attr => !['aging', 'injuryProneness', 'passShootTendency', 'mood', 'controversy', 'greed', 'loyalty', 'handleCritics', 'handleFailure', 'handleSuccess', 'sportsmanship', 'ambition', 'bigGames', 'coachability', 'intelligence'].includes(attr)
+                            ) as (keyof typeof player.attributes)[];
+                            if (allAttrs.length > 0) {
+                                attributesToDevelop.push(getRandomItem(allAttrs));
+                            }
+                        }
+
+                        if (attributesToDevelop.length > 0) {
+                            const attrToImprove = getRandomItem(attributesToDevelop);
+                            const currentAttrValue = player.attributes[attrToImprove as keyof typeof player.attributes] as number;
+
+                            if (currentAttrValue < 20) {
+                                const improvement = (Math.random() * 0.2) + (devRate / 100);
+                                const newAttrValue = Math.min(20, currentAttrValue + improvement);
+                                (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
+                                changed = true;
+
+                                if (isUserManagedTeam) {
+                                    newDevelopmentLogs.push({
+                                        playerId: player.id,
+                                        playerName: player.name,
+                                        attribute: attrToImprove.toString(),
+                                        change: improvement,
+                                        newRating: newAttrValue,
+                                        date: currentDate,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Decline for older players
+                if (player.age > 28) {
+                    const baseDeclineChance = 0.05;
+                    const agePenalty = (player.age - 28) / 80;
+                    const declineChance = baseDeclineChance + agePenalty;
+
+                    if (Math.random() < declineChance) {
+                        let attrsToDecline: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
+                        if (isSkater) {
+                            attrsToDecline = ['acceleration', 'agility', 'balance', 'speed', 'stamina', 'strength'];
+                        } else {
+                            attrsToDecline = ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
+                        }
+                        const attrToDecline = getRandomItem(attrsToDecline);
+                        const currentAttrValue = player.attributes[attrToDecline as keyof typeof player.attributes] as number;
+
+                        if (currentAttrValue > 1) {
+                            const decline = (Math.random() * 0.15) + 0.05;
+                            const newAttrValue = Math.max(1, currentAttrValue - decline);
+                            (player.attributes[attrToDecline as keyof typeof player.attributes] as number) = newAttrValue;
+                            changed = true;
+
+                            if (isUserManagedTeam) {
+                                newDevelopmentLogs.push({
+                                    playerId: player.id,
+                                    playerName: player.name,
+                                    attribute: attrToDecline.toString(),
+                                    change: -decline,
+                                    newRating: newAttrValue,
+                                    date: currentDate,
+                                });
+                            }
+                        }
+                    }
+                }
+
+                if (changed) {
+                    const newCurrentAbility = calculateCurrentAbility(player.attributes, isSkater);
+                    const newStarRating = calculateStarRating(newCurrentAbility, isSkater, team.leagueDivision);
+                    return { ...player, currentAbility: newCurrentAbility, starRating: newStarRating };
+                }
+
                 return player;
             });
 
@@ -435,6 +525,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
             return { month, week, year };
         })(currentDate);
+
+        if (newDevelopmentLogs.length > 0) {
+            setDevelopmentHistory(prev => [...newDevelopmentLogs, ...prev].slice(0, 200));
+        }
 
         if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
             tempSchedule = generateSeasonSchedule(tempTeams, newDate);
