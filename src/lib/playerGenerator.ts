@@ -186,7 +186,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
       let secondaryPosition: Position; 
       while (true) {
         secondaryPosition = getRandomItem(skaterPositions); 
-        if (!positions.some(p => p === (secondaryPosition as Position))) { // Explicit cast here
+        if (!positions.some((p: Position) => p === (secondaryPosition as Position))) { // Explicit cast here
           break;
         }
       }
@@ -196,7 +196,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
       let tertiaryPosition: Position; 
       while (true) {
         tertiaryPosition = getRandomItem(skaterPositions); 
-        if (!positions.some(p => p === (tertiaryPosition as Position))) { // Explicit cast here
+        if (!positions.some((p: Position) => p === (tertiaryPosition as Position))) { // Explicit cast here
           break;
         }
       }

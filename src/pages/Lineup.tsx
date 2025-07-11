@@ -44,8 +44,12 @@ const PlayerLineupCard = ({ player, onRoleChange }: { player: Player, onRoleChan
     };
     const applicableRoles = getApplicableRoles(player);
 
+    const cardClasses = `border rounded-lg p-2 text-center w-full ${
+        player.healthStatus === 'Injured' ? 'border-red-500 bg-red-50/50' : 'bg-card'
+    }`;
+
     return (
-        <div className="border rounded-lg p-2 text-center w-full bg-card">
+        <div className={cardClasses}>
             <div className="font-bold text-sm truncate">{player.name.split(' ').pop()?.toUpperCase()}</div>
             <div className="text-xs text-muted-foreground">#{player.jerseyNumber}</div>
             <div className="flex justify-center my-1">{renderStars(player.starRating)}</div>
