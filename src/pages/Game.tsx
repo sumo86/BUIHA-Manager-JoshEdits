@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { isRivalryGame } from '@/lib/rivalries';
 import { tactics } from '@/data/tactics';
 import { calculateTacticSuitability } from '@/lib/tactics';
+import { aiMakeAdjustments } from '@/lib/aiManager';
 
 const formatClockTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -32,35 +33,36 @@ const formatClockTime = (seconds: number) => {
 const Game = () => {
     const { userTeam, teams, updateTeam, processGameResults, gameForCurrentWeek, markGameAsCompleted } = useTeam();
     const { opponentName } = useParams<{ opponentName: string }>();
-    const opponentTeam = teams.find(t => t.name === opponentName);
+    const opponentTeamFromContext = useMemo(() => teams.find(t => t.name === opponentName), [teams, opponentName]);
+    
     const [gameProcessed, setGameProcessed] = useState(false);
-
-    // Local state for user team modifications during the game
     const [gameUserTeam, setGameUserTeam] = useState<Team>(userTeam);
+    const [gameOpponentTeam, setGameOpponentTeam] = useState<Team | undefined>(opponentTeamFromContext);
 
-    // Determine if it's a big game (rivalry)
     const isBigGame = useMemo(() => {
-        if (!userTeam || !opponentTeam) return false;
-        return isRivalryGame(userTeam.name, opponentTeam.name);
-    }, [userTeam, opponentTeam]);
+        if (!userTeam || !gameOpponentTeam) return false;
+        return isRivalryGame(userTeam.name, gameOpponentTeam.name);
+    }, [userTeam, gameOpponentTeam]);
 
-    // Update gameUserTeam if userTeam from context changes (e.g., on initial load or external update)
     useEffect(() => {
         setGameUserTeam(userTeam);
     }, [userTeam]);
 
     useEffect(() => {
+        setGameOpponentTeam(opponentTeamFromContext);
+    }, [opponentTeamFromContext]);
+
+    useEffect(() => {
         if (isBigGame) {
             toast.info("It's a Rivalry Game!", {
-                description: `The atmosphere is electric for ${userTeam.name} vs ${opponentTeam.name}. Players' performance may be affected by the pressure!`
+                description: `The atmosphere is electric for ${userTeam.name} vs ${gameOpponentTeam?.name}. Players' performance may be affected by the pressure!`
             });
         }
 
-        // Tactical matchup toast
-        if (!userTeam || !opponentTeam) return;
+        if (!userTeam || !gameOpponentTeam) return;
 
         const userAttackTacticName = userTeam.tactics['Attacking Zone Offence'];
-        const oppDefendTacticName = opponentTeam.tactics['Defensive Zone Coverage'];
+        const oppDefendTacticName = gameOpponentTeam.tactics['Defensive Zone Coverage'];
         const userAttackTactic = tactics.find(t => t.tactic === userAttackTacticName);
         const oppDefendTactic = tactics.find(t => t.tactic === oppDefendTacticName);
 
@@ -86,7 +88,7 @@ const Game = () => {
 
         toast.info(title, { description });
 
-    }, [isBigGame, userTeam, opponentTeam]);
+    }, [isBigGame, userTeam, gameOpponentTeam]);
 
     const [gameState, setGameState] = useState<GameState>({
         userScore: 0,
@@ -103,32 +105,31 @@ const Game = () => {
     const blocker = useBlocker(!gameState.isGameOver);
 
     useEffect(() => {
-        if (!gameState.isPaused && !gameState.isGameOver) {
+        if (!gameState.isPaused && !gameState.isGameOver && gameOpponentTeam) {
             intervalRef.current = setInterval(() => {
-                setGameState(prev => simulateTick(prev, gameUserTeam, opponentTeam!, isBigGame)); // Pass isBigGame
-            }, 50); // Simulates a tick every 50ms
+                setGameState(prev => simulateTick(prev, gameUserTeam, gameOpponentTeam, isBigGame));
+            }, 50);
         } else {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
         };
-    }, [gameState.isPaused, gameState.isGameOver, gameUserTeam, opponentTeam, isBigGame]); // Depend on isBigGame
+    }, [gameState.isPaused, gameState.isGameOver, gameUserTeam, gameOpponentTeam, isBigGame]);
 
     useEffect(() => {
-        if (gameState.isGameOver && !gameProcessed) {
-            processGameResults(userTeam, opponentTeam!, gameState);
+        if (gameState.isGameOver && !gameProcessed && gameOpponentTeam) {
+            processGameResults(userTeam, gameOpponentTeam, gameState);
             setGameProcessed(true);
             toast.success("Game finished and stats have been updated.");
 
-            // Mark the game as completed in the schedule
-            if (gameForCurrentWeek) { // Ensure it's the scheduled game for the current week
+            if (gameForCurrentWeek) {
                 const userIsHome = userTeam.name === gameForCurrentWeek.homeTeam;
                 const finalHomeScore = userIsHome ? gameState.userScore : gameState.opponentScore;
                 const finalAwayScore = userIsHome ? gameState.opponentScore : gameState.userScore;
                 markGameAsCompleted(gameForCurrentWeek.id, finalHomeScore, finalAwayScore);
             }
         }
-    }, [gameState.isGameOver, gameProcessed, processGameResults, userTeam, opponentTeam, gameState, gameForCurrentWeek, markGameAsCompleted]);
+    }, [gameState.isGameOver, gameProcessed, processGameResults, userTeam, gameOpponentTeam, gameState, gameForCurrentWeek, markGameAsCompleted]);
 
     const handlePlayPause = () => {
         if (gameState.isGameOver) return;
@@ -136,13 +137,31 @@ const Game = () => {
     };
 
     const handleNextPeriod = () => {
-        setGameState(prev => ({
-            ...prev,
-            period: prev.period + 1,
-            time: 0,
-            isPaused: true,
-            gameLog: [{ time: "00:00", period: prev.period + 1, description: `Start of Period ${prev.period + 1}`, team: "System" }, ...prev.gameLog],
-        }));
+        let opponentAdjusted = false;
+        if (gameOpponentTeam) {
+            const scoreDifference = gameState.opponentScore - gameState.userScore;
+            const updatedOpponentTeam = aiMakeAdjustments(gameOpponentTeam, gameUserTeam, scoreDifference);
+            if (JSON.stringify(updatedOpponentTeam.tactics) !== JSON.stringify(gameOpponentTeam.tactics)) {
+                setGameOpponentTeam(updatedOpponentTeam);
+                opponentAdjusted = true;
+            }
+        }
+
+        setGameState(prev => {
+            const logEntries = [];
+            if (opponentAdjusted && gameOpponentTeam) {
+                logEntries.push({ time: "00:00", period: prev.period + 1, description: `${gameOpponentTeam.name} has made some tactical adjustments.`, team: "System" });
+            }
+            logEntries.push({ time: "00:00", period: prev.period + 1, description: `Start of Period ${prev.period + 1}`, team: "System" });
+    
+            return {
+                ...prev,
+                period: prev.period + 1,
+                time: 0,
+                isPaused: true,
+                gameLog: [...logEntries, ...prev.gameLog],
+            };
+        });
     };
 
     const handleTacticChange = (category: string, tactic: string) => {
@@ -184,7 +203,7 @@ const Game = () => {
     };
 
     const handleAbandonGame = () => {
-        if (!opponentTeam) return;
+        if (!gameOpponentTeam) return;
 
         const updatedUserTeam = {
             ...userTeam,
@@ -194,16 +213,16 @@ const Game = () => {
         updateTeam(updatedUserTeam);
 
         const updatedOpponentTeam = {
-            ...opponentTeam,
-            wins: (opponentTeam.wins || 0) + 1,
-            goalsFor: (opponentTeam.goalsFor || 0) + 5,
+            ...gameOpponentTeam,
+            wins: (gameOpponentTeam.wins || 0) + 1,
+            goalsFor: (gameOpponentTeam.goalsFor || 0) + 5,
         };
         updateTeam(updatedOpponentTeam);
 
         blocker.proceed?.();
     };
 
-    if (!opponentTeam) return <div>Opponent not found.</div>;
+    if (!gameOpponentTeam) return <div>Opponent not found.</div>;
 
     const getPeriodText = () => {
         if (gameState.isGameOver) return "Final";
@@ -224,8 +243,8 @@ const Game = () => {
                             </span>
                             <span className="w-1/3 text-center">{gameState.userScore} - {gameState.opponentScore}</span>
                             <span className="w-1/3 text-left flex items-center gap-4">
-                                {opponentTeam.logo && <img src={opponentTeam.logo} alt={opponentTeam.name} className="h-10 w-10 object-contain" />}
-                                {opponentTeam.name}
+                                {gameOpponentTeam.logo && <img src={gameOpponentTeam.logo} alt={gameOpponentTeam.name} className="h-10 w-10 object-contain" />}
+                                {gameOpponentTeam.name}
                             </span>
                         </div>
                     </CardTitle>
@@ -260,13 +279,13 @@ const Game = () => {
                         </TabsContent>
                         <TabsContent value="summary">
                             <ScrollArea className="h-[450px] w-full">
-                                <GameSummary gameLog={gameState.gameLog} userTeam={gameUserTeam} opponentTeam={opponentTeam} />
+                                <GameSummary gameLog={gameState.gameLog} userTeam={gameUserTeam} opponentTeam={gameOpponentTeam} />
                             </ScrollArea>
                         </TabsContent>
                         <TabsContent value="my-roster"><RosterDisplay players={gameUserTeam.roster} /></TabsContent>
-                        <TabsContent value="opp-roster"><RosterDisplay players={opponentTeam.roster} /></TabsContent>
+                        <TabsContent value="opp-roster"><RosterDisplay players={gameOpponentTeam.roster} /></TabsContent>
                         <TabsContent value="my-lines"><LineupDisplay lineup={gameUserTeam.lineup} roster={gameUserTeam.roster} /></TabsContent>
-                        <TabsContent value="opp-lines"><LineupDisplay lineup={opponentTeam.lineup} roster={opponentTeam.roster} /></TabsContent>
+                        <TabsContent value="opp-lines"><LineupDisplay lineup={gameOpponentTeam.lineup} roster={gameOpponentTeam.roster} /></TabsContent>
                     </CardContent>
                 </Card>
             </Tabs>
@@ -275,7 +294,7 @@ const Game = () => {
                 <Alert>
                     <Trophy className="h-4 w-4" />
                     <AlertTitle>Game Over!</AlertTitle>
-                    <AlertDescription>The final score is {userTeam.name} {gameState.userScore} - {opponentTeam.name} {gameState.opponentScore}.</AlertDescription>
+                    <AlertDescription>The final score is {userTeam.name} {gameState.userScore} - {gameOpponentTeam.name} {gameState.opponentScore}.</AlertDescription>
                 </Alert>
             ) : (
                 <div className="flex justify-center gap-4">

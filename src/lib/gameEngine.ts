@@ -1,6 +1,7 @@
 import { Team, GameEvent, GameState, SkaterAttributes, GoalieAttributes, Player } from '@/types';
 import { tactics } from '@/data/tactics';
 import { calculateTacticSuitability } from '@/lib/tactics';
+import { aiMakeAdjustments } from '@/lib/aiManager';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -278,7 +279,7 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
         const finalPenaltyChance = basePenaltyChance * personalityModifier * instructionMods.penaltyChance;
 
         if (Math.random() < finalPenaltyChance) {
-            const infraction = infractions[Math.floor(Math.random() * infractions.length)];
+            const infraction = getRandomItem(infractions);
             return { time: eventTime, period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` };
         }
         return null;
@@ -288,7 +289,17 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
         const attacker = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).hitting + (p.attributes as SkaterAttributes).strength);
         const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
         if (!attacker || !defender) return null;
-        return { time: eventTime, period, team: attackingTeam.name, description: `${attacker.name} lays a big hit on ${defender.name}.` };
+        
+        const hitDescriptions = [
+            `${attacker.name} lays a big hit on ${defender.name}.`,
+            `${attacker.name} delivers a crushing check to ${defender.name}.`,
+            `${defender.name} is rocked by a huge hit from ${attacker.name}.`,
+            `${attacker.name} finishes his check on ${defender.name} with authority.`,
+            `${defender.name} gets stood up at the blue line by ${attacker.name}.`
+        ];
+        const description = getRandomItem(hitDescriptions);
+
+        return { time: eventTime, period, team: attackingTeam.name, description };
     }
 };
 
@@ -317,8 +328,10 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
             else newGameState.opponentScore++;
         }
         // If the event was a hit, check for an injury
-        if (newEvent.description.includes('lays a big hit on')) {
-            const defenderName = newEvent.description.split('on ')[1].replace('.', '');
+        if (newEvent.description.includes('hit on') || newEvent.description.includes('check to') || newEvent.description.includes('rocked by a huge hit') || newEvent.description.includes('finishes his check') || newEvent.description.includes('stood up')) {
+            const defenderNameMatch = newEvent.description.match(/(?:on|to|from|by)\s(.*?)(?:\.|with|after|$)/);
+            const defenderName = defenderNameMatch ? defenderNameMatch[1].trim().replace("'s", "") : null;
+            
             const attackingTeamName = newEvent.team;
             const defendingTeam = attackingTeamName === userTeam.name ? opponentTeam : userTeam;
             const defender = defendingTeam.roster.find(p => p.name === defenderName);
@@ -383,11 +396,22 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
         injuries: [],
     };
 
+    let currentHomeTeam = JSON.parse(JSON.stringify(homeTeam));
+    let currentAwayTeam = JSON.parse(JSON.stringify(awayTeam));
+
     for (let p = 1; p <= 3; p++) {
         gameState.period = p;
         gameState.time = 0;
+
+        // AI adjustments at start of periods 2 and 3
+        if (p > 1) {
+            const scoreDifferenceHomeVsAway = gameState.userScore - gameState.opponentScore;
+            currentHomeTeam = aiMakeAdjustments(currentHomeTeam, currentAwayTeam, scoreDifferenceHomeVsAway);
+            currentAwayTeam = aiMakeAdjustments(currentAwayTeam, currentHomeTeam, -scoreDifferenceHomeVsAway);
+        }
+
         for (let t = 0; t < 1200; t++) {
-            gameState = simulateTick(gameState, homeTeam, awayTeam, isBigGame);
+            gameState = simulateTick(gameState, currentHomeTeam, currentAwayTeam, isBigGame);
         }
     }
 

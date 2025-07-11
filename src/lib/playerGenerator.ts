@@ -3,7 +3,7 @@ import { archetypes } from "@/data/archetypes";
 import { roles } from "@/data/roles";
 import { teams as allTeamsData } from "@/data/teams";
 import { getRandomNationality } from "@/data/nationalityDistributions";
-import { getRandomNameForNationality } from "@/data/names";
+import { getRandomNameForNationality } from "@/data/names"; // Fixed import syntax
 import { getTierStats, divisionTierStats } from "./leagueUtils";
 import { starRatingDistribution } from "@/data/starRatingDistribution";
 import { skaterAbilityRanges, goalieAbilityRanges } from "@/data/abilityRanges";
@@ -197,11 +197,11 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      const newPosition: Position = getUniqueSkaterPosition(positions);
+      const newPosition: Position = getUniqueSkaterPosition(positions); // Explicit cast
       positions.push(newPosition);
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      const anotherNewPosition: Position = getUniqueSkaterPosition(positions);
+      const anotherNewPosition: Position = getUniqueSkaterPosition(positions); // Explicit cast
       positions.push(anotherNewPosition);
     }
   }

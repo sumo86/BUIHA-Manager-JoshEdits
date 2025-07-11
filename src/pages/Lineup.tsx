@@ -163,38 +163,69 @@ const Lineup = () => {
     };
 
     const autoFillLines = () => {
-        // Filter out injured players from the pool
         const healthyRoster = team.roster.filter(p => p.healthStatus === 'Healthy');
-
+    
         const forwards = healthyRoster.filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
         const defencemen = healthyRoster.filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
         const goalies = healthyRoster.filter(p => p.positions.includes('G')).sort((a, b) => b.starRating - a.starRating);
-        
+    
         const assigned = new Set<string>();
+        let staffCount = 0;
+        const MAX_STAFF = 2;
+    
         const newLineup: LineupType = {
             forwards: { lw: [null, null, null], c: [null, null, null], rw: [null, null, null] },
             defence: { ld: [null, null, null], rd: [null, null, null] },
             goalies: { starter: null, backup: null }
         };
-
-        const fillPositions = (positions: (keyof LineupType['forwards'] | keyof LineupType['defence'])[], players: Player[], type: 'forwards' | 'defence') => {
-            positions.forEach(pos => {
-                for (let i = 0; i < 3; i++) {
-                    const player = players.find(p => !assigned.has(p.id) && p.positions.includes(pos.toUpperCase() as Position));
-                    if (player) {
-                        (newLineup[type][pos] as (string | null)[])[i] = player.id;
-                        assigned.add(player.id);
-                    }
+    
+        const findAndAssignPlayer = (playerPool: Player[], position?: Position): string | null => {
+            // First pass: find a natural fit
+            if (position) {
+                const naturalFit = playerPool.find(p => {
+                    if (assigned.has(p.id)) return false;
+                    if (p.eligibility === 'Staff' && staffCount >= MAX_STAFF) return false;
+                    return p.positions.includes(position);
+                });
+                if (naturalFit) {
+                    assigned.add(naturalFit.id);
+                    if (naturalFit.eligibility === 'Staff') staffCount++;
+                    return naturalFit.id;
                 }
+            }
+    
+            // Second pass: find any available player
+            const anyFit = playerPool.find(p => {
+                if (assigned.has(p.id)) return false;
+                if (p.eligibility === 'Staff' && staffCount >= MAX_STAFF) return false;
+                return true;
             });
+            if (anyFit) {
+                assigned.add(anyFit.id);
+                if (anyFit.eligibility === 'Staff') staffCount++;
+                return anyFit.id;
+            }
+    
+            return null;
         };
-        
-        fillPositions(['lw', 'c', 'rw'], forwards, 'forwards');
-        fillPositions(['ld', 'rd'], defencemen, 'defence');
-
-        if (goalies[0]) newLineup.goalies.starter = goalies[0].id;
-        if (goalies[1]) newLineup.goalies.backup = goalies[1].id;
-
+    
+        // Fill Forwards
+        for (let i = 0; i < 3; i++) {
+            newLineup.forwards.lw[i] = findAndAssignPlayer(forwards, 'LW');
+            newLineup.forwards.c[i] = findAndAssignPlayer(forwards, 'C');
+            newLineup.forwards.rw[i] = findAndAssignPlayer(forwards, 'RW');
+        }
+    
+        // Fill Defence
+        for (let i = 0; i < 3; i++) {
+            newLineup.defence.ld[i] = findAndAssignPlayer(defencemen, 'LD');
+            newLineup.defence.rd[i] = findAndAssignPlayer(defencemen, 'RD');
+        }
+    
+        // Fill Goalies
+        newLineup.goalies.starter = findAndAssignPlayer(goalies, 'G');
+        newLineup.goalies.backup = findAndAssignPlayer(goalies, 'G');
+    
         updateTeam({ ...team, lineup: newLineup });
         toast.success("Lines have been auto-filled with healthy players.");
     };
