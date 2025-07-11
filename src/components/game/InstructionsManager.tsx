@@ -1,4 +1,4 @@
-import { Player, Lineup } from '@/types';
+import { Player, Lineup, Instruction } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -8,10 +8,10 @@ import { toast } from 'sonner';
 interface InstructionsManagerProps {
   roster: Player[];
   lineup: Lineup;
-  onGiveInstruction: (target: string, instruction: string) => void;
+  onGiveInstruction: (target: string, instruction: Instruction) => void;
 }
 
-const INSTRUCTIONS = ["Encourage", "Discipline", "Praise", "Push Harder", "Calm Down"];
+const INSTRUCTIONS: Instruction[] = ["Encourage", "Discipline", "Praise", "Push Harder", "Calm Down"];
 
 const getPlayerLinePosition = (playerId: string, lineup: Lineup): string => {
     const posMap = { lw: 'LW', c: 'C', rw: 'RW', ld: 'LD', rd: 'RD' };
@@ -41,7 +41,7 @@ export const InstructionsManager = ({ roster, lineup, onGiveInstruction }: Instr
     }),
   ];
 
-  const handleInstructionClick = (instruction: string) => {
+  const handleInstructionClick = (instruction: Instruction) => {
     onGiveInstruction(target, instruction);
     const targetLabel = targets.find(t => t.value === target)?.label || 'Unknown';
     toast.info(`Gave instruction "${instruction}" to ${targetLabel}.`);

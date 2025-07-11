@@ -20,43 +20,87 @@ const getGoalFactor = (leagueDivision: string): number => {
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
 
-const getMoraleModifier = (morale: Player['morale']): number => {
+const getInstructionModifiers = (player: Player) => {
+    const modifiers = {
+        offense: 1.0,
+        defense: 1.0,
+        goalie: 1.0,
+        morale: 0,
+        penaltyChance: 1.0,
+    };
+
+    if (!player.activeInstructions || player.activeInstructions.length === 0) {
+        return modifiers;
+    }
+
+    for (const instruction of player.activeInstructions) {
+        switch (instruction.type) {
+            case 'Encourage':
+                modifiers.morale += 0.02;
+                break;
+            case 'Praise':
+                modifiers.morale += 0.05;
+                break;
+            case 'Discipline':
+                modifiers.morale -= 0.10;
+                break;
+            case 'Push Harder':
+                modifiers.offense += 0.05;
+                modifiers.defense += 0.05;
+                modifiers.goalie += 0.05;
+                break;
+            case 'Calm Down':
+                modifiers.penaltyChance *= 0.75; // 25% reduction
+                break;
+        }
+    }
+    return modifiers;
+};
+
+const getMoraleModifier = (morale: Player['morale'], instructionMoraleMod: number): number => {
+    let baseMod = 1.0;
     switch (morale) {
         case 'Happy':
-            return 1.05; // 5% boost
-        case 'Content':
-            return 1.0;
+            baseMod = 1.05;
+            break;
         case 'Unhappy':
-            return 0.90; // 10% penalty
+            baseMod = 0.90;
+            break;
         case 'Angry':
-            return 0.80; // 20% penalty
-        default:
-            return 1.0;
+            baseMod = 0.80;
+            break;
     }
+    return baseMod + instructionMoraleMod;
 };
 
 // Helper to get a player's offensive rating
 const getSkaterOffensiveRating = (player: Player): number => {
     if (player.positions.includes('G')) return 0;
     const attrs = player.attributes as SkaterAttributes;
+    const instructionMods = getInstructionModifiers(player);
     const baseRating = (attrs.shootingAccuracy + attrs.shootingRange + attrs.offensiveRead + attrs.gettingOpen + attrs.passing + attrs.puckhandling) / 6;
-    return baseRating * getMoraleModifier(player.morale);
+    const moraleMod = getMoraleModifier(player.morale, instructionMods.morale);
+    return baseRating * moraleMod * instructionMods.offense;
 };
 
 // Helper to get a player's defensive rating
 const getSkaterDefensiveRating = (player: Player): number => {
     if (player.positions.includes('G')) return 0;
     const attrs = player.attributes as SkaterAttributes;
+    const instructionMods = getInstructionModifiers(player);
     const baseRating = (attrs.defensiveRead + attrs.positioning + attrs.stickchecking + attrs.checking + attrs.shotBlocking) / 5;
-    return baseRating * getMoraleModifier(player.morale);
+    const moraleMod = getMoraleModifier(player.morale, instructionMods.morale);
+    return baseRating * moraleMod * instructionMods.defense;
 };
 
 // Helper to get a goalie's rating
 const getGoalieRating = (player: Player): number => {
     if (!player.positions.includes('G')) return 0;
     const attrs = player.attributes as GoalieAttributes;
+    const instructionMods = getInstructionModifiers(player);
     const baseRating = (attrs.blocker + attrs.glove + attrs.lowShots + attrs.positioning + attrs.rebound + attrs.recovery + attrs.reflexes) / 7;
-    return baseRating * getMoraleModifier(player.morale);
+    const moraleMod = getMoraleModifier(player.morale, instructionMods.morale);
+    return baseRating * moraleMod * instructionMods.goalie;
 };
 
 // Weighted random selection for players
@@ -135,8 +179,13 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     else if (eventType > 0.85) {
         const penaltyTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
         const player = penaltyTeam.roster[Math.floor(Math.random() * penaltyTeam.roster.length)];
-        const infraction = infractions[Math.floor(Math.random() * infractions.length)];
-        return { time: eventTime, period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` };
+        const instructionMods = getInstructionModifiers(player);
+
+        if (Math.random() < instructionMods.penaltyChance) {
+            const infraction = infractions[Math.floor(Math.random() * infractions.length)];
+            return { time: eventTime, period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` };
+        }
+        return null;
     }
     else if (eventType > 0.35) {
         const attacker = selectPlayerWeighted(attackingSkaters, getSkaterOffensiveRating);
@@ -154,6 +203,19 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
 export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam: Team) => {
     const newGameState = { ...gameState };
     newGameState.time += 1;
+
+    // Process and decrement active instructions
+    const processInstructions = (team: Team) => {
+        team.roster.forEach(player => {
+            if (player.activeInstructions && player.activeInstructions.length > 0) {
+                player.activeInstructions = player.activeInstructions
+                    .map(instr => ({ ...instr, duration: instr.duration - 1 }))
+                    .filter(instr => instr.duration > 0);
+            }
+        });
+    };
+    processInstructions(userTeam);
+    processInstructions(opponentTeam);
 
     const newEvent = generateGameEvent(newGameState.time, newGameState.period, userTeam, opponentTeam);
     if (newEvent) {

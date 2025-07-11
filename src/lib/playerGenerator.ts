@@ -190,8 +190,9 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     if (Math.random() > 0.5) { 
       let secondaryPosition: Position; 
       while (true) {
-        secondaryPosition = getRandomSkaterPosition(); 
-        if (!positions.some(p => p === secondaryPosition)) {
+        const candidatePosition: Position = getRandomSkaterPosition(); // Explicitly type candidate
+        if (!positions.some(p => p === candidatePosition)) {
+          secondaryPosition = candidatePosition;
           break;
         }
       }
@@ -200,8 +201,9 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     if (positions.length === 2 && Math.random() > 0.8) { 
       let tertiaryPosition: Position; 
       while (true) {
-        tertiaryPosition = getRandomSkaterPosition(); 
-        if (!positions.some(p => p === tertiaryPosition)) {
+        const candidatePosition: Position = getRandomSkaterPosition(); // Explicitly type candidate
+        if (!positions.some(p => p === candidatePosition)) {
+          tertiaryPosition = candidatePosition;
           break;
         }
       }
@@ -258,7 +260,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const nationality = getRandomNationality(teamName);
   const name = getRandomNameForNationality(nationality, gender);
 
-  return { id: crypto.randomUUID(), jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, yearsLeftInProgram, history, trainingFocus: null, currentStats: { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, wins: 0, losses: 0, draws: 0, goalsAgainst: 0, goalsFor: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0 } };
+  return { id: crypto.randomUUID(), jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, yearsLeftInProgram, history, trainingFocus: null, activeInstructions: [], currentStats: { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, wins: 0, losses: 0, draws: 0, goalsAgainst: 0, goalsFor: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0 } };
 };
 
 const assignInitialCaptaincy = (roster: Player[]): Player[] => {

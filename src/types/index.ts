@@ -1,5 +1,12 @@
 export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
 
+export type Instruction = "Encourage" | "Discipline" | "Praise" | "Push Harder" | "Calm Down";
+
+export type ActiveInstruction = {
+  type: Instruction;
+  duration: number; // in game ticks
+};
+
 export type PlayerArchetype = {
   position: 'Defenceman' | 'Centre' | 'Winger' | 'Goaltender';
   type: string;
@@ -146,6 +153,7 @@ export type Player = {
   history: PlayerSeasonStats[];
   trainingFocus: TrainingFocus;
   currentStats: CurrentSeasonStats;
+  activeInstructions: ActiveInstruction[];
   source?: 'Local' | 'International' | 'Transfer';
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
   recruitmentCost?: number;
