@@ -17,6 +17,7 @@ import {
   LogOut,
   Settings,
   Play,
+  Smile,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/training", label: "Training", icon: BarChart3 },
   { href: "/recruitment", label: "Recruitment", icon: UserPlus },
   { href: "/finances", label: "Finances", icon: DollarSign },
+  { href: "/morale", label: "Morale", icon: Smile },
   { href: "/facilities", label: "Facilities", icon: Building },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/standings", label: "Standings", icon: Trophy },

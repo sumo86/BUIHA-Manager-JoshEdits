@@ -196,7 +196,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
           break;
         }
       }
-      positions.push(secondaryPosition);
+      positions.push(secondaryPosition as Position);
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       let tertiaryPosition: Position; 
@@ -207,7 +207,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
           break;
         }
       }
-      positions.push(tertiaryPosition);
+      positions.push(tertiaryPosition as Position);
     }
   }
 

@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, RouterProvider, Route, createRoutesFromElements } from "react-router-dom";
-import NotFound from "./pages/NotFound";
+import NotFound from "./pages/NotFound"; // Keep this one
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Standings from "./pages/Standings";
@@ -15,12 +15,13 @@ import PlayerProfile from "./pages/PlayerProfile";
 import Lineup from "./pages/Lineup";
 import { TeamProvider, useTeam } from "./context/TeamContext";
 import BuihaOverview from "./pages/BuihaOverview";
-import PlayGame from "./pages/PlayGame";
 import Game from "./pages/Game";
-import Training from "./pages/Training";
-import Calendar from "./pages/Calendar";
-import SeasonOverview from "./pages/SeasonOverview";
-import TeamSelection from "./pages/TeamSelection";
+import PlayGame from "./pages/PlayGame";
+import MoralePage from "./pages/Morale"; // Correct import for MoralePage
+import SeasonOverview from "./pages/SeasonOverview"; // Added missing import
+import Calendar from "./pages/Calendar"; // Added missing import
+import Training from "./pages/Training"; // Added missing import
+import TeamSelection from "./pages/TeamSelection"; // Added missing import
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const router = createBrowserRouter(
       <Route path="/player/:playerId" element={<PlayerProfile />} />
       <Route path="/recruitment" element={<Recruitment />} />
       <Route path="/finances" element={<Finances />} />
+      <Route path="/morale" element={<MoralePage />} />
       <Route path="/facilities" element={<Facilities />} />
       <Route path="/lineup" element={<Lineup />} />
       <Route path="/training" element={<Training />} />
