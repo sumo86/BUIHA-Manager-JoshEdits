@@ -2,47 +2,45 @@ import { Team } from '@/types';
 
 export const validateLineup = (team: Team): string | null => {
   const { roster, lineup } = team;
-  let missingPlayers: string[] = [];
   let staffCount = 0;
-  let injuredPlayerNames: string[] = [];
+  const injuredPlayerNames: string[] = [];
 
-  const getPlayerById = (id: string | null) => id ? roster.find(p => p.id === id) : undefined;
+  const allPlayerIdsInLineup = [
+    ...lineup.forwards.lw,
+    ...lineup.forwards.c,
+    ...lineup.forwards.rw,
+    ...lineup.defence.ld,
+    ...lineup.defence.rd,
+    lineup.goalies.starter,
+    lineup.goalies.backup,
+  ].filter((id): id is string => id !== null);
 
-  // Check a player and update counts
-  const checkAndAddPlayer = (playerId: string | null) => {
-    if (playerId) {
-      const player = getPlayerById(playerId);
-      if (player) {
-        if (player.eligibility === 'Staff') {
-          staffCount++;
-        }
-        if (player.healthStatus === 'Injured') {
-          injuredPlayerNames.push(player.name);
-        }
+  const uniquePlayerIds = [...new Set(allPlayerIdsInLineup)];
+
+  uniquePlayerIds.forEach(playerId => {
+    const player = roster.find(p => p.id === playerId);
+    if (player) {
+      if (player.eligibility === 'Staff') {
+        staffCount++;
+      }
+      if (player.healthStatus === 'Injured') {
+        injuredPlayerNames.push(player.name);
       }
     }
-  };
+  });
 
-  // Check all lineup positions
-  lineup.forwards.lw.forEach(checkAndAddPlayer);
-  lineup.forwards.c.forEach(checkAndAddPlayer);
-  lineup.forwards.rw.forEach(checkAndAddPlayer);
-  lineup.defence.ld.forEach(checkAndAddPlayer);
-  lineup.defence.rd.forEach(checkAndAddPlayer);
-  checkAndAddPlayer(lineup.goalies.starter);
-  checkAndAddPlayer(lineup.goalies.backup);
-
-  // Check for injured players first
   if (injuredPlayerNames.length > 0) {
     return `Your lineup contains injured players: ${injuredPlayerNames.join(', ')}. Please remove them before playing.`;
   }
 
-  // Check for staff count
   if (staffCount > 2) {
     return `You have ${staffCount} staff members in your lineup. You can only have a maximum of 2.`;
   }
 
-  // Check for incomplete lineup
+  const requiredForwards = 9;
+  const requiredDefence = 6;
+  const requiredGoalies = 2;
+
   const assignedForwards = lineup.forwards.lw.filter(Boolean).length +
                            lineup.forwards.c.filter(Boolean).length +
                            lineup.forwards.rw.filter(Boolean).length;
@@ -50,9 +48,10 @@ export const validateLineup = (team: Team): string | null => {
                             lineup.defence.rd.filter(Boolean).length;
   const assignedGoalies = (lineup.goalies.starter ? 1 : 0) + (lineup.goalies.backup ? 1 : 0);
 
-  if (assignedForwards < 9) missingPlayers.push('9 Forwards');
-  if (assignedDefense < 6) missingPlayers.push('6 Defensemen');
-  if (assignedGoalies < 2) missingPlayers.push('2 Goalies');
+  const missingPlayers: string[] = [];
+  if (assignedForwards < requiredForwards) missingPlayers.push(`${requiredForwards - assignedForwards} more Forward(s)`);
+  if (assignedDefense < requiredDefence) missingPlayers.push(`${requiredDefence - assignedDefense} more Defenseman/men`);
+  if (assignedGoalies < requiredGoalies) missingPlayers.push(`${requiredGoalies - assignedGoalies} more Goalie(s)`);
 
   if (missingPlayers.length > 0) {
     return `Your lineup is incomplete. You need: ${missingPlayers.join(', ')}.`;

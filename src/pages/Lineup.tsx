@@ -43,9 +43,10 @@ const PlayerLineupCard = ({ player, onRoleChange }: { player: Player, onRoleChan
         return roles.filter(r => r.positions.includes('Defenceman'));
     };
     const applicableRoles = getApplicableRoles(player);
+    const isInjured = player.healthStatus === 'Injured';
 
     return (
-        <div className="border rounded-lg p-2 text-center w-full bg-card">
+        <div className={`border rounded-lg p-2 text-center w-full bg-card ${isInjured ? 'border-red-500 bg-red-100 dark:bg-red-900/20' : ''}`}>
             <div className="font-bold text-sm truncate">{player.name.split(' ').pop()?.toUpperCase()}</div>
             <div className="text-xs text-muted-foreground">#{player.jerseyNumber}</div>
             <div className="flex justify-center my-1">{renderStars(player.starRating)}</div>

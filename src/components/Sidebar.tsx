@@ -90,6 +90,7 @@ const Sidebar = () => {
             <SidebarLink to="/training" icon={Dumbbell}>Training</SidebarLink>
             <SidebarLink to="/calendar" icon={Calendar}>Calendar</SidebarLink>
             <SidebarLink to="/morale" icon={Smile}>Morale</SidebarLink>
+            <SidebarLink to="/play" icon={Swords}>Friendly Match</SidebarLink>
             <p className="px-3 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Club</p>
             <SidebarLink to="/finances" icon={Banknote}>Finances</SidebarLink>
             <SidebarLink to="/facilities" icon={Building}>Facilities</SidebarLink>
