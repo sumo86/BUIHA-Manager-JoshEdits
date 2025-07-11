@@ -151,9 +151,12 @@ const Lineup = () => {
     };
 
     const autoFillLines = () => {
-        const forwards = team.roster.filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
-        const defencemen = team.roster.filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
-        const goalies = team.roster.filter(p => p.positions.includes('G')).sort((a, b) => b.starRating - a.starRating);
+        // Filter out injured players from the pool
+        const healthyRoster = team.roster.filter(p => p.healthStatus === 'Healthy');
+
+        const forwards = healthyRoster.filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
+        const defencemen = healthyRoster.filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
+        const goalies = healthyRoster.filter(p => p.positions.includes('G')).sort((a, b) => b.starRating - a.starRating);
         
         const assigned = new Set<string>();
         const newLineup: LineupType = {
@@ -181,6 +184,7 @@ const Lineup = () => {
         if (goalies[1]) newLineup.goalies.backup = goalies[1].id;
 
         updateTeam({ ...team, lineup: newLineup });
+        toast.success("Lines have been auto-filled with healthy players.");
     };
 
     const autoAssignRoles = () => {
@@ -263,7 +267,7 @@ const Lineup = () => {
 
         if (posType === 'forwards' || posType === 'defence') {
             const typedPos = pos as keyof (LineupType['forwards'] | LineupType['defence']);
-            currentId = team.lineup[posType][typedPos][index!];
+            currentId = team.lineup[typedPos][index!];
             onValueChangeHandler = (val) => handleLineupChange(posType, typedPos, index!, val);
             positionForFilter = pos.toUpperCase() as Position;
             placeholderText = `Select ${pos.toUpperCase()}`;
