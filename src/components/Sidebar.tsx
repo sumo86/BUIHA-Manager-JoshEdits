@@ -13,12 +13,10 @@ import {
   Trophy,
   UserPlus,
   Swords,
+  ChevronDown,
   LogOut,
+  Settings,
   Play,
-  Home, // Added Home
-  Banknote, // Added Banknote
-  Dumbbell, // Added Dumbbell
-  Smile // Added Smile for Morale
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -28,30 +26,19 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-// Define SidebarLink component
-interface SidebarLinkProps {
-  to: string;
-  icon: React.ElementType;
-  children: React.ReactNode;
-}
-
-const SidebarLink = ({ to, icon: Icon, children }: SidebarLinkProps) => {
-  const location = useLocation();
-  const isActive = location.pathname === to;
-
-  return (
-    <NavLink
-      to={to}
-      className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-        isActive && "bg-muted text-primary"
-      )}
-    >
-      <Icon className="h-4 w-4" />
-      {children}
-    </NavLink>
-  );
-};
+const navItems = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/season-overview", label: "Season Overview", icon: Calendar }, // Added this back
+  { href: "/roster", label: "Roster", icon: Users },
+  { href: "/lineup", label: "Lineup", icon: ClipboardList },
+  { href: "/training", label: "Training", icon: BarChart3 },
+  { href: "/recruitment", label: "Recruitment", icon: UserPlus },
+  { href: "/finances", label: "Finances", icon: DollarSign },
+  { href: "/facilities", label: "Facilities", icon: Building },
+  { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/standings", label: "Standings", icon: Trophy },
+  { href: "/buiha-overview", label: "BUIHA", icon: Swords },
+];
 
 const Sidebar = () => {
   const { userTeam, advanceWeek, selectTeam, managedOrganization, managedTeams, setActiveTeam, selectOrganization, gameForCurrentWeek } = useTeam();
@@ -82,17 +69,22 @@ const Sidebar = () => {
           </a>
         </div>
         <ScrollArea className="flex-1">
-          <nav className="flex-1 p-4 space-y-2">
-            <SidebarLink to="/" icon={Home}>Dashboard</SidebarLink>
-            <p className="px-3 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Team</p>
-            <SidebarLink to="/roster" icon={Users}>Roster</SidebarLink>
-            <SidebarLink to="/lineup" icon={ClipboardList}>Lines & Tactics</SidebarLink>
-            <SidebarLink to="/training" icon={Dumbbell}>Training</SidebarLink>
-            <SidebarLink to="/calendar" icon={Calendar}>Calendar</SidebarLink>
-            <SidebarLink to="/morale" icon={Smile}>Morale</SidebarLink>
-            <p className="px-3 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Club</p>
-            <SidebarLink to="/finances" icon={Banknote}>Finances</SidebarLink>
-            <SidebarLink to="/facilities" icon={Building}>Facilities</SidebarLink>
+          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.href}
+                to={item.href}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                    isActive && "text-primary bg-muted"
+                  )
+                }
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
           {managedOrganization && (
              <div className="px-4 mt-4">

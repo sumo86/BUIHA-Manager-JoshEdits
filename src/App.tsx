@@ -21,7 +21,6 @@ import Training from "./pages/Training";
 import Calendar from "./pages/Calendar";
 import SeasonOverview from "./pages/SeasonOverview";
 import TeamSelection from "./pages/TeamSelection";
-import Morale from "./pages/Morale"; // Import the new Morale page
 
 const queryClient = new QueryClient();
 
@@ -42,14 +41,13 @@ const router = createBrowserRouter(
       <Route path="/buiha-overview" element={<BuihaOverview />} />
       <Route path="/play-game" element={<PlayGame />} />
       <Route path="/game/:opponentName" element={<Game />} />
-      <Route path="/morale" element={<Morale />} /> {/* Add the new Morale route */}
       <Route path="*" element={<NotFound />} />
     </Route>
   )
 );
 
 const AppContent = () => {
-  const { userTeam, managedOrganization } = useTeam();
+  const { userTeam } = useTeam();
 
   if (!userTeam) {
     return <TeamSelection />;
