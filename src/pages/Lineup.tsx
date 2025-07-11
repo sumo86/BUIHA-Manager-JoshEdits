@@ -33,7 +33,7 @@ const renderStars = (rating: number) => {
     );
 };
 
-const PlayerLineupCard = ({ player, onRoleChange }: { player: Player, onRoleChange: (newRole: string) => void }) => {
+const PlayerLineupCard = ({ player, onRoleChange, displayName }: { player: Player, onRoleChange: (newRole: string) => void, displayName: string }) => {
     const getApplicableRoles = (p: Player): Role[] => {
         if (p.positions.includes('G')) return [];
         const isF = ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position));
@@ -50,7 +50,7 @@ const PlayerLineupCard = ({ player, onRoleChange }: { player: Player, onRoleChan
 
     return (
         <div className={cardClasses}>
-            <div className="font-bold text-sm truncate">{player.name.split(' ').pop()?.toUpperCase()}</div>
+            <div className="font-bold text-sm truncate">{displayName}</div>
             <div className="text-xs text-muted-foreground">#{player.jerseyNumber}</div>
             <div className="flex justify-center my-1">{renderStars(player.starRating)}</div>
             <Select value={player.role} onValueChange={onRoleChange}>
@@ -104,6 +104,30 @@ const Lineup = () => {
         }, 0);
     }, [team.lineup, playerMap]);
 
+    const playerDisplayNames = useMemo(() => {
+        const lineupPlayerIds = Array.from(assignedPlayerIds);
+        const lineupPlayers = lineupPlayerIds.map(id => playerMap.get(id)).filter((p): p is Player => !!p);
+    
+        const surnameCounts = lineupPlayers.reduce((acc, player) => {
+            const surname = player.name.split(' ').pop() || '';
+            acc[surname] = (acc[surname] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+    
+        const displayNames = new Map<string, string>();
+        lineupPlayers.forEach(player => {
+            const surname = player.name.split(' ').pop() || '';
+            if (surnameCounts[surname] > 1) {
+                const initial = player.name.charAt(0);
+                displayNames.set(player.id, `${initial}. ${surname.toUpperCase()}`);
+            } else {
+                displayNames.set(player.id, surname.toUpperCase());
+            }
+        });
+    
+        return displayNames;
+    }, [assignedPlayerIds, playerMap]);
+
     const getAvailablePlayers = (position: Position, currentSelection: string | null): Player[] => {
         const skaters = team.roster.filter(p => !p.positions.includes('G'));
         const goalies = team.roster.filter(p => p.positions.includes('G'));
@@ -129,7 +153,6 @@ const Lineup = () => {
             });
     };
 
-    // Function Overloads for handleLineupChange
     function handleLineupChange(posType: 'forwards', pos: keyof LineupType['forwards'], index: number, playerId: string | null): void;
     function handleLineupChange(posType: 'defence', pos: keyof LineupType['defence'], index: number, playerId: string | null): void;
     function handleLineupChange(
@@ -141,7 +164,7 @@ const Lineup = () => {
         const newLineup = JSON.parse(JSON.stringify(team.lineup)) as LineupType;
         if (posType === 'forwards') {
             newLineup.forwards[pos as keyof LineupType['forwards']][index] = playerId;
-        } else { // posType === 'defence'
+        } else {
             newLineup.defence[pos as keyof LineupType['defence']][index] = playerId;
         }
         updateTeam({ ...team, lineup: newLineup });
@@ -180,7 +203,6 @@ const Lineup = () => {
         };
     
         const findAndAssignPlayer = (playerPool: Player[], position?: Position): string | null => {
-            // First pass: find a natural fit
             if (position) {
                 const naturalFit = playerPool.find(p => {
                     if (assigned.has(p.id)) return false;
@@ -194,7 +216,6 @@ const Lineup = () => {
                 }
             }
     
-            // Second pass: find any available player
             const anyFit = playerPool.find(p => {
                 if (assigned.has(p.id)) return false;
                 if (p.eligibility === 'Staff' && staffCount >= MAX_STAFF) return false;
@@ -209,20 +230,17 @@ const Lineup = () => {
             return null;
         };
     
-        // Fill Forwards
         for (let i = 0; i < 3; i++) {
             newLineup.forwards.lw[i] = findAndAssignPlayer(forwards, 'LW');
             newLineup.forwards.c[i] = findAndAssignPlayer(forwards, 'C');
             newLineup.forwards.rw[i] = findAndAssignPlayer(forwards, 'RW');
         }
     
-        // Fill Defence
         for (let i = 0; i < 3; i++) {
             newLineup.defence.ld[i] = findAndAssignPlayer(defencemen, 'LD');
             newLineup.defence.rd[i] = findAndAssignPlayer(defencemen, 'RD');
         }
     
-        // Fill Goalies
         newLineup.goalies.starter = findAndAssignPlayer(goalies, 'G');
         newLineup.goalies.backup = findAndAssignPlayer(goalies, 'G');
     
@@ -253,27 +271,21 @@ const Lineup = () => {
             return bestRoleName;
         };
 
-        // Assign roles for forwards
         Object.values(team.lineup.forwards).flat().forEach(playerId => {
             if (!playerId) return;
             const player = rosterMap.get(playerId);
             if (player) {
                 const bestRole = findBestRole(player, forwardRoles);
-                if (bestRole) {
-                    player.role = bestRole;
-                }
+                if (bestRole) player.role = bestRole;
             }
         });
 
-        // Assign roles for defence
         Object.values(team.lineup.defence).flat().forEach(playerId => {
             if (!playerId) return;
             const player = rosterMap.get(playerId);
             if (player) {
                 const bestRole = findBestRole(player, defenceRoles);
-                if (bestRole) { // Corrected typo here
-                    player.role = bestRole;
-                }
+                if (bestRole) player.role = bestRole;
             }
         });
 
@@ -329,12 +341,16 @@ const Lineup = () => {
         }
 
         players = getAvailablePlayers(positionForFilter, currentId);
-        const player = currentId ? playerMap.get(currentId) : undefined; // Use undefined for clarity
+        const player = currentId ? playerMap.get(currentId) : undefined;
 
         if (player) {
             return (
                 <div className="flex flex-col items-center gap-1">
-                    <PlayerLineupCard player={player} onRoleChange={(newRole) => handleRoleChange(player.id, newRole)} />
+                    <PlayerLineupCard 
+                        player={player} 
+                        onRoleChange={(newRole) => handleRoleChange(player.id, newRole)} 
+                        displayName={playerDisplayNames.get(player.id) || player.name.split(' ').pop()?.toUpperCase() || ''}
+                    />
                     <Button variant="link" className="h-auto p-0 text-xs" onClick={() => onValueChangeHandler(null)}>Remove</Button>
                 </div>
             );
@@ -347,7 +363,7 @@ const Lineup = () => {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="empty">Empty</SelectItem>
-                    {players.map((p: Player) => ( // Explicitly type 'p' as Player
+                    {players.map((p: Player) => (
                         <SelectItem key={p.id} value={p.id}>
                             {p.name} ({p.positions.join(', ')}) - {p.starRating}⭐ {p.eligibility === 'Staff' && '(Staff)'}
                         </SelectItem>

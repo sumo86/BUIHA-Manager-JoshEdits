@@ -236,6 +236,7 @@ export type GameState = {
   isGameOver: boolean;
   isPaused: boolean;
   injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
+  possessionHolder: string | null;
 };
 
 export type GameDate = {

@@ -99,6 +99,7 @@ const Game = () => {
         isGameOver: false,
         isPaused: true,
         injuries: [],
+        possessionHolder: null,
     });
 
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -160,6 +161,7 @@ const Game = () => {
                 time: 0,
                 isPaused: true,
                 gameLog: [...logEntries, ...prev.gameLog],
+                possessionHolder: null,
             };
         });
     };
