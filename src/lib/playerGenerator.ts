@@ -33,6 +33,15 @@ const getRandomSkaterPosition = (): Position => {
     return getRandomItem(skaterPositions);
 };
 
+// New helper function to get a unique skater position
+const getUniqueSkaterPosition = (currentPositions: Position[]): Position => {
+    let newPos: Position;
+    do {
+        newPos = getRandomSkaterPosition();
+    } while (currentPositions.some(p => p === newPos));
+    return newPos;
+};
+
 const generateAttributesForAbility = (archetype: PlayerArchetype, targetAbility: number, isSkater: boolean): SkaterAttributes | GoalieAttributes => {
     const clamp = (value: number) => Math.max(1, Math.min(20, Math.round(value)));
     const visibleKeys = isSkater ? visibleSkaterKeys : visibleGoalieKeys;
@@ -188,22 +197,10 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      while (true) {
-        const candidatePosition: Position = getRandomSkaterPosition();
-        if (!positions.some(p => p === candidatePosition)) {
-          positions.push(candidatePosition);
-          break;
-        }
-      }
+      positions.push(getUniqueSkaterPosition(positions));
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      while (true) {
-        const candidatePosition: Position = getRandomSkaterPosition();
-        if (!positions.some(p => p === candidatePosition)) {
-          positions.push(candidatePosition);
-          break;
-        }
-      }
+      positions.push(getUniqueSkaterPosition(positions));
     }
   }
 
