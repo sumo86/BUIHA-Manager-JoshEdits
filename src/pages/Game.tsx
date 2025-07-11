@@ -19,7 +19,9 @@ import { InstructionsManager } from '@/components/game/InstructionsManager';
 import { GameSummary } from '@/components/game/GameSummary';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { isRivalryGame } from '@/lib/rivalries'; // Import isRivalryGame
+import { isRivalryGame } from '@/lib/rivalries';
+import { tactics } from '@/data/tactics';
+import { calculateTacticSuitability } from '@/lib/tactics';
 
 const formatClockTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -53,6 +55,37 @@ const Game = () => {
                 description: `The atmosphere is electric for ${userTeam.name} vs ${opponentTeam.name}. Players' performance may be affected by the pressure!`
             });
         }
+
+        // Tactical matchup toast
+        if (!userTeam || !opponentTeam) return;
+
+        const userAttackTacticName = userTeam.tactics['Attacking Zone Offence'];
+        const oppDefendTacticName = opponentTeam.tactics['Defensive Zone Coverage'];
+        const userAttackTactic = tactics.find(t => t.tactic === userAttackTacticName);
+        const oppDefendTactic = tactics.find(t => t.tactic === oppDefendTacticName);
+
+        if (!userAttackTactic || !oppDefendTactic) return;
+
+        let title = "Tactical Matchup";
+        let description = `You're running '${userAttackTactic.tactic}' against their '${oppDefendTactic.tactic}'.`;
+
+        if (userAttackTactic.strongVs === oppDefendTactic.tactic) {
+            title = "Tactical Advantage!";
+            description += " A great counter-tactic!";
+        } else if (userAttackTactic.weakVs === oppDefendTactic.tactic) {
+            title = "Tactical Challenge!";
+            description += " They are set up well to counter you.";
+        }
+
+        const userSuitability = calculateTacticSuitability(userAttackTactic, userTeam.roster);
+        if (userSuitability.score >= 4) {
+            description += " Your team is well-suited to this system.";
+        } else if (userSuitability.score <= 2) {
+            description += " Your players may struggle with this system.";
+        }
+
+        toast.info(title, { description });
+
     }, [isBigGame, userTeam, opponentTeam]);
 
     const [gameState, setGameState] = useState<GameState>({

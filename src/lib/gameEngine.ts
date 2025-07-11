@@ -1,4 +1,6 @@
 import { Team, GameEvent, GameState, SkaterAttributes, GoalieAttributes, Player } from '@/types';
+import { tactics } from '@/data/tactics';
+import { calculateTacticSuitability } from '@/lib/tactics';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -141,12 +143,51 @@ const selectPlayerWeighted = (players: Player[], getWeight: (p: Player) => numbe
     return null; // Should not happen if totalWeight > 0
 };
 
+const getTacticalModifier = (attackingTeam: Team, defendingTeam: Team): number => {
+    let modifier = 1.0;
+
+    // Get the relevant tactics for a scoring chance
+    const attackTacticName = attackingTeam.tactics['Attacking Zone Offence'];
+    const defendTacticName = defendingTeam.tactics['Defensive Zone Coverage'];
+
+    const attackTactic = tactics.find(t => t.tactic === attackTacticName && t.category === 'Attacking Zone Offence');
+    const defendTactic = tactics.find(t => t.tactic === defendTacticName && t.category === 'Defensive Zone Coverage');
+
+    if (!attackTactic || !defendTactic) {
+        return modifier; // Return base modifier if tactics aren't set
+    }
+
+    // 1. Tactic vs Tactic Interaction
+    if (attackTactic.strongVs === defendTactic.tactic) {
+        modifier += 0.075; // 7.5% bonus for a hard counter
+    } else if (attackTactic.weakVs === defendTactic.tactic) {
+        modifier -= 0.075; // 7.5% penalty for being countered
+    }
+
+    // 2. Team Suitability
+    const attackSuitability = calculateTacticSuitability(attackTactic, attackingTeam.roster);
+    const defendSuitability = calculateTacticSuitability(defendTactic, defendingTeam.roster);
+
+    // Convert suitability score (1-5) to a modifier.
+    // A score of 3 is average (0), 5 is excellent (+0.05), 1 is very poor (-0.05)
+    const suitabilityToMod = (score: number) => (score - 3) * 0.025;
+
+    modifier += suitabilityToMod(attackSuitability.score);
+    modifier -= suitabilityToMod(defendSuitability.score); // Good defensive suitability penalizes the attacker's modifier
+
+    // Clamp the modifier to a reasonable range to prevent extreme results
+    return Math.max(0.8, Math.min(1.2, modifier));
+};
+
 const generateGameEvent = (time: number, period: number, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): GameEvent | null => {
     if (Math.random() > 0.05) return null;
 
     const eventTime = formatTime(time);
     const attackingTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
     const defendingTeam = attackingTeam.name === userTeam.name ? opponentTeam : userTeam;
+
+    // Calculate tactical modifier for this event
+    const tacticalModifier = getTacticalModifier(attackingTeam, defendingTeam);
 
     const eventType = Math.random();
     const divisionGoalFactor = getGoalFactor(attackingTeam.leagueDivision);
@@ -165,8 +206,12 @@ const generateGameEvent = (time: number, period: number, userTeam: Team, opponen
     
     const defendingGoalieAbility = defendingGoalie ? getGoalieRating(defendingGoalie, isBigGame) : 10;
 
-    const offenseFactor = (avgAttackingOffense - 10) / 10;
-    const defenseFactor = (avgDefendingDefense - 10) / 10;
+    // Apply the tactical modifier to the team ratings for this event
+    const modifiedAttackRating = avgAttackingOffense * tacticalModifier;
+    const modifiedDefenseRating = avgDefendingDefense / tacticalModifier; // Defending rating is inversely affected
+
+    const offenseFactor = (modifiedAttackRating - 10) / 10;
+    const defenseFactor = (modifiedDefenseRating - 10) / 10;
     const goalieFactor = (defendingGoalieAbility - 10) / 10;
 
     const baseProb = 0.1 * divisionGoalFactor;
