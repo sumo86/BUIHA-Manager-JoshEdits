@@ -1,46 +1,73 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import Roster from './pages/Roster';
-import Lineup from './pages/Lineup';
-import Training from './pages/Training';
-import Calendar from './pages/Calendar';
-import Morale from './pages/Morale';
-import Finances from './pages/Finances';
-import Facilities from './pages/Facilities';
-import Recruitment from './pages/Recruitment';
-import PlayerProfile from './pages/PlayerProfile';
-import Game from './pages/Game';
-import PlayGame from './pages/PlayGame';
-import TeamSelection from './pages/TeamSelection';
-import NotFound from './pages/NotFound';
-import { TeamProvider } from './context/TeamContext'; // Import TeamProvider
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createBrowserRouter, RouterProvider, Route, createRoutesFromElements } from "react-router-dom";
+import NotFound from "./pages/NotFound";
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import Standings from "./pages/Standings";
+import Roster from "./pages/Roster";
+import Recruitment from "./pages/Recruitment";
+import Finances from "./pages/Finances";
+import Facilities from "./pages/Facilities";
+import PlayerProfile from "./pages/PlayerProfile";
+import Lineup from "./pages/Lineup";
+import { TeamProvider, useTeam } from "./context/TeamContext";
+import BuihaOverview from "./pages/BuihaOverview";
+import PlayGame from "./pages/PlayGame";
+import Game from "./pages/Game";
+import Training from "./pages/Training";
+import Calendar from "./pages/Calendar";
+import SeasonOverview from "./pages/SeasonOverview";
+import TeamSelection from "./pages/TeamSelection";
+import Morale from "./pages/Morale"; // Import the new Morale page
 
-function App() {
-  return (
-    <Router>
-      <TeamProvider> {/* Wrap your routes with TeamProvider */}
-        <Routes>
-          <Route path="/team-selection" element={<TeamSelection />} />
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="roster" element={<Roster />} />
-            <Route path="player/:playerId" element={<PlayerProfile />} />
-            <Route path="lineup" element={<Lineup />} />
-            <Route path="training" element={<Training />} />
-            <Route path="calendar" element={<Calendar />} />
-            <Route path="morale" element={<Morale />} />
-            <Route path="finances" element={<Finances />} />
-            <Route path="facilities" element={<Facilities />} />
-            <Route path="recruitment" element={<Recruitment />} />
-            <Route path="play" element={<PlayGame />} />
-            <Route path="game/:opponentName" element={<Game />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </TeamProvider>
-    </Router>
-  );
-}
+const queryClient = new QueryClient();
+
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <Route element={<Layout />}>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/season-overview" element={<SeasonOverview />} />
+      <Route path="/calendar" element={<Calendar />} />
+      <Route path="/standings" element={<Standings />} />
+      <Route path="/roster" element={<Roster />} />
+      <Route path="/player/:playerId" element={<PlayerProfile />} />
+      <Route path="/recruitment" element={<Recruitment />} />
+      <Route path="/finances" element={<Finances />} />
+      <Route path="/facilities" element={<Facilities />} />
+      <Route path="/lineup" element={<Lineup />} />
+      <Route path="/training" element={<Training />} />
+      <Route path="/buiha-overview" element={<BuihaOverview />} />
+      <Route path="/play-game" element={<PlayGame />} />
+      <Route path="/game/:opponentName" element={<Game />} />
+      <Route path="/morale" element={<Morale />} /> {/* Add the new Morale route */}
+      <Route path="*" element={<NotFound />} />
+    </Route>
+  )
+);
+
+const AppContent = () => {
+  const { userTeam, managedOrganization } = useTeam();
+
+  if (!userTeam) {
+    return <TeamSelection />;
+  }
+
+  return <RouterProvider router={router} />;
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TeamProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AppContent />
+      </TooltipProvider>
+    </TeamProvider>
+  </QueryClientProvider>
+);
 
 export default App;

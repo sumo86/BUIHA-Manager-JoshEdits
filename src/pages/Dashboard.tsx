@@ -1,17 +1,9 @@
 import { useTeam } from '@/context/TeamContext';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const Dashboard = () => {
   const { userTeam, generateScoutingPool, scoutingPool, recruitedPool, fairHosted } = useTeam();
-  const navigate = useNavigate(); // Initialize useNavigate
-
-  // If no user team is selected, redirect to team selection
-  if (!userTeam) {
-    navigate('/team-selection');
-    return null; // Return null to prevent rendering the rest of the component
-  }
 
   const handleHostFair = () => {
     generateScoutingPool();
