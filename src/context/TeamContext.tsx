@@ -400,6 +400,29 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, -1) }));
                     }
                 }
+                // Positive Team Event (e.g., Team Building, Good Citizenship)
+                if (isUserManagedTeam) {
+                    const sportsmanship = (player.attributes.sportsmanship || 10);
+                    const controversy = (player.attributes.controversy || 10);
+
+                    // Higher chance for high sportsmanship and low controversy
+                    const positiveEventChance = ((sportsmanship - 1) / 200) + ((20 - controversy) / 200); // Max 19% chance for 20 sportsmanship, 1 controversy
+
+                    if (Math.random() < positiveEventChance) {
+                        const positiveDescriptions = [
+                            `${player.name} organized a successful team-building event, boosting team cohesion and morale.`,
+                            `${player.name} was recognized for their outstanding sportsmanship, setting a positive example for the team.`,
+                            `${player.name}'s positive attitude and professionalism are rubbing off on the team, improving overall morale.`,
+                            `${player.name} resolved a minor locker room dispute, fostering a more harmonious team environment.`,
+                            `${player.name} led a community initiative, bringing positive attention and good vibes to the team.`
+                        ];
+                        toast.success("Team Harmony!", {
+                            description: getRandomItem(positiveDescriptions)
+                        });
+                        // Apply a small morale boost to the whole team
+                        newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
+                    }
+                }
                 return player;
             });
 
@@ -732,7 +755,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         updateTeam({ ...userTeam, roster: newRoster, financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations } });
         toast.success("Student Life Initiative Successful!", {
-            description: `Team morale has improved. Cost: £${cost.toLocaleString()}.`,
+            description: `Cost: £${cost.toLocaleString()}.`,
         });
     };
 
