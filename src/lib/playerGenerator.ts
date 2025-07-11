@@ -190,24 +190,24 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
     if (Math.random() > 0.5) { 
       let secondaryPosition: Position; 
       while (true) {
-        const candidatePosition: Position = getRandomSkaterPosition(); // Explicitly type candidate
+        const candidatePosition: Position = getRandomSkaterPosition() as Position; // Explicitly cast here
         if (!positions.some(p => p === candidatePosition)) {
           secondaryPosition = candidatePosition;
           break;
         }
       }
-      positions.push(secondaryPosition as Position);
+      positions.push(secondaryPosition); // Remove 'as Position'
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       let tertiaryPosition: Position; 
       while (true) {
-        const candidatePosition: Position = getRandomSkaterPosition(); // Explicitly type candidate
+        const candidatePosition: Position = getRandomSkaterPosition() as Position; // Explicitly cast here
         if (!positions.some(p => p === candidatePosition)) {
           tertiaryPosition = candidatePosition;
           break;
         }
       }
-      positions.push(tertiaryPosition as Position);
+      positions.push(tertiaryPosition); // Remove 'as Position'
     }
   }
 
@@ -294,7 +294,7 @@ const getStarCountsForRoster = (tierName: string, rosterSize: number): Record<st
 export const generateRoster = (leagueDivision: string, teamName: string): Player[] => {
   const roster: Player[] = [];
   const usedJerseyNumbers = new Set<number>();
-  const rosterPositions: Position[] = [ "G", "G", "LD", "LD", "LD", "LD", "RD", "RD", "RD", "RD", "C", "C", "C", "C", "LW", "LW", "LW", "LW", "RW", "RW", "RW", "RW" ];
+  const rosterPositions: Position[] = [ "G", "G", "LD", "LD", "LD", "RD", "RD", "RD", "RD", "C", "C", "C", "C", "LW", "LW", "LW", "LW", "RW", "RW", "RW", "RW" ];
   
   const tier = getTierStats(leagueDivision);
   const starCounts = getStarCountsForRoster(tier.name, rosterPositions.length);
