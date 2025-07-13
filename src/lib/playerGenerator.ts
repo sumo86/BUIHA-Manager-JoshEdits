@@ -195,16 +195,16 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   do { jerseyNumber = Math.floor(Math.random() * 98) + 1; } while (usedJerseyNumbers.has(jerseyNumber));
   usedJerseyNumbers.add(jerseyNumber);
 
-  let positions: Position[] = [position]; // Changed to 'let' for reassignment
+  let positions: Position[] = [position];
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
       const newPosition: Position = getUniqueSkaterPosition(positions);
-      positions = [...positions, newPosition]; // Corrected: Use spread operator for type safety
+      (positions as Position[]).push(newPosition); // Explicitly cast to Position[] before pushing
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       const anotherNewPosition: Position = getUniqueSkaterPosition(positions);
-      positions = [...positions, anotherNewPosition]; // Corrected: Use spread operator for type safety
+      (positions as Position[]).push(anotherNewPosition); // Explicitly cast to Position[] before pushing
     }
   }
 
