@@ -1,4 +1,6 @@
-import { Team, NationalsGroup, NationalsTournament, ScheduleEntry, GameDate, NationalsPlayoffMatch } from '@/types';
+import { Team, NationalsGroup, NationalsTournament, ScheduleEntry, GameDate, NationalsPlayoffMatch, NationalsStanding } from '@/types';
+
+const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 
 // Fisher-Yates shuffle algorithm
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -38,6 +40,21 @@ export const generateNationalsGroups = (allTeamsInDivision: Team[]): NationalsGr
   return groups;
 };
 
+const advanceDate = (date: GameDate): GameDate => {
+    let { year, month, week } = date;
+    week++;
+    if (week > 4) {
+        week = 1;
+        const monthIndex = months.indexOf(month);
+        let nextMonthIndex = (monthIndex + 1) % months.length;
+        month = months[nextMonthIndex];
+        if (month === 'August') {
+            year++;
+        }
+    }
+    return { year, month, week };
+};
+
 export const generateGroupStageSchedule = (groups: NationalsGroup[], startDate: GameDate): ScheduleEntry[] => {
     const schedule: ScheduleEntry[] = [];
     const allMatches: { homeTeam: string, awayTeam: string }[] = [];
@@ -52,33 +69,62 @@ export const generateGroupStageSchedule = (groups: NationalsGroup[], startDate: 
     });
 
     const shuffledMatches = shuffleArray(allMatches);
+    let currentDate = { ...startDate };
 
-    const { year, month } = startDate;
-    const startWeek = startDate.week;
-    const gamesPerWeek = 4; // Max 4 games per tournament per week
-
-    shuffledMatches.forEach((match, index) => {
-        const weekOffset = Math.floor(index / gamesPerWeek);
-        const gameWeek = startWeek + weekOffset;
-
-        // Note: This simple logic assumes nationals finish within May.
+    shuffledMatches.forEach((match) => {
         schedule.push({
             id: crypto.randomUUID(),
             homeTeam: match.homeTeam,
             awayTeam: match.awayTeam,
-            date: { year, month, week: gameWeek },
+            date: { ...currentDate },
             status: 'scheduled',
         });
+        currentDate = advanceDate(currentDate);
     });
 
     return schedule;
 };
 
+const sortStandings = (standings: NationalsStanding[]): NationalsStanding[] => {
+    return [...standings].sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        const goalDiffA = a.goalsFor - a.goalsAgainst;
+        const goalDiffB = b.goalsFor - b.goalsAgainst;
+        if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+        return b.goalsFor - a.goalsFor;
+    });
+};
+
 export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate): NationalsPlayoffMatch[] => {
-    // This is a placeholder for future implementation.
-    // It would analyze group standings and create knockout matches.
-    console.log("Generating playoff bracket for", date);
-    return [];
+    if (groups.length < 2 || groups[0].teams.length < 2 || groups[1].teams.length < 2) {
+        return []; // Not enough teams for playoffs
+    }
+
+    const sortedGroupA = sortStandings(groups[0].standings);
+    const sortedGroupB = sortStandings(groups[1].standings);
+
+    const a1 = sortedGroupA[0].teamName;
+    const a2 = sortedGroupA[1].teamName;
+    const b1 = sortedGroupB[0].teamName;
+    const b2 = sortedGroupB[1].teamName;
+
+    const semiFinal1Id = crypto.randomUUID();
+    const semiFinal2Id = crypto.randomUUID();
+    
+    let currentDate = { ...date };
+
+    const semiFinals: NationalsPlayoffMatch[] = [
+        { id: semiFinal1Id, round: 'Semi-Final', bracket: 'Gold', homeTeam: a1, awayTeam: b2, status: 'scheduled', date: currentDate },
+        { id: semiFinal2Id, round: 'Semi-Final', bracket: 'Gold', homeTeam: b1, awayTeam: a2, status: 'scheduled', date: currentDate },
+    ];
+
+    currentDate = advanceDate(currentDate);
+
+    const finals: NationalsPlayoffMatch[] = [
+        { id: crypto.randomUUID(), round: 'Final', bracket: 'Gold', homeTeam: { winnerOf: semiFinal1Id }, awayTeam: { winnerOf: semiFinal2Id }, status: 'scheduled', date: currentDate },
+    ];
+
+    return [...semiFinals, ...finals];
 };
 
 export const createNationalsTournament = (division: string, teams: Team[], year: number, week: number): NationalsTournament => {

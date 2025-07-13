@@ -195,11 +195,12 @@ const determineFaceoffWinner = (teamA: Team, teamB: Team): string => {
     return (Math.random() * totalRating < ratingA) ? teamA.id : teamB.id;
 };
 
-const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): { event: GameEvent | null, possessionChange: boolean } => {
-    if (Math.random() > 0.15) return { event: null, possessionChange: false }; // Increased event frequency
+const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): { event: GameEvent | null, possessionChange: boolean, shotOnGoal: boolean } => {
+    if (Math.random() > 0.15) return { event: null, possessionChange: false, shotOnGoal: false }; // Increased event frequency
 
     const eventTime = formatTime(gameState.time);
     let possessionChange = false;
+    let shotOnGoal = false;
 
     let attackingTeam: Team;
     if (gameState.possessionHolder) {
@@ -217,7 +218,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const defendingSkaters = defendingTeam.roster.filter(p => !p.positions.includes('G'));
     const defendingGoalie = defendingTeam.roster.find(p => p.id === defendingTeam.lineup.goalies.starter);
 
-    if (attackingSkaters.length === 0) return { event: null, possessionChange: false };
+    if (attackingSkaters.length === 0) return { event: null, possessionChange: false, shotOnGoal: false };
 
     const avgAttackingOffense = attackingSkaters.reduce((sum, p) => sum + getSkaterOffensiveRating(p, isBigGame), 0) / attackingSkaters.length;
     const avgDefendingDefense = defendingSkaters.length > 0 ? defendingSkaters.reduce((sum, p) => sum + getSkaterDefensiveRating(p, isBigGame), 0) / defendingSkaters.length : 10;
@@ -238,6 +239,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     
     if (eventType < goalProbability) {
         possessionChange = true; // Stoppage of play
+        shotOnGoal = true;
         const avgScreening = attackingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).screening, 0) / attackingSkaters.length;
         defendingGoalieAbility *= (1 - ((avgScreening - 10) / 150));
         const goalieFactor = (defendingGoalieAbility - 10) / 10;
@@ -245,7 +247,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         
         if (Math.random() < shotSuccessProb) {
             const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4) * getRoleModifiers(p).shootTendency);
-            if (!attacker) return { event: null, possessionChange: true };
+            if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
             const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
             let assists: string[] = [];
             const passTendency = (attacker.attributes as SkaterAttributes).passShootTendency || 10;
@@ -254,30 +256,30 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
                 if (assist1) assists.push(assist1.name);
             }
             const assistText = assists.length > 0 ? `Assists: ${assists.join(', ')}` : "Unassisted";
-            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` }, possessionChange };
+            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` }, possessionChange, shotOnGoal };
         } else {
             const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame) * getRoleModifiers(p).shootTendency);
-            if (!attacker) return { event: null, possessionChange: true };
-            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` }, possessionChange };
+            if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
+            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` }, possessionChange, shotOnGoal };
         }
     } else if (eventType < 0.35) {
         const avgBravery = defendingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).bravery, 0) / defendingSkaters.length;
         if (Math.random() < (avgBravery - 5) / 100) {
             const blocker = selectPlayerWeighted(defendingSkaters, p => ((p.attributes as SkaterAttributes).shotBlocking + (p.attributes as SkaterAttributes).bravery) * getRoleModifiers(p).shotBlockTendency);
-            if (!blocker) return { event: null, possessionChange: false };
-            return { event: { time: eventTime, period: gameState.period, team: defendingTeam.name, description: `Shot blocked by ${blocker.name}!` }, possessionChange: false };
+            if (!blocker) return { event: null, possessionChange: false, shotOnGoal: false };
+            return { event: { time: eventTime, period: gameState.period, team: defendingTeam.name, description: `Shot blocked by ${blocker.name}!` }, possessionChange: false, shotOnGoal: false };
         }
     } else if (eventType < 0.65) { // Neutral zone / puck movement events
         const player1 = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).puckhandling);
-        if (!player1) return { event: null, possessionChange: false };
+        if (!player1) return { event: null, possessionChange: false, shotOnGoal: false };
         const movementType = Math.random();
         const player1Modifiers = getRoleModifiers(player1);
         if (movementType < 0.6 * player1Modifiers.passTendency) {
             const player2 = selectPlayerWeighted(attackingSkaters.filter(p => p.id !== player1.id), p => (p.attributes as SkaterAttributes).gettingOpen);
-            if (player2) return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} passes to ${player2.name}.` }, possessionChange: false };
+            if (player2) return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} passes to ${player2.name}.` }, possessionChange: false, shotOnGoal: false };
         } else {
             possessionChange = true;
-            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} turns over the puck.` }, possessionChange };
+            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} turns over the puck.` }, possessionChange, shotOnGoal: false };
         }
     } else if (eventType > 0.92) {
         possessionChange = true; // Stoppage of play
@@ -291,16 +293,16 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const personalityModifier = (1 + (aggression - 10) / 20) * (1 - (sportsmanship - 10) / 30);
         if (Math.random() < basePenaltyChance * personalityModifier * instructionMods.penaltyChance * roleMods.penaltyTendency) {
             const infraction = getRandomItem(infractions);
-            return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange };
+            return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange, shotOnGoal: false };
         }
     } else {
         const attacker = selectPlayerWeighted(attackingSkaters, p => ((p.attributes as SkaterAttributes).hitting + (p.attributes as SkaterAttributes).strength) * getRoleModifiers(p).hitTendency);
         const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
-        if (!attacker || !defender) return { event: null, possessionChange: false };
+        if (!attacker || !defender) return { event: null, possessionChange: false, shotOnGoal: false };
         const hitDescriptions = [`${attacker.name} lays a big hit on ${defender.name}.`, `${attacker.name} delivers a crushing check to ${defender.name}.`, `${defender.name} is rocked by a huge hit from ${attacker.name}.`, `${attacker.name} finishes his check on ${defender.name} with authority.`, `${defender.name} gets stood up at the blue line by ${attacker.name}.`];
-        return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: getRandomItem(hitDescriptions) }, possessionChange: false };
+        return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: getRandomItem(hitDescriptions) }, possessionChange: false, shotOnGoal: false };
     }
-    return { event: null, possessionChange: false };
+    return { event: null, possessionChange: false, shotOnGoal: false };
 };
 
 export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): GameState => {
@@ -320,7 +322,13 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
         newGameState.possessionHolder = determineFaceoffWinner(userTeam, opponentTeam);
     }
 
-    const { event: newEvent, possessionChange } = generateGameEvent(newGameState, userTeam, opponentTeam, isBigGame);
+    const { event: newEvent, possessionChange, shotOnGoal } = generateGameEvent(newGameState, userTeam, opponentTeam, isBigGame);
+    if (shotOnGoal) {
+        const attackingTeamName = newGameState.possessionHolder === userTeam.id ? userTeam.name : opponentTeam.name;
+        if (attackingTeamName === userTeam.name) newGameState.userShots++;
+        else newGameState.opponentShots++;
+    }
+
     if (newEvent) {
         newGameState.gameLog = [newEvent, ...newGameState.gameLog];
         if (possessionChange) {
@@ -381,6 +389,8 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
     let gameState: GameState = {
         userScore: 0,
         opponentScore: 0,
+        userShots: 0,
+        opponentShots: 0,
         period: 1,
         time: 0,
         gameLog: [],

@@ -93,6 +93,8 @@ const Game = () => {
     const [gameState, setGameState] = useState<GameState>({
         userScore: 0,
         opponentScore: 0,
+        userShots: 0, 
+        opponentShots: 0, 
         period: 1,
         time: 0,
         gameLog: [],

@@ -236,6 +236,8 @@ export type PowerPlayState = {
 export type GameState = {
   userScore: number;
   opponentScore: number;
+  userShots: number;
+  opponentShots: number;
   period: number;
   time: number;
   gameLog: GameEvent[];

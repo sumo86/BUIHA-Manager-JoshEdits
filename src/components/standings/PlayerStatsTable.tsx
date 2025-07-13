@@ -1,8 +1,8 @@
-import { Player, SkaterAttributes, GoalieAttributes } from '@/types';
+import { Player, SkaterAttributes, GoalieAttributes, CurrentSeasonStats } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-type StatKey = keyof SkaterAttributes | keyof GoalieAttributes | 'points' | 'savePercentage' | 'goalsAgainstAverage';
+type StatKey = keyof CurrentSeasonStats;
 
 interface PlayerStatsTableProps {
   title: string;
@@ -12,19 +12,13 @@ interface PlayerStatsTableProps {
 }
 
 const formatValue = (player: Player, stat: StatKey, category: 'goalie' | 'skater') => {
-  if (stat === 'points') {
-    return player.currentStats.points;
-  }
   if (stat === 'savePercentage') {
     return player.currentStats.savePercentage.toFixed(3);
   }
   if (stat === 'goalsAgainstAverage') {
     return player.currentStats.goalsAgainstAverage.toFixed(2);
   }
-  if (category === 'skater') {
-    return player.currentStats[stat as keyof typeof player.currentStats] || 0;
-  }
-  return player.currentStats[stat as keyof typeof player.currentStats] || 0;
+  return player.currentStats[stat] || 0;
 };
 
 export const PlayerStatsTable = ({ title, players, stat, category }: PlayerStatsTableProps) => {
