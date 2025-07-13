@@ -1,4 +1,5 @@
-import { Team, TeamRecord, RecordCategory } from '@/types';
+import { Team, Player, LegacyRecord, TeamRecord, RecordCategory } from '@/types';
+import { getOrganizationName } from '@/data/teams';
 
 type AllRecords = {
   season: { [key in RecordCategory]?: TeamRecord };
@@ -8,11 +9,16 @@ type AllRecords = {
 const skaterCategories: RecordCategory[] = ['Goals', 'Assists', 'Points', 'PenaltyMinutes'];
 const goalieCategories: RecordCategory[] = ['GAA', 'SavePercentage', 'Shutouts'];
 
-export const processHistory = (teams: Team[]): AllRecords => {
+export const processHistory = (teams: Team[], legacyRecords: LegacyRecord[]): AllRecords => {
   const allRecords: AllRecords = {
     season: {},
     career: {},
   };
+
+  const orgNameMap = new Map<string, string>();
+  teams.forEach(team => {
+    orgNameMap.set(team.name, getOrganizationName(team.name));
+  });
 
   // Process current player histories
   teams.forEach(team => {
@@ -111,6 +117,28 @@ export const processHistory = (teams: Team[]): AllRecords => {
         }
       }
     });
+  });
+
+  // Process legacy records, potentially overwriting current player records
+  legacyRecords.forEach(record => {
+    const recordOrgName = getOrganizationName(record.teamName);
+    const isRelevant = teams.some(t => orgNameMap.get(t.name) === recordOrgName);
+
+    if (isRelevant) {
+      const recordType = record.type;
+      const category = record.category;
+      const currentRecord = allRecords[recordType][category];
+      const isBetter = category === 'GAA' ? record.value < (currentRecord?.value ?? Infinity) : record.value > (currentRecord?.value ?? -1);
+
+      if (!currentRecord || isBetter) {
+        allRecords[recordType][category] = {
+          playerName: record.playerName,
+          teamName: record.teamName,
+          value: record.value,
+          season: record.season,
+        };
+      }
+    }
   });
 
   // Sanity check: A career record for a skater cannot be lower than the best single-season record.
