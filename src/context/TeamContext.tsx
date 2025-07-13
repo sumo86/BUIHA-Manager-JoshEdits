@@ -1,7 +1,7 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, CurrentSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Position } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, CurrentSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
-import { generateRecruits, generatePlayer } from '@/lib/playerGenerator';
+import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
@@ -10,7 +10,7 @@ import { processGameResults as processGameResultsEngine } from '@/lib/statsEngin
 import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
-import { createNationalsTournament, generatePlayoffBracket, advanceDate } from '@/lib/nationalsGenerator';
+import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
 import { NationalsTournament } from '@/types';
 import { isRivalryGame } from '@/lib/rivalries';
 
@@ -61,7 +61,6 @@ interface TeamContextType {
     seasonRecords: { [key in RecordCategory]?: TeamRecord };
     careerRecords: { [key in RecordCategory]?: TeamRecord };
     alumni: Player[];
-    stayingPlayers: Player[];
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -94,17 +93,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => {
         localStorage.setItem('alumni', JSON.stringify(alumni));
     }, [alumni]);
-
-    const [stayingPlayers, setStayingPlayers] = useState<Player[]>(() => {
-        try {
-            const saved = localStorage.getItem('stayingPlayers');
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) { return []; }
-    });
-
-     useEffect(() => {
-        localStorage.setItem('stayingPlayers', JSON.stringify(stayingPlayers));
-    }, [stayingPlayers]);
 
     const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
     const [managedOrganization, setManagedOrganization] = useState<string | null>(() => localStorage.getItem('managedOrganization') || null);
@@ -305,34 +293,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (currentYearNationals) {
             for (const division in currentYearNationals) {
                 const tournament = currentYearNationals[division];
-                const allTournamentGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
-
-                const nationalsGame = allTournamentGames.find(game => {
-                    if (game.status !== 'scheduled' || game.date.month !== currentDate.month || game.date.week !== currentDate.week) {
-                        return false;
-                    }
-
-                    let homeTeamName = typeof game.homeTeam === 'string' ? game.homeTeam : null;
-                    let awayTeamName = typeof game.awayTeam === 'string' ? game.awayTeam : null;
-
-                    if (typeof game.homeTeam === 'object' && 'winnerOf' in game.homeTeam) {
-                        const prevMatch = tournament.playoffSchedule.find(m => m.id === game.homeTeam.winnerOf);
-                        homeTeamName = prevMatch?.winner || null;
-                    }
-                    if (typeof game.awayTeam === 'object' && 'winnerOf' in game.awayTeam) {
-                        const prevMatch = tournament.playoffSchedule.find(m => m.id === game.awayTeam.winnerOf);
-                        awayTeamName = prevMatch?.winner || null;
-                    }
-
-                    return homeTeamName === userTeam.name || awayTeamName === userTeam.name;
-                });
+                const nationalsGame = [...tournament.groupStageSchedule, ...tournament.playoffSchedule].find(game =>
+                    ((typeof game.homeTeam === 'string' && game.homeTeam === userTeam.name) || (typeof game.awayTeam === 'string' && game.awayTeam === userTeam.name)) &&
+                    game.date.month === currentDate.month &&
+                    game.date.week === currentDate.week &&
+                    game.status === 'scheduled'
+                );
 
                 if (nationalsGame) {
                     let opponentName: string;
                     if (typeof nationalsGame.homeTeam === 'string' && typeof nationalsGame.awayTeam === 'string') {
                         opponentName = nationalsGame.homeTeam === userTeam.name ? nationalsGame.awayTeam : nationalsGame.homeTeam;
+                    } else if (typeof nationalsGame.homeTeam === 'object' && nationalsGame.homeTeam.winnerOf) {
+                        opponentName = "TBD"; // Or some other placeholder for playoff matches
+                    } else if (typeof nationalsGame.awayTeam === 'object' && nationalsGame.awayTeam.winnerOf) {
+                        opponentName = "TBD"; // Or some other placeholder for playoff matches
                     } else {
-                        opponentName = "TBD";
+                        opponentName = "Unknown Opponent"; // Fallback
                     }
                     return { ...nationalsGame, opponent: opponentName, isNationals: true };
                 }
@@ -424,26 +401,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 if (gamesThisWeek.length > 0) {
                     gamesThisWeek.forEach(game => {
                         // Resolve playoff TBD teams
-                        let actualHomeTeamName: string | null = null;
-                        let actualAwayTeamName: string | null = null;
+                        let actualHomeTeamName = typeof game.homeTeam === 'string' ? game.homeTeam : null;
+                        let actualAwayTeamName = typeof game.awayTeam === 'string' ? game.awayTeam : null;
 
-                        if ('round' in game) { // It's a playoff match
-                            if (typeof game.homeTeam === 'object' && 'winnerOf' in game.homeTeam) {
-                                const prevMatch = tournament.playoffSchedule.find(m => m.id === game.homeTeam.winnerOf);
-                                actualHomeTeamName = prevMatch?.winner || null;
-                            } else if (typeof game.homeTeam === 'string') {
-                                actualHomeTeamName = game.homeTeam;
-                            }
-
-                            if (typeof game.awayTeam === 'object' && 'winnerOf' in game.awayTeam) {
-                                const prevMatch = tournament.playoffSchedule.find(m => m.id === game.awayTeam.winnerOf);
-                                actualAwayTeamName = prevMatch?.winner || null;
-                            } else if (typeof game.awayTeam === 'string') {
-                                actualAwayTeamName = game.awayTeam;
-                            }
-                        } else { // It's a group stage match (ScheduleEntry)
-                            actualHomeTeamName = game.homeTeam;
-                            actualAwayTeamName = game.awayTeam;
+                        if (typeof game.homeTeam === 'object' && game.homeTeam.winnerOf) {
+                            const prevMatch = tournament.playoffSchedule.find(m => m.id === game.homeTeam.winnerOf);
+                            actualHomeTeamName = prevMatch?.winner || null;
+                        }
+                        if (typeof game.awayTeam === 'object' && game.awayTeam.winnerOf) {
+                            const prevMatch = tournament.playoffSchedule.find(m => m.id === game.awayTeam.winnerOf);
+                            actualAwayTeamName = prevMatch?.winner || null;
                         }
 
                         if (!actualHomeTeamName || !actualAwayTeamName) {
@@ -509,8 +476,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const allGroupGamesPlayed = tournament.groupStageSchedule.every(g => g.status === 'completed');
                 if (allGroupGamesPlayed && tournament.status === 'group-stage') {
                     toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
-                    const lastGameDate = tournament.groupStageSchedule[tournament.groupStageSchedule.length - 1]?.date || currentDate;
-                    const playoffDate = advanceDate(lastGameDate);
+                    const playoffDate: GameDate = { year: currentDate.year, month: currentDate.month, week: currentDate.week + 1 }; // Next week
                     tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, playoffDate);
                     tournament.status = 'playoffs';
                     if (tournament.playoffSchedule.length === 0) tournament.status = 'completed';
@@ -741,7 +707,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     tempSeasonRecords = {}; // Reset season records
                     
                     const newAlumni: Player[] = [];
-                    const newStayingPlayers: Player[] = []; // New array for staying players
                     tempTeams = tempTeams.map(team => {
                         const graduatingPlayers: Player[] = [];
                         const remainingPlayers = team.roster.filter(player => {
@@ -753,16 +718,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             if (nextEligibility) {
                                 player.eligibility = nextEligibility;
                                 player.age += 1;
-                                // Update yearsLeftInProgram for Masters/PhD
-                                if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
-                                    if (player.yearsLeftInProgram !== undefined) {
-                                        player.yearsLeftInProgram = Math.max(0, player.yearsLeftInProgram - 1);
-                                    } else {
-                                        player.yearsLeftInProgram = player.eligibility === 'Masters' ? 1 : getRandomItem([1,2,3,4]); // Default for new Masters/PhD
-                                    }
-                                } else {
-                                    player.yearsLeftInProgram = undefined;
-                                }
                                 return true;
                             } else {
                                 graduatingPlayers.push(player);
@@ -785,8 +740,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 if (otherTeams.length > 0) {
                                     const newTeam = getRandomItem(otherTeams);
                                     player.eligibility = 'Masters'; // Assume they start a Masters
-                                    player.yearsLeftInProgram = getRandomItem([1,2]);
-                                    player.age += 1;
                                     newTeam.roster.push(player);
                                     if (isManaged) {
                                         player.alumniStatus = 'Active Elsewhere';
@@ -796,13 +749,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 }
                             } else { // New Degree
                                 player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
-                                player.yearsLeftInProgram = player.eligibility === 'Masters' ? getRandomItem([1,2]) : getRandomItem([1,2,3,4]);
-                                player.age += 1;
                                 remainingPlayers.push(player);
-                                if (isManaged) {
-                                    newStayingPlayers.push(player); // Add to staying players
-                                    toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
-                                }
+                                toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
                             }
                         });
 
@@ -812,9 +760,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     if (newAlumni.length > 0) {
                         setAlumni(prev => [...prev, ...newAlumni]);
-                    }
-                    if (newStayingPlayers.length > 0) {
-                        setStayingPlayers(newStayingPlayers); // Set staying players for the new season
                     }
 
                     tempTeams = tempTeams.map(team => {
@@ -832,29 +777,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             return player;
                         });
                         return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
-                    });
-
-                    // AI Team Recruitment (for non-user managed teams)
-                    tempTeams = tempTeams.map(team => {
-                        if (!managedTeamNames.includes(team.name)) {
-                            const currentRosterSize = team.roster.length;
-                            const targetRosterSize = 22 + Math.floor(Math.random() * 5); // Between 22 and 26 players
-                            const playersNeeded = targetRosterSize - currentRosterSize;
-
-                            if (playersNeeded > 0) {
-                                const newPlayers: Player[] = [];
-                                const usedJerseyNumbers = new Set(team.roster.map(p => p.jerseyNumber));
-                                for (let i = 0; i < playersNeeded; i++) {
-                                    const allRecruitPositions: Position[] = ["C", "LW", "RW", "LD", "RD", "G"];
-                                    const position = getRandomItem(allRecruitPositions);
-                                    const newPlayer = generatePlayer(usedJerseyNumbers, position, team.leagueDivision, team.name);
-                                    newPlayers.push(newPlayer);
-                                    usedJerseyNumbers.add(newPlayer.jerseyNumber);
-                                }
-                                return { ...team, roster: [...team.roster, ...newPlayers] };
-                            }
-                        }
-                        return team;
                     });
                 }
                 month = months[nextMonthIndex];
@@ -1240,7 +1162,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
             managedOrganization, managedTeams, selectOrganization, setActiveTeam,
             schedule, gameForCurrentWeek, nationalsData,
-            markGameAsCompleted, seasonRecords, careerRecords, alumni, stayingPlayers
+            markGameAsCompleted, seasonRecords, careerRecords, alumni
         }}>
             {children}
         </TeamContext.Provider>

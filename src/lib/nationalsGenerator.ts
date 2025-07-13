@@ -40,7 +40,7 @@ export const generateNationalsGroups = (allTeamsInDivision: Team[]): NationalsGr
   return groups;
 };
 
-export const advanceDate = (date: GameDate): GameDate => {
+const advanceDate = (date: GameDate): GameDate => {
     let { year, month, week } = date;
     week++;
     if (week > 4) {

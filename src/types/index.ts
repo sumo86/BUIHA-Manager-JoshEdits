@@ -105,14 +105,8 @@ export type PlayerSeasonStats = {
   points?: number;
   penaltyMinutes?: number;
   captaincy?: 'C' | 'A' | null;
-  wins?: number;
-  losses?: number;
-  draws?: number;
-  goalsAgainst?: number;
-  shotsAgainst?: number;
-  saves?: number;
-  savePercentage?: number;
   goalsAgainstAverage?: number;
+  savePercentage?: number;
   shutouts?: number;
 };
 
@@ -126,6 +120,7 @@ export type CurrentSeasonStats = {
   losses: number;
   draws: number;
   goalsAgainst: number;
+  goalsFor: number; // Added this line
   shotsAgainst: number;
   saves: number;
   savePercentage: number;
@@ -156,8 +151,8 @@ export type Player = {
   captaincy: 'C' | 'A' | null;
   yearsLeftInProgram?: number;
   history: PlayerSeasonStats[];
-  currentStats: CurrentSeasonStats;
   trainingFocus: TrainingFocus;
+  currentStats: CurrentSeasonStats;
   activeInstructions: ActiveInstruction[];
   source?: 'Local' | 'International' | 'Transfer';
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
