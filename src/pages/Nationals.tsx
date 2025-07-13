@@ -4,7 +4,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Swords } from 'lucide-react';
 import NationalsGroupCard from '@/components/nationals/NationalsGroupCard';
 import { NationalsTournament } from '@/types';
-import NationalsSchedule from '@/components/nationals/NationalsSchedule';
 
 const NationalsPage = () => {
   const { nationalsData, currentDate } = useTeam();
@@ -59,16 +58,10 @@ const NationalsPage = () => {
           </div>
 
           {tournamentToDisplay ? (
-            <div className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                {tournamentToDisplay.groups.map(group => (
-                  <NationalsGroupCard key={group.name} group={group} />
-                ))}
-              </div>
-              <NationalsSchedule 
-                schedule={tournamentToDisplay.groupStageSchedule}
-                title="Group Stage Schedule"
-              />
+            <div className="grid gap-6 md:grid-cols-2">
+              {tournamentToDisplay.groups.map(group => (
+                <NationalsGroupCard key={group.name} group={group} />
+              ))}
             </div>
           ) : (
              <p>Select a division to view its tournament details.</p>

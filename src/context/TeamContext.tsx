@@ -10,7 +10,7 @@ import { processGameResults as processGameResultsEngine } from '@/lib/statsEngin
 import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
-import { createNationalsTournament, simulateNationalsGroupStage } from '@/lib/nationalsGenerator';
+import { createNationalsTournament } from '@/lib/nationalsGenerator';
 import { nationalsSchedule } from '@/data/nationalsSchedule';
 import { NationalsTournament } from '@/types';
 import { isRivalryGame } from '@/lib/rivalries';
@@ -289,8 +289,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         if (gamesThisWeek.length > 0) {
             gamesThisWeek.forEach(game => {
+                // Defensive check: Ensure this game hasn't already been completed by a manual play
+                // This helps prevent double-simulations due to potential state update delays.
                 const currentStatusInMainSchedule = schedule.find(s => s.id === game.id)?.status;
                 if (currentStatusInMainSchedule === 'completed') {
+                    // This game was already completed, skip it.
                     return;
                 }
 
@@ -344,11 +347,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             });
         }
 
+        // Weekly updates for all teams
         tempTeams = tempTeams.map(team => {
             let newRoster = [...team.roster];
             let newFacilities = [...team.facilities];
             const isUserManagedTeam = team.name === userTeam?.name || managedTeamNames.includes(team.name);
 
+            // 1. Injury Recovery
             newRoster = newRoster.map(player => {
                 if (player.injury && player.injury.duration > 0) {
                     const hasPhysio = team.facilities.some(f => f.id === 'physio_office_1' && f.status === 'Completed');
@@ -364,6 +369,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 return player;
             });
 
+            // 2. Facility Completion
             newFacilities = newFacilities.map(project => {
                 if (project.status === 'In Progress' && project.weeksToComplete) {
                     project.weeksToComplete -= 1;
@@ -372,6 +378,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         if (team.name === userTeam?.name) {
                             toast.info("Facility Project Completed", { description: `${project.name} is now complete.` });
                         }
+                        // Apply one-time benefits
                         if (project.id === 'locker_room_1') {
                             newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
                             if (team.name === userTeam?.name) {
@@ -383,24 +390,31 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 return project;
             });
 
+            // 3. Morale Drift & Controversy Events
             newRoster = newRoster.map(player => {
-                if (Math.random() < 0.1) { 
+                // Morale Drift
+                if (Math.random() < 0.1) { // 10% chance of morale drift per week
                     if (player.morale === 'Happy') return { ...player, morale: 'Content' as 'Content' };
                     if (player.morale === 'Unhappy') return { ...player, morale: 'Content' as 'Content' };
                 }
+                // Controversy Event
                 if (isUserManagedTeam) {
-                    const controversyChance = ((player.attributes.controversy || 10) - 10) / 200;
+                    const controversyChance = ((player.attributes.controversy || 10) - 10) / 200; // Max 5% chance
                     if (Math.random() < controversyChance) {
                         toast.warning("Team Controversy!", {
                             description: `${player.name} has caused a stir with off-ice antics, slightly affecting team morale.`
                         });
+                        // Apply a small morale drop to the whole team
                         newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, -1) }));
                     }
                 }
+                // Positive Team Event (e.g., Team Building, Good Citizenship)
                 if (isUserManagedTeam) {
                     const sportsmanship = (player.attributes.sportsmanship || 10);
                     const controversy = (player.attributes.controversy || 10);
-                    const positiveEventChance = ((sportsmanship - 1) / 200) + ((20 - controversy) / 200);
+
+                    // Higher chance for high sportsmanship and low controversy
+                    const positiveEventChance = ((sportsmanship - 1) / 200) + ((20 - controversy) / 200); // Max 19% chance for 20 sportsmanship, 1 controversy
 
                     if (Math.random() < positiveEventChance) {
                         const positiveDescriptions = [
@@ -413,12 +427,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         toast.success("Team Harmony!", {
                             description: getRandomItem(positiveDescriptions)
                         });
+                        // Apply a small morale boost to the whole team
                         newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
                     }
                 }
                 return player;
             });
 
+            // 4. Player Development (only for healthy players)
             newRoster = newRoster.map(player => {
                 if (player.healthStatus === 'Injured') {
                     return player;
@@ -427,6 +443,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const isSkater = !player.positions.includes('G');
                 let changed = false;
 
+                // Development for younger players
                 const paGap = player.potentialAbility - player.currentAbility;
                 if (player.age < 33 && paGap > 0 && player.morale !== 'Angry') {
                     const devRate = (player.attributes as SkaterAttributes | GoalieAttributes).developmentRate || 10;
@@ -460,9 +477,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             if (currentAttrValue < 20) {
                                 let moraleModifier = 1.0;
                                 if (player.morale === 'Happy') {
-                                    moraleModifier = 1.2;
+                                    moraleModifier = 1.2; // 20% boost
                                 } else if (player.morale === 'Unhappy') {
-                                    moraleModifier = 0.5;
+                                    moraleModifier = 0.5; // 50% penalty
                                 }
 
                                 const improvement = ((Math.random() * 0.2) + (devRate / 100)) * moraleModifier;
@@ -485,6 +502,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }
                 }
 
+                // Decline for older players
                 if (player.age > 28) {
                     const baseDeclineChance = 0.05;
                     const agePenalty = (player.age - 28) / 80;
@@ -601,6 +619,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
         }
 
+        // Generate Nationals in April Week 4
         if (newDate.month === 'April' && newDate.week === 4 && !(currentDate.month === 'April' && currentDate.week === 4)) {
             toast.info("Nationals Draws Being Made", { description: "Groups for the BUIHA National Championships are being generated." });
             const allNationalsDivisions = [...new Set(tempTeams.map(t => t.nationalsDivision))];
@@ -619,45 +638,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             setNationalsData(prev => ({ ...prev, [newDate.year]: newNationalsDataForYear }));
         }
         
-        if (newDate.month === 'May') {
-            const currentYearTournaments = nationalsData[newDate.year] || {};
-            const divisionsThisWeek = nationalsSchedule[newDate.week as keyof typeof nationalsSchedule] || [];
-            
-            if (divisionsThisWeek.length > 0) {
-                let tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
-
-                for (const division of divisionsThisWeek) {
-                    const tournament = currentYearTournaments[division];
-                    if (tournament && tournament.status === 'pending') {
-                        toast.info(`Simulating Nationals Group Stage for ${division}...`);
-                        
-                        const { updatedTournament, updatedTeams } = simulateNationalsGroupStage(tournament, tempTeams);
-                        
-                        tempTeams = updatedTeams;
-                        tempNationalsData[newDate.year][division] = updatedTournament;
-
-                        if (userTeam) {
-                            const originalUserTeam = teams.find(t => t.name === userTeam.name);
-                            const updatedUserTeam = updatedTeams.find(t => t.name === userTeam.name);
-                            if (originalUserTeam && updatedUserTeam) {
-                                updatedUserTeam.roster.forEach(player => {
-                                    const originalPlayer = originalUserTeam.roster.find(p => p.id === player.id);
-                                    if (player.injury && (!originalPlayer || !originalPlayer.injury)) {
-                                        toast.warning("Player Injured During Nationals!", {
-                                            description: `${player.name} was injured. (${player.injury.type}, out for ${player.injury.duration} weeks)`,
-                                        });
-                                    }
-                                });
-                            }
-                        }
-                        
-                        toast.success(`Nationals Group Stage for ${division} completed!`);
-                    }
-                }
-                setNationalsData(tempNationalsData);
-            }
-        }
-
         setTeams(tempTeams);
         setSchedule(tempSchedule);
         setCurrentDate(newDate);
@@ -726,9 +706,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
 
         const baseSuccessChance = 0.3;
-        const loyaltyModifier = (player.attributes.loyalty - 10) / 25;
-        const ambitionModifier = (player.attributes.ambition - 10) / 25;
+        const loyaltyModifier = (player.attributes.loyalty - 10) / 25; // +/- 40%
+        const ambitionModifier = (player.attributes.ambition - 10) / 25; // +/- 40%
         
+        // A simple prestige check could be added here later
+        // For now, ambition helps moves, loyalty hinders them.
         const successChance = baseSuccessChance - loyaltyModifier + ambitionModifier;
 
         if (Math.random() < successChance) {
@@ -891,7 +873,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {
         if (!userTeam) return;
 
-        if (managedOrganization) { 
+        if (managedOrganization) { // Simplified condition
             const oldOrgAllocations = managedTeams.reduce((acc, t) => {
                 (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
                     acc[key] = (acc[key] || 0) + t.financials.budgetAllocations[key];
