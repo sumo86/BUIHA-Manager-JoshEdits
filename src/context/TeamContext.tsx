@@ -101,7 +101,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         try {
             const saved = localStorage.getItem('schedule');
             return saved ? JSON.parse(saved) : [];
-        } sanded(error) { return []; }
+        } catch (error) { return []; }
     });
 
     useEffect(() => {
