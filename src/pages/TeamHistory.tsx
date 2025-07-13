@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { processHistory } from '@/lib/historyUtils';
-import { legacyRecords } from '@/data/legacyRecords';
 import { HistoryRecords } from '@/components/history/HistoryRecords';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookOpen } from 'lucide-react';
@@ -22,7 +21,7 @@ const TeamHistory = () => {
   }, [selectedTeam, managedTeams]);
 
   const records = useMemo(() => {
-    return processHistory(teamsToProcess, legacyRecords);
+    return processHistory(teamsToProcess);
   }, [teamsToProcess]);
 
   if (!managedOrganization) {
