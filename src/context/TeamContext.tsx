@@ -101,7 +101,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         try {
             const saved = localStorage.getItem('schedule');
             return saved ? JSON.parse(saved) : [];
-        } catch (error) { return []; }
+        } sanded(error) { return []; }
     });
 
     useEffect(() => {
@@ -557,8 +557,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const hasPhysio = team.facilities.some(f => f.id === 'physio_office_1' && f.status === 'Completed');
                     player.injury.duration -= (hasPhysio ? 2 : 1);
 
-                    const regressionChance = 0.05 + (player.injury.duration / 50); // e.g., 10 week injury = 25% chance
-                    if (Math.random() < regressionChance) {
+                    const regression = (Math.random() * 0.1) + 0.02; // Defined here
+                    if (Math.random() < regression) {
                         let attrsToRegress: (keyof SkaterAttributes | keyof GoalieAttributes)[] = isSkater
                             ? ['speed', 'acceleration', 'agility', 'balance', 'stamina', 'strength']
                             : ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
@@ -567,7 +567,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         const currentAttrValue = player.attributes[attrToRegress as keyof typeof player.attributes] as number;
                         
                         if (currentAttrValue > 1) {
-                            const regression = (Math.random() * 0.1) + 0.02;
                             const newAttrValue = Math.max(1, currentAttrValue - regression);
                             (player.attributes[attrToRegress as keyof typeof player.attributes] as number) = newAttrValue;
                             playerChanged = true;
@@ -614,7 +613,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                     (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                     playerChanged = true;
-                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: -regression, newRating: newAttrValue, date: currentDate });
+                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
                                 }
                             }
                         }
