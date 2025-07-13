@@ -59,6 +59,27 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
         // Update games played for all players in the game
         updatedUserTeam.roster.forEach((p: Player) => { p.currentStats.gamesPlayed += 1; });
         updatedOpponentTeam.roster.forEach((p: Player) => { p.currentStats.gamesPlayed += 1; });
+
+        // Update goalie stats
+        const userGoalie = updatedUserTeam.roster.find((p: Player) => p.id === updatedUserTeam.lineup.goalies.starter);
+        if (userGoalie) {
+            userGoalie.currentStats.goalsAgainst += gameState.opponentScore;
+            userGoalie.currentStats.shotsAgainst += gameState.opponentShots;
+            userGoalie.currentStats.saves += (gameState.opponentShots - gameState.opponentScore);
+            if (gameState.opponentScore === 0) userGoalie.currentStats.shutouts += 1;
+            userGoalie.currentStats.savePercentage = userGoalie.currentStats.shotsAgainst > 0 ? userGoalie.currentStats.saves / userGoalie.currentStats.shotsAgainst : 0;
+            userGoalie.currentStats.goalsAgainstAverage = userGoalie.currentStats.gamesPlayed > 0 ? userGoalie.currentStats.goalsAgainst / userGoalie.currentStats.gamesPlayed : 0;
+        }
+
+        const opponentGoalie = updatedOpponentTeam.roster.find((p: Player) => p.id === updatedOpponentTeam.lineup.goalies.starter);
+        if (opponentGoalie) {
+            opponentGoalie.currentStats.goalsAgainst += gameState.userScore;
+            opponentGoalie.currentStats.shotsAgainst += gameState.userShots;
+            opponentGoalie.currentStats.saves += (gameState.userShots - gameState.userScore);
+            if (gameState.userScore === 0) opponentGoalie.currentStats.shutouts += 1;
+            opponentGoalie.currentStats.savePercentage = opponentGoalie.currentStats.shotsAgainst > 0 ? opponentGoalie.currentStats.saves / opponentGoalie.currentStats.shotsAgainst : 0;
+            opponentGoalie.currentStats.goalsAgainstAverage = opponentGoalie.currentStats.gamesPlayed > 0 ? opponentGoalie.currentStats.goalsAgainst / opponentGoalie.currentStats.gamesPlayed : 0;
+        }
     }
 
     // Process injuries for all games

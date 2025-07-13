@@ -42,6 +42,7 @@ const navItems = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/standings", label: "Standings", icon: Trophy },
   { href: "/history", label: "History", icon: BookOpen },
+  { href: "/alumni", label: "Alumni", icon: Users },
   { href: "/nationals", label: "Nationals", icon: NationalsIcon },
   { href: "/buiha-overview", label: "BUIHA", icon: Swords },
 ];
@@ -59,10 +60,7 @@ const Sidebar = () => {
 
   const handlePlayGame = () => {
     if (!gameForCurrentWeek || !userTeam) return;
-    const opponentName = gameForCurrentWeek.homeTeam === userTeam.name 
-        ? gameForCurrentWeek.awayTeam 
-        : gameForCurrentWeek.homeTeam;
-    navigate(`/game/${opponentName}`);
+    navigate(`/game/${gameForCurrentWeek.opponent}`);
   };
 
   return (
@@ -120,7 +118,7 @@ const Sidebar = () => {
           {gameForCurrentWeek && (
             <Button className="w-full justify-start" onClick={handlePlayGame}>
                 <Play className="mr-2 h-4 w-4" />
-                Play Game vs {gameForCurrentWeek.homeTeam === userTeam?.name ? gameForCurrentWeek.awayTeam : gameForCurrentWeek.homeTeam}
+                Play Game vs {gameForCurrentWeek.opponent}
             </Button>
           )}
           <Button variant="secondary" className="w-full justify-start" onClick={advanceWeek}>

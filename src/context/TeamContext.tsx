@@ -60,6 +60,7 @@ interface TeamContextType {
     markGameAsCompleted: (gameId: string, homeScore: number, awayScore: number) => void;
     seasonRecords: { [key in RecordCategory]?: TeamRecord };
     careerRecords: { [key in RecordCategory]?: TeamRecord };
+    alumni: Player[];
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -81,6 +82,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => {
         localStorage.setItem('teams', JSON.stringify(teams));
     }, [teams]);
+
+    const [alumni, setAlumni] = useState<Player[]>(() => {
+        try {
+            const saved = localStorage.getItem('alumni');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) { return []; }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('alumni', JSON.stringify(alumni));
+    }, [alumni]);
 
     const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
     const [managedOrganization, setManagedOrganization] = useState<string | null>(() => localStorage.getItem('managedOrganization') || null);
@@ -602,7 +614,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                     (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                     playerChanged = true;
-                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
+                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: -regression, newRating: newAttrValue, date: currentDate });
                                 }
                             }
                         }
@@ -694,6 +706,63 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     year += 1;
                     toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
                     tempSeasonRecords = {}; // Reset season records
+                    
+                    const newAlumni: Player[] = [];
+                    tempTeams = tempTeams.map(team => {
+                        const graduatingPlayers: Player[] = [];
+                        const remainingPlayers = team.roster.filter(player => {
+                            const eligibilityMap: { [key in Player['eligibility']]: Player['eligibility'] | null } = {
+                                "UG Year 1": "UG Year 2", "UG Year 2": "UG Year 3", "UG Year 3": "UG Year 4",
+                                "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
+                            };
+                            const nextEligibility = eligibilityMap[player.eligibility];
+                            if (nextEligibility) {
+                                player.eligibility = nextEligibility;
+                                player.age += 1;
+                                return true;
+                            } else {
+                                graduatingPlayers.push(player);
+                                return false;
+                            }
+                        });
+
+                        graduatingPlayers.forEach(player => {
+                            const isManaged = managedTeamNames.includes(team.name);
+                            const roll = Math.random();
+                            // 30% retire, 40% transfer, 30% new degree
+                            if (roll < 0.3) { // Retire
+                                if (isManaged) {
+                                    player.alumniStatus = 'Retired';
+                                    newAlumni.push(player);
+                                    toast.info(`${player.name} has retired from university hockey.`);
+                                }
+                            } else if (roll < 0.7) { // Transfer
+                                const otherTeams = tempTeams.filter(t => t.name !== team.name);
+                                if (otherTeams.length > 0) {
+                                    const newTeam = getRandomItem(otherTeams);
+                                    player.eligibility = 'Masters'; // Assume they start a Masters
+                                    newTeam.roster.push(player);
+                                    if (isManaged) {
+                                        player.alumniStatus = 'Active Elsewhere';
+                                        newAlumni.push(player);
+                                        toast.info(`${player.name} has graduated and transferred to ${newTeam.name}.`);
+                                    }
+                                }
+                            } else { // New Degree
+                                player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
+                                remainingPlayers.push(player);
+                                toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
+                            }
+                        });
+
+                        team.roster = remainingPlayers;
+                        return team;
+                    });
+
+                    if (newAlumni.length > 0) {
+                        setAlumni(prev => [...prev, ...newAlumni]);
+                    }
+
                     tempTeams = tempTeams.map(team => {
                         const updatedRoster = team.roster.map(player => {
                             const isSkater = !player.positions.includes('G');
@@ -1094,7 +1163,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
             managedOrganization, managedTeams, selectOrganization, setActiveTeam,
             schedule, gameForCurrentWeek, nationalsData,
-            markGameAsCompleted, seasonRecords, careerRecords
+            markGameAsCompleted, seasonRecords, careerRecords, alumni
         }}>
             {children}
         </TeamContext.Provider>

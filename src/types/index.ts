@@ -157,6 +157,7 @@ export type Player = {
   source?: 'Local' | 'International' | 'Transfer';
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
   recruitmentCost?: number;
+  alumniStatus?: 'Retired' | 'Active Elsewhere';
 };
 
 export type Lineup = {
