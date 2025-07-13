@@ -57,30 +57,52 @@ const advanceDate = (date: GameDate): GameDate => {
 
 export const generateGroupStageSchedule = (groups: NationalsGroup[], startDate: GameDate): ScheduleEntry[] => {
     const schedule: ScheduleEntry[] = [];
-    const allMatches: { homeTeam: string, awayTeam: string }[] = [];
+    const groupMatches: { homeTeam: string, awayTeam: string }[][] = [];
 
+    // Generate all possible matches for each group
     groups.forEach(group => {
         const teams = group.teams;
+        const matchesForGroup: { homeTeam: string, awayTeam: string }[] = [];
         for (let i = 0; i < teams.length; i++) {
             for (let j = i + 1; j < teams.length; j++) {
-                allMatches.push({ homeTeam: teams[i], awayTeam: teams[j] });
+                matchesForGroup.push({ homeTeam: teams[i], awayTeam: teams[j] });
             }
         }
+        groupMatches.push(shuffleArray(matchesForGroup));
     });
 
-    const shuffledMatches = shuffleArray(allMatches);
     let currentDate = { ...startDate };
+    let matchesRemaining = true;
+    while (matchesRemaining) {
+        matchesRemaining = false;
+        const teamsPlayingThisWeek = new Set<string>();
 
-    shuffledMatches.forEach((match) => {
-        schedule.push({
-            id: crypto.randomUUID(),
-            homeTeam: match.homeTeam,
-            awayTeam: match.awayTeam,
-            date: { ...currentDate },
-            status: 'scheduled',
-        });
-        currentDate = advanceDate(currentDate);
-    });
+        // Try to schedule one match from each group's remaining pool for the current week
+        for (const matches of groupMatches) {
+            const nextMatchIndex = matches.findIndex(match => 
+                !teamsPlayingThisWeek.has(match.homeTeam) && !teamsPlayingThisWeek.has(match.awayTeam)
+            );
+
+            if (nextMatchIndex !== -1) {
+                const match = matches.splice(nextMatchIndex, 1)[0];
+                schedule.push({
+                    id: crypto.randomUUID(),
+                    homeTeam: match.homeTeam,
+                    awayTeam: match.awayTeam,
+                    date: { ...currentDate },
+                    status: 'scheduled',
+                });
+                teamsPlayingThisWeek.add(match.homeTeam);
+                teamsPlayingThisWeek.add(match.awayTeam);
+                matchesRemaining = true;
+            }
+        }
+
+        // If any match was scheduled in this loop, advance to the next week
+        if (matchesRemaining) {
+            currentDate = advanceDate(currentDate);
+        }
+    }
 
     return schedule;
 };

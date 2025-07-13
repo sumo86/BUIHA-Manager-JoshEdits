@@ -200,11 +200,11 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   if (isSkater) {
     if (Math.random() > 0.5) { 
       const newPosition: Position = getUniqueSkaterPosition(positions);
-      positions.push(newPosition as Position); // Explicit cast here
+      positions = [...positions, newPosition]; // Corrected: Use spread operator for type safety
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       const anotherNewPosition: Position = getUniqueSkaterPosition(positions);
-      positions.push(anotherNewPosition as Position); // Explicit cast here
+      positions = [...positions, anotherNewPosition]; // Corrected: Use spread operator for type safety
     }
   }
 

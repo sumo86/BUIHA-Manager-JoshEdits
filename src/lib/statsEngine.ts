@@ -12,6 +12,18 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
     const updatedUserTeam = JSON.parse(JSON.stringify(userTeam));
     const updatedOpponentTeam = JSON.parse(JSON.stringify(opponentTeam));
 
+    const getDressedPlayerIds = (team: Team): string[] => {
+        const ids = new Set<string>();
+        team.lineup.forwards.lw.forEach(id => id && ids.add(id));
+        team.lineup.forwards.c.forEach(id => id && ids.add(id));
+        team.lineup.forwards.rw.forEach(id => id && ids.add(id));
+        team.lineup.defence.ld.forEach(id => id && ids.add(id));
+        team.lineup.defence.rd.forEach(id => id && ids.add(id));
+        if (team.lineup.goalies.starter) ids.add(team.lineup.goalies.starter);
+        if (team.lineup.goalies.backup) ids.add(team.lineup.goalies.backup);
+        return Array.from(ids);
+    };
+
     // Only update regular season stats if it's not a nationals game
     if (!isNationalsGame) {
         // Update team records
@@ -57,8 +69,19 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
         });
 
         // Update games played for all players in the game
-        updatedUserTeam.roster.forEach((p: Player) => { p.currentStats.gamesPlayed += 1; });
-        updatedOpponentTeam.roster.forEach((p: Player) => { p.currentStats.gamesPlayed += 1; });
+        const userDressedIds = getDressedPlayerIds(updatedUserTeam);
+        const opponentDressedIds = getDressedPlayerIds(updatedOpponentTeam);
+
+        updatedUserTeam.roster.forEach((p: Player) => { 
+            if (userDressedIds.includes(p.id)) {
+                p.currentStats.gamesPlayed += 1; 
+            }
+        });
+        updatedOpponentTeam.roster.forEach((p: Player) => { 
+            if (opponentDressedIds.includes(p.id)) {
+                p.currentStats.gamesPlayed += 1; 
+            }
+        });
 
         // Update goalie stats
         const userGoalie = updatedUserTeam.roster.find((p: Player) => p.id === updatedUserTeam.lineup.goalies.starter);

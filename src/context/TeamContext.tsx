@@ -1,6 +1,6 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, CurrentSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch } from '@/types';
-import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
+import { teams as initialTeams, getTeamOrganizations, getOrganizationName } => '@/data/teams';
 import { generateRecruits } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
@@ -13,6 +13,7 @@ import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
 import { NationalsTournament } from '@/types';
 import { isRivalryGame } from '@/lib/rivalries';
+import { advanceDate } from '@/lib/nationalsGenerator'; // Import advanceDate
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -401,16 +402,26 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 if (gamesThisWeek.length > 0) {
                     gamesThisWeek.forEach(game => {
                         // Resolve playoff TBD teams
-                        let actualHomeTeamName = typeof game.homeTeam === 'string' ? game.homeTeam : null;
-                        let actualAwayTeamName = typeof game.awayTeam === 'string' ? game.awayTeam : null;
+                        let actualHomeTeamName: string | null = null;
+                        let actualAwayTeamName: string | null = null;
 
-                        if (typeof game.homeTeam === 'object' && game.homeTeam.winnerOf) {
-                            const prevMatch = tournament.playoffSchedule.find(m => m.id === game.homeTeam.winnerOf);
-                            actualHomeTeamName = prevMatch?.winner || null;
-                        }
-                        if (typeof game.awayTeam === 'object' && game.awayTeam.winnerOf) {
-                            const prevMatch = tournament.playoffSchedule.find(m => m.id === game.awayTeam.winnerOf);
-                            actualAwayTeamName = prevMatch?.winner || null;
+                        if ('round' in game) { // It's a playoff match
+                            if (typeof game.homeTeam === 'object' && game.homeTeam.winnerOf) {
+                                const prevMatch = tournament.playoffSchedule.find(m => m.id === game.homeTeam.winnerOf);
+                                actualHomeTeamName = prevMatch?.winner || null;
+                            } else if (typeof game.homeTeam === 'string') {
+                                actualHomeTeamName = game.homeTeam;
+                            }
+
+                            if (typeof game.awayTeam === 'object' && game.awayTeam.winnerOf) {
+                                const prevMatch = tournament.playoffSchedule.find(m => m.id === game.awayTeam.winnerOf);
+                                actualAwayTeamName = prevMatch?.winner || null;
+                            } else if (typeof game.awayTeam === 'string') {
+                                actualAwayTeamName = game.awayTeam;
+                            }
+                        } else { // It's a group stage match (ScheduleEntry)
+                            actualHomeTeamName = game.homeTeam;
+                            actualAwayTeamName = game.awayTeam;
                         }
 
                         if (!actualHomeTeamName || !actualAwayTeamName) {
@@ -476,7 +487,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const allGroupGamesPlayed = tournament.groupStageSchedule.every(g => g.status === 'completed');
                 if (allGroupGamesPlayed && tournament.status === 'group-stage') {
                     toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
-                    const playoffDate: GameDate = { year: currentDate.year, month: currentDate.month, week: currentDate.week + 1 }; // Next week
+                    const lastGameDate = tournament.groupStageSchedule[tournament.groupStageSchedule.length - 1]?.date || currentDate;
+                    const playoffDate = advanceDate(lastGameDate);
                     tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, playoffDate);
                     tournament.status = 'playoffs';
                     if (tournament.playoffSchedule.length === 0) tournament.status = 'completed';
@@ -560,7 +572,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const regression = (Math.random() * 0.1) + 0.02; // Defined here
                     if (Math.random() < regression) {
                         let attrsToRegress: (keyof SkaterAttributes | keyof GoalieAttributes)[] = isSkater
-                            ? ['speed', 'acceleration', 'agility', 'balance', 'stamina', 'strength']
+                            ? ['acceleration', 'agility', 'balance', 'speed', 'stamina', 'strength']
                             : ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
                         
                         const attrToRegress = getRandomItem(attrsToRegress);
@@ -693,95 +705,19 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         const newDate = ((prevDate) => {
             let { month, week, year } = prevDate;
-            const monthIndex = months.indexOf(month);
             
-            week += 1; // Always advance by one week
+            week += 1;
 
-            // Handle month rollover
-            if (week > 4) { // If week exceeds 4, roll over to next month
+            if (week > 4) {
                 week = 1;
+                const monthIndex = months.indexOf(month);
                 let nextMonthIndex = (monthIndex + 1) % months.length;
-                if (month === "July" && months[nextMonthIndex] === "August") {
-                    year += 1;
-                    toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
-                    tempSeasonRecords = {}; // Reset season records
-                    
-                    const newAlumni: Player[] = [];
-                    tempTeams = tempTeams.map(team => {
-                        const graduatingPlayers: Player[] = [];
-                        const remainingPlayers = team.roster.filter(player => {
-                            const eligibilityMap: { [key in Player['eligibility']]: Player['eligibility'] | null } = {
-                                "UG Year 1": "UG Year 2", "UG Year 2": "UG Year 3", "UG Year 3": "UG Year 4",
-                                "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
-                            };
-                            const nextEligibility = eligibilityMap[player.eligibility];
-                            if (nextEligibility) {
-                                player.eligibility = nextEligibility;
-                                player.age += 1;
-                                return true;
-                            } else {
-                                graduatingPlayers.push(player);
-                                return false;
-                            }
-                        });
-
-                        graduatingPlayers.forEach(player => {
-                            const isManaged = managedTeamNames.includes(team.name);
-                            const roll = Math.random();
-                            // 30% retire, 40% transfer, 30% new degree
-                            if (roll < 0.3) { // Retire
-                                if (isManaged) {
-                                    player.alumniStatus = 'Retired';
-                                    newAlumni.push(player);
-                                    toast.info(`${player.name} has retired from university hockey.`);
-                                }
-                            } else if (roll < 0.7) { // Transfer
-                                const otherTeams = tempTeams.filter(t => t.name !== team.name);
-                                if (otherTeams.length > 0) {
-                                    const newTeam = getRandomItem(otherTeams);
-                                    player.eligibility = 'Masters'; // Assume they start a Masters
-                                    newTeam.roster.push(player);
-                                    if (isManaged) {
-                                        player.alumniStatus = 'Active Elsewhere';
-                                        newAlumni.push(player);
-                                        toast.info(`${player.name} has graduated and transferred to ${newTeam.name}.`);
-                                    }
-                                }
-                            } else { // New Degree
-                                player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
-                                remainingPlayers.push(player);
-                                toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
-                            }
-                        });
-
-                        team.roster = remainingPlayers;
-                        return team;
-                    });
-
-                    if (newAlumni.length > 0) {
-                        setAlumni(prev => [...prev, ...newAlumni]);
-                    }
-
-                    tempTeams = tempTeams.map(team => {
-                        const updatedRoster = team.roster.map(player => {
-                            const isSkater = !player.positions.includes('G');
-                            const seasonStats = player.currentStats;
-                            if (seasonStats.gamesPlayed > 0) {
-                                const historyEntry: PlayerSeasonStats = { season: `${prevDate.year}-${prevDate.year + 1}`, team: team.name, league: team.leagueDivision, gamesPlayed: seasonStats.gamesPlayed, captaincy: player.captaincy };
-                                if (isSkater) { historyEntry.goals = seasonStats.goals; historyEntry.assists = seasonStats.assists; historyEntry.points = seasonStats.points; historyEntry.penaltyMinutes = seasonStats.penaltyMinutes; } 
-                                else { historyEntry.goalsAgainstAverage = seasonStats.goalsAgainstAverage; historyEntry.savePercentage = seasonStats.savePercentage; historyEntry.shutouts = seasonStats.shutouts; }
-                                const newHistory = player.history ? [...player.history, historyEntry] : [historyEntry];
-                                const newCurrentStats: CurrentSeasonStats = { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0 };
-                                return { ...player, history: newHistory, currentStats: newCurrentStats };
-                            }
-                            return player;
-                        });
-                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
-                    });
-                }
                 month = months[nextMonthIndex];
+                if (month === 'August') {
+                    year++;
+                }
             }
-            return { month, week, year };
+            return { year, month, week };
         })(currentDate);
 
         if (newDevelopmentLogs.length > 0) setDevelopmentHistory(prev => [...newDevelopmentLogs, ...prev].slice(0, 200));
