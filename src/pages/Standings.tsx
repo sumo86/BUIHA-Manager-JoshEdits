@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Team } from '@/types';
+import { PlayerStatsTable } from '@/components/standings/PlayerStatsTable';
+import { Player } from '@/types';
 
 const StandingsPage = () => {
   const { teams } = useTeam();
@@ -13,32 +14,42 @@ const StandingsPage = () => {
     return Array.from(leagueSet).sort();
   }, [teams]);
 
-  const displayedTeams = useMemo(() => {
+  const { displayedTeams, leaguePlayers } = useMemo(() => {
     const leagueToDisplay = selectedLeague || leagues[0];
-    if (!leagueToDisplay) return [];
+    if (!leagueToDisplay) return { displayedTeams: [], leaguePlayers: [] };
 
-    return teams
-      .filter(team => team.leagueDivision === leagueToDisplay)
-      .sort((a, b) => {
-        const pointsA = a.wins * 3 + a.draws;
-        const pointsB = b.wins * 3 + b.draws;
-        if (pointsB !== pointsA) return pointsB - pointsA;
-        
-        const goalDiffA = a.goalsFor - a.goalsAgainst;
-        const goalDiffB = b.goalsFor - b.goalsAgainst;
-        if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+    const filteredTeams = teams.filter(team => team.leagueDivision === leagueToDisplay);
 
-        return b.goalsFor - a.goalsFor;
-      });
+    const sortedTeams = [...filteredTeams].sort((a, b) => {
+      const pointsA = a.wins * 3 + a.draws;
+      const pointsB = b.wins * 3 + b.draws;
+      if (pointsB !== pointsA) return pointsB - pointsA;
+      
+      const goalDiffA = a.goalsFor - a.goalsAgainst;
+      const goalDiffB = b.goalsFor - b.goalsAgainst;
+      if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+
+      return b.goalsFor - a.goalsFor;
+    });
+
+    const players = filteredTeams.flatMap(team => team.roster.map(p => ({...p, history: [{...p.history[p.history.length - 1], team: team.name}]} as Player)));
+
+    return { displayedTeams: sortedTeams, leaguePlayers: players };
   }, [teams, selectedLeague, leagues]);
+
+  const skaters = useMemo(() => leaguePlayers.filter(p => !p.positions.includes('G')), [leaguePlayers]);
+  const goalies = useMemo(() => leaguePlayers.filter(p => p.positions.includes('G')), [leaguePlayers]);
 
   if (leagues.length === 0) {
     return <div>No leagues available.</div>;
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-3xl font-bold">League Standings</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">League Standings</h1>
+        <p className="text-muted-foreground">View team standings and player leaderboards.</p>
+      </div>
       <Select value={selectedLeague || leagues[0]} onValueChange={setSelectedLeague}>
         <SelectTrigger className="w-[280px]">
           <SelectValue placeholder="Select a league" />
@@ -86,6 +97,15 @@ const StandingsPage = () => {
           })}
         </TableBody>
       </Table>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <PlayerStatsTable title="Top Goalscorers" players={skaters} stat="goals" category="skater" />
+        <PlayerStatsTable title="Top Playmakers" players={skaters} stat="assists" category="skater" />
+        <PlayerStatsTable title="Top Point Scorers" players={skaters} stat="points" category="skater" />
+        <PlayerStatsTable title="Top GAA" players={goalies} stat="goalsAgainstAverage" category="goalie" />
+        <PlayerStatsTable title="Top Save %" players={goalies} stat="savePercentage" category="goalie" />
+        <PlayerStatsTable title="Top Shutouts" players={goalies} stat="shutouts" category="goalie" />
+      </div>
     </div>
   );
 };
