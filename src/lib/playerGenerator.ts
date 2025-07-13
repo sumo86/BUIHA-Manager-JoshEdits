@@ -170,7 +170,7 @@ const getGamesPlayedForDivision = (leagueDivision: string): number => {
     if (leagueDivision.includes('Checking 1')) return 10; if (leagueDivision.includes('Checking 2')) return 6; if (leagueDivision.includes('Non Checking 1')) return 10; if (leagueDivision.includes('Non Checking 2 - North')) return 6; if (leagueDivision.includes('Non Checking 2 - South')) return 12; if (leagueDivision.includes('Non Checking 3')) return 6; return 10;
 };
 
-const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDivision: string, seasonYear: number, previousCaptaincy: 'C' | 'A' | null = null, attributes?: SkaterAttributes | GoalieAttributes): PlayerSeasonStats => {
+const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDivision: string, seasonYear: number, attributes?: SkaterAttributes | GoalieAttributes): PlayerSeasonStats => {
     const gamesPlayed = getGamesPlayedForDivision(leagueDivision);
     if (isSkater && attributes) {
         const skaterAttrs = attributes as SkaterAttributes;
@@ -181,16 +181,14 @@ const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDi
         if (goals > points) goals = points;
         const assists = points - goals;
         const penaltyMinutes = Math.floor(Math.random() * gamesPlayed * 2);
-        let captaincy: 'C' | 'A' | null = null;
-        if (previousCaptaincy === 'A') { const roll = Math.random(); if (roll < 0.75) captaincy = 'A'; else if (roll < 0.90) captaincy = 'C'; } else if (previousCaptaincy === 'C') { const roll = Math.random(); if (roll < 0.95) captaincy = 'C'; else if (roll < 0.99) captaincy = 'A'; } else { const captaincyRoll = Math.random(); if (captaincyRoll < 0.02) captaincy = 'C'; else if (captaincyRoll < 0.07) captaincy = 'A'; }
-        return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goals, assists, points, penaltyMinutes, captaincy };
+        return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goals, assists, points, penaltyMinutes, wins: 0, losses: 0, draws: 0, goalsAgainst: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0 };
     } else {
-        if (isSkater) { const goals = Math.floor(Math.random() * (gamesPlayed * 0.8)); const assists = Math.floor(Math.random() * (gamesPlayed * 1.2)); return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goals, assists, points: goals + assists, penaltyMinutes: Math.floor(Math.random() * gamesPlayed * 2), captaincy: null }; }
-        else { const gaa = parseFloat((Math.random() * (5.50 - 2.00) + 2.00).toFixed(2)); const svp = parseFloat((Math.random() * (0.930 - 0.880) + 0.880).toFixed(3)); return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goalsAgainstAverage: gaa, savePercentage: svp, shutouts: Math.random() < 0.2 ? Math.floor(Math.random() * 3) + 1 : 0 }; }
+        if (isSkater) { const goals = Math.floor(Math.random() * (gamesPlayed * 0.8)); const assists = Math.floor(Math.random() * (gamesPlayed * 1.2)); return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goals, assists, points: goals + assists, penaltyMinutes: Math.floor(Math.random() * gamesPlayed * 2), wins: 0, losses: 0, draws: 0, goalsAgainst: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0 }; }
+        else { const gaa = parseFloat((Math.random() * (5.50 - 2.00) + 2.00).toFixed(2)); const svp = parseFloat((Math.random() * (0.930 - 0.880) + 0.880).toFixed(3)); return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, wins: Math.floor(gamesPlayed * svp), losses: gamesPlayed - Math.floor(gamesPlayed * svp), draws: 0, goalsAgainst: Math.floor(gaa * gamesPlayed), shotsAgainst: 0, saves: 0, savePercentage: svp, goalsAgainstAverage: gaa, shutouts: Math.random() < 0.2 ? Math.floor(Math.random() * 3) + 1 : 0 }; }
     }
 };
 
-const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, teamName: string, allowedEligibilities?: Player['eligibility'][], options?: { targetStarRating?: number, targetAbility?: number }): Player => {
+export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, teamName: string, allowedEligibilities?: Player['eligibility'][], options?: { targetStarRating?: number, targetAbility?: number }): Player => {
   let jerseyNumber: number;
   do { jerseyNumber = Math.floor(Math.random() * 98) + 1; } while (usedJerseyNumbers.has(jerseyNumber));
   usedJerseyNumbers.add(jerseyNumber);
@@ -200,11 +198,11 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   if (isSkater) {
     if (Math.random() > 0.5) { 
       const newPosition: Position = getUniqueSkaterPosition(positions);
-      (positions as Position[]).push(newPosition); // Explicitly cast to Position[] before pushing
+      positions.push(newPosition);
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       const anotherNewPosition: Position = getUniqueSkaterPosition(positions);
-      (positions as Position[]).push(anotherNewPosition); // Explicitly cast to Position[] before pushing
+      positions.push(anotherNewPosition);
     }
   }
 
@@ -250,20 +248,19 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const currentYear = new Date().getFullYear();
   let numPriorSeasons = 0;
   if (eligibility === "UG Year 2") numPriorSeasons = 1; else if (eligibility === "UG Year 3") numPriorSeasons = 2; else if (eligibility === "UG Year 4") numPriorSeasons = 3; else if (eligibility === "Staff") numPriorSeasons = getRandomValueInRange(1, 5);
-  let lastSeasonCaptaincy: 'C' | 'A' | null = null;
-  for (let i = 0; i < numPriorSeasons; i++) { const seasonStats = generateRandomSeasonStats(isSkater, teamName, leagueDivision, currentYear - (numPriorSeasons - i), lastSeasonCaptaincy, attributes); history.push(seasonStats); lastSeasonCaptaincy = seasonStats.captaincy; }
+  for (let i = 0; i < numPriorSeasons; i++) { const seasonStats = generateRandomSeasonStats(isSkater, teamName, leagueDivision, currentYear - (numPriorSeasons - i), attributes); history.push(seasonStats); }
 
   const gender = Math.random() < 0.8 ? 'Male' : 'Female';
   const nationality = getRandomNationality(teamName);
   const name = getRandomNameForNationality(nationality, gender);
 
-  return { id: crypto.randomUUID(), jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, yearsLeftInProgram, history, trainingFocus: null, activeInstructions: [], currentStats: { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, wins: 0, losses: 0, draws: 0, goalsAgainst: 0, goalsFor: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0 } };
+  return { id: crypto.randomUUID(), jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, yearsLeftInProgram, history, currentStats: { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, wins: 0, losses: 0, draws: 0, goalsAgainst: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0 }, trainingFocus: null, activeInstructions: [] };
 };
 
 const assignInitialCaptaincy = (roster: Player[]): Player[] => {
     const skaters = roster.filter(p => p.positions[0] !== 'G');
     if (skaters.length < 3) return roster;
-    const priorCaptains = skaters.filter(p => p.eligibility !== 'UG Year 1' && p.history?.some(h => h.captaincy === 'C'));
+    const priorCaptains = skaters.filter(p => p.eligibility !== 'UG Year 1' && p.history?.some(s => s.captaincy === 'C'));
     let captain: Player | undefined;
     if (priorCaptains.length > 0) { captain = priorCaptains.sort((a, b) => (b.attributes as SkaterAttributes).leadership - (a.attributes as SkaterAttributes).leadership)[0]; }
     else { const eligible = skaters.filter(p => p.eligibility !== 'UG Year 1'); if (eligible.length > 0) captain = eligible.sort((a, b) => (b.attributes as SkaterAttributes).leadership - (a.attributes as SkaterAttributes).leadership)[0]; }
@@ -357,8 +354,7 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
             const otherTeamName = getRandomItem(allTeamNames);
             const otherTeamLeagueDivision = teamDivisionMap.get(otherTeamName) || userLeagueDivision;
             const numPriorSeasons = eligibility === "UG Year 2" ? 1 : getRandomValueInRange(1, 2);
-            let lastSeasonCaptaincy: 'C' | 'A' | null = null;
-            for (let j = 0; j < numPriorSeasons; j++) { const seasonStats = generateRandomSeasonStats(isSkater, otherTeamName, otherTeamLeagueDivision, new Date().getFullYear() - (numPriorSeasons - j), lastSeasonCaptaincy, player.attributes); player.history.push(seasonStats); lastSeasonCaptaincy = seasonStats.captaincy; }
+            for (let j = 0; j < numPriorSeasons; j++) { const seasonStats = generateRandomSeasonStats(isSkater, otherTeamName, otherTeamLeagueDivision, new Date().getFullYear() - (numPriorSeasons - j), player.attributes); player.history.push(seasonStats); }
         }
 
         recruits.push(player);

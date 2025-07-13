@@ -1,7 +1,7 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, CurrentSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
-import { generateRecruits } from '@/lib/playerGenerator';
+import { generateRecruits, generatePlayer } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
@@ -352,37 +352,38 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const teamsMap = { [homeTeam.name]: homeTeam, [awayTeam.name]: awayTeam };
         
             allPlayers.forEach(player => {
-                const team = teamsMap[player.history[player.history.length - 1]?.team || homeTeam.name];
+                const lastStat = player.stats[player.stats.length - 1];
+                const team = teamsMap[lastStat?.team || homeTeam.name];
                 if (!team) return;
 
                 const isSkater = !player.positions.includes('G');
                 const season = `${currentDate.year}-${currentDate.year + 1}`;
         
                 if (isSkater) {
-                    const stats = player.currentStats;
+                    const stats = lastStat;
                     if ((stats.goals || 0) > (tempSeasonRecords['Goals']?.value || 0)) tempSeasonRecords['Goals'] = { playerName: player.name, teamName: team.name, value: stats.goals, season };
                     if ((stats.assists || 0) > (tempSeasonRecords['Assists']?.value || 0)) tempSeasonRecords['Assists'] = { playerName: player.name, teamName: team.name, value: stats.assists, season };
                     if ((stats.points || 0) > (tempSeasonRecords['Points']?.value || 0)) tempSeasonRecords['Points'] = { playerName: player.name, teamName: team.name, value: stats.points, season };
                     if ((stats.penaltyMinutes || 0) > (tempSeasonRecords['PenaltyMinutes']?.value || 0)) tempSeasonRecords['PenaltyMinutes'] = { playerName: player.name, teamName: team.name, value: stats.penaltyMinutes, season };
                     
-                    const careerGoals = (player.history?.reduce((acc, s) => acc + (s.goals || 0), 0) || 0) + (stats.goals || 0);
+                    const careerGoals = player.stats.reduce((acc, s) => acc + (s.goals || 0), 0);
                     if (careerGoals > (tempCareerRecords['Goals']?.value || 0)) tempCareerRecords['Goals'] = { playerName: player.name, teamName: team.name, value: careerGoals };
-                    const careerAssists = (player.history?.reduce((acc, s) => acc + (s.assists || 0), 0) || 0) + (stats.assists || 0);
+                    const careerAssists = player.stats.reduce((acc, s) => acc + (s.assists || 0), 0);
                     if (careerAssists > (tempCareerRecords['Assists']?.value || 0)) tempCareerRecords['Assists'] = { playerName: player.name, teamName: team.name, value: careerAssists };
-                    const careerPoints = (player.history?.reduce((acc, s) => acc + (s.points || 0), 0) || 0) + (stats.points || 0);
+                    const careerPoints = player.stats.reduce((acc, s) => acc + (s.points || 0), 0);
                     if (careerPoints > (tempCareerRecords['Points']?.value || 0)) tempCareerRecords['Points'] = { playerName: player.name, teamName: team.name, value: careerPoints };
-                    const careerPims = (player.history?.reduce((acc, s) => acc + (s.penaltyMinutes || 0), 0) || 0) + (stats.penaltyMinutes || 0);
+                    const careerPims = player.stats.reduce((acc, s) => acc + (s.penaltyMinutes || 0), 0);
                     if (careerPims > (tempCareerRecords['PenaltyMinutes']?.value || 0)) tempCareerRecords['PenaltyMinutes'] = { playerName: player.name, teamName: team.name, value: careerPims };
 
                 } else { // Goalie
-                    const stats = player.currentStats;
+                    const stats = lastStat;
                     if (stats.gamesPlayed >= 5) { // Goalie eligibility for in-season records
                         if (!tempSeasonRecords['GAA'] || (stats.goalsAgainstAverage < tempSeasonRecords['GAA'].value)) tempSeasonRecords['GAA'] = { playerName: player.name, teamName: team.name, value: stats.goalsAgainstAverage, season };
                         if (stats.savePercentage > (tempSeasonRecords['SavePercentage']?.value || 0)) tempSeasonRecords['SavePercentage'] = { playerName: player.name, teamName: team.name, value: stats.savePercentage, season };
                     }
                     if ((stats.shutouts || 0) > (tempSeasonRecords['Shutouts']?.value || 0)) tempSeasonRecords['Shutouts'] = { playerName: player.name, teamName: team.name, value: stats.shutouts, season };
                     
-                    const careerShutouts = (player.history?.reduce((acc, s) => acc + (s.shutouts || 0), 0) || 0) + (stats.shutouts || 0);
+                    const careerShutouts = player.stats.reduce((acc, s) => acc + (s.shutouts || 0), 0);
                     if (careerShutouts > (tempCareerRecords['Shutouts']?.value || 0)) tempCareerRecords['Shutouts'] = { playerName: player.name, teamName: team.name, value: careerShutouts };
                 }
             });
@@ -571,7 +572,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const regression = (Math.random() * 0.1) + 0.02; // Defined here
                     if (Math.random() < regression) {
                         let attrsToRegress: (keyof SkaterAttributes | keyof GoalieAttributes)[] = isSkater
-                            ? ['acceleration', 'agility', 'balance', 'speed', 'stamina', 'strength']
+                            ? ['speed', 'acceleration', 'agility', 'balance', 'stamina', 'strength']
                             : ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
                         
                         const attrToRegress = getRandomItem(attrsToRegress);
@@ -713,7 +714,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 let nextMonthIndex = (monthIndex + 1) % months.length;
                 month = months[nextMonthIndex];
                 if (month === 'August') {
-                    year++;
+                    year += 1;
                 }
             }
             return { year, month, week };

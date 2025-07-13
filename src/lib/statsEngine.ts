@@ -68,7 +68,7 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
             }
         });
 
-        // Update games played for all players in the game
+        // Update games played for all dressed players
         const userDressedIds = getDressedPlayerIds(updatedUserTeam);
         const opponentDressedIds = getDressedPlayerIds(updatedOpponentTeam);
 
