@@ -289,6 +289,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         if (gamesThisWeek.length > 0) {
             gamesThisWeek.forEach(game => {
+                // Defensive check: Ensure this game hasn't already been completed by a manual play
+                // This helps prevent double-simulations due to potential state update delays.
+                const currentStatusInMainSchedule = schedule.find(s => s.id === game.id)?.status;
+                if (currentStatusInMainSchedule === 'completed') {
+                    // This game was already completed, skip it.
+                    return;
+                }
+
                 const homeTeamIndex = tempTeams.findIndex(t => t.name === game.homeTeam);
                 const awayTeamIndex = tempTeams.findIndex(t => t.name === game.awayTeam);
                 

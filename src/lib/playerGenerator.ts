@@ -193,16 +193,16 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   do { jerseyNumber = Math.floor(Math.random() * 98) + 1; } while (usedJerseyNumbers.has(jerseyNumber));
   usedJerseyNumbers.add(jerseyNumber);
 
-  const positions: Position[] = [position];
+  let positions: Position[] = [position]; // Changed to 'let' for reassignment
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      const newPosition: Position = getUniqueSkaterPosition(positions); // Explicitly type
-      positions.push(newPosition);
+      const newPosition: Position = getUniqueSkaterPosition(positions);
+      positions = positions.concat(newPosition); // Use concat
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      const anotherNewPosition: Position = getUniqueSkaterPosition(positions); // Explicitly type
-      positions.push(anotherNewPosition);
+      const anotherNewPosition: Position = getUniqueSkaterPosition(positions);
+      positions = positions.concat(anotherNewPosition); // Use concat
     }
   }
 
