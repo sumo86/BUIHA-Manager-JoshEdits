@@ -10,7 +10,7 @@ import { processGameResults as processGameResultsEngine } from '@/lib/statsEngin
 import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
-import { createNationalsTournament } from '@/lib/nationalsGenerator';
+import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
 import { nationalsSchedule } from '@/data/nationalsSchedule';
 import { NationalsTournament } from '@/types';
 import { isRivalryGame } from '@/lib/rivalries';
@@ -281,70 +281,143 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         let newDevelopmentLogs: DevelopmentLog[] = [];
         const managedTeamNames = managedTeams.map(t => t.name);
 
-        const gamesThisWeek = tempSchedule.filter(game =>
-            game.date.month === currentDate.month &&
-            game.date.week === currentDate.week &&
-            game.status === 'scheduled'
-        );
+        let isNationalsWeek = false;
+        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as typeof nationalsData;
+        const currentYear = currentDate.year;
 
-        if (gamesThisWeek.length > 0) {
-            gamesThisWeek.forEach(game => {
-                // Defensive check: Ensure this game hasn't already been completed by a manual play
-                // This helps prevent double-simulations due to potential state update delays.
-                const currentStatusInMainSchedule = schedule.find(s => s.id === game.id)?.status;
-                if (currentStatusInMainSchedule === 'completed') {
-                    // This game was already completed, skip it.
-                    return;
-                }
+        if (tempNationalsData[currentYear] && currentDate.month === 'May') {
+            const tournamentsThisYear = tempNationalsData[currentYear];
+            for (const division in tournamentsThisYear) {
+                const tournament = tournamentsThisYear[division];
+                if (tournament.status === 'completed') continue;
 
-                const homeTeamIndex = tempTeams.findIndex(t => t.name === game.homeTeam);
-                const awayTeamIndex = tempTeams.findIndex(t => t.name === game.awayTeam);
-                
-                if (homeTeamIndex === -1 || awayTeamIndex === -1) return;
+                // Process Group Stage Games
+                const groupGamesThisWeek = tournament.groupStageSchedule.filter(game =>
+                    game.date.month === currentDate.month &&
+                    game.date.week === currentDate.week &&
+                    game.status === 'scheduled'
+                );
 
-                const homeTeam = tempTeams[homeTeamIndex];
-                const awayTeam = tempTeams[awayTeamIndex];
+                if (groupGamesThisWeek.length > 0) {
+                    isNationalsWeek = true;
+                    groupGamesThisWeek.forEach(game => {
+                        const homeTeamIndex = tempTeams.findIndex(t => t.name === game.homeTeam);
+                        const awayTeamIndex = tempTeams.findIndex(t => t.name === game.awayTeam);
+                        if (homeTeamIndex === -1 || awayTeamIndex === -1) return;
 
-                const isBigGame = isRivalryGame(homeTeam.name, awayTeam.name);
+                        const homeTeam = tempTeams[homeTeamIndex];
+                        const awayTeam = tempTeams[awayTeamIndex];
+                        const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
 
-                if (isBigGame && (homeTeam.name === userTeam?.name || awayTeam.name === userTeam?.name)) {
-                    toast.info("It's a Rivalry Game!", {
-                        description: `The atmosphere is electric for ${homeTeam.name} vs ${awayTeam.name}. Players' performance may be affected by the pressure!`
-                    });
-                }
+                        const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState);
+                        tempTeams[homeTeamIndex] = updatedHomeTeam;
+                        tempTeams[awayTeamIndex] = updatedAwayTeam;
 
-                const finalGameState = simulateFullGame(homeTeam, awayTeam, isBigGame);
+                        const gameInTournament = tournament.groupStageSchedule.find(g => g.id === game.id)!;
+                        gameInTournament.status = 'completed';
+                        gameInTournament.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
 
-                if (userTeam) {
-                    finalGameState.injuries.forEach(injury => {
-                        if (injury.teamName === userTeam.name) {
-                            const injuredPlayer = userTeam.roster.find(p => p.id === injury.playerId);
-                            if (injuredPlayer) {
-                                toast.warning("Player Injured!", {
-                                    description: `${injuredPlayer.name} was injured during the game. (${injury.injuryType}, out for ${injury.duration} weeks)`,
-                                });
+                        // Update standings
+                        tournament.groups.forEach(group => {
+                            const homeStanding = group.standings.find(s => s.teamName === game.homeTeam);
+                            const awayStanding = group.standings.find(s => s.teamName === game.awayTeam);
+                            if (homeStanding) {
+                                homeStanding.played++;
+                                homeStanding.goalsFor += finalGameState.userScore;
+                                homeStanding.goalsAgainst += finalGameState.opponentScore;
+                                if (finalGameState.userScore > finalGameState.opponentScore) { homeStanding.wins++; homeStanding.points += 3; }
+                                else if (finalGameState.userScore < finalGameState.opponentScore) { homeStanding.losses++; }
+                                else { homeStanding.draws++; homeStanding.points += 1; }
                             }
+                            if (awayStanding) {
+                                awayStanding.played++;
+                                awayStanding.goalsFor += finalGameState.opponentScore;
+                                awayStanding.goalsAgainst += finalGameState.userScore;
+                                if (finalGameState.opponentScore > finalGameState.userScore) { awayStanding.wins++; awayStanding.points += 3; }
+                                else if (finalGameState.opponentScore < finalGameState.userScore) { awayStanding.losses++; }
+                                else { awayStanding.draws++; awayStanding.points += 1; }
+                            }
+                        });
+
+                        if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
+                            toast.info("Nationals Game Result", { description: `${game.homeTeam} ${finalGameState.userScore} - ${game.awayTeam} ${finalGameState.opponentScore}` });
                         }
                     });
                 }
 
-                const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState);
-                
-                tempTeams[homeTeamIndex] = updatedHomeTeam;
-                tempTeams[awayTeamIndex] = updatedAwayTeam;
+                // Check if group stage is over and generate playoffs
+                const allGroupGamesPlayed = tournament.groupStageSchedule.every(g => g.status === 'completed');
+                if (allGroupGamesPlayed && tournament.status === 'group-stage') {
+                    isNationalsWeek = true; // Ensure we update state even if no games this week
+                    toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
+                    
+                    const nextPlayoffWeek = tournament.groupStageSchedule.reduce((maxWeek, game) => Math.max(maxWeek, game.date.week), 0) + 1;
+                    const playoffDate: GameDate = { year: currentDate.year, month: 'May', week: nextPlayoffWeek };
 
-                const scheduleGameIndex = tempSchedule.findIndex(g => g.id === game.id);
-                if (scheduleGameIndex !== -1) {
-                    tempSchedule[scheduleGameIndex].status = 'completed';
-                    tempSchedule[scheduleGameIndex].result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                    tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, playoffDate);
+                    tournament.status = 'playoffs';
+                    
+                    if (tournament.playoffSchedule.length === 0) {
+                        tournament.status = 'completed';
+                    }
                 }
-                
-                if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
-                    toast.info("Game Auto-Simulated", {
-                        description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}`
-                    });
-                }
-            });
+            }
+        }
+
+        if (!isNationalsWeek) {
+            const gamesThisWeek = tempSchedule.filter(game =>
+                game.date.month === currentDate.month &&
+                game.date.week === currentDate.week &&
+                game.status === 'scheduled'
+            );
+
+            if (gamesThisWeek.length > 0) {
+                gamesThisWeek.forEach(game => {
+                    const currentStatusInMainSchedule = schedule.find(s => s.id === game.id)?.status;
+                    if (currentStatusInMainSchedule === 'completed') {
+                        return;
+                    }
+
+                    const homeTeamIndex = tempTeams.findIndex(t => t.name === game.homeTeam);
+                    const awayTeamIndex = tempTeams.findIndex(t => t.name === game.awayTeam);
+                    if (homeTeamIndex === -1 || awayTeamIndex === -1) return;
+
+                    const homeTeam = tempTeams[homeTeamIndex];
+                    const awayTeam = tempTeams[awayTeamIndex];
+                    const isBigGame = isRivalryGame(homeTeam.name, awayTeam.name);
+
+                    if (isBigGame && (homeTeam.name === userTeam?.name || awayTeam.name === userTeam?.name)) {
+                        toast.info("It's a Rivalry Game!", { description: `The atmosphere is electric for ${homeTeam.name} vs ${awayTeam.name}. Players' performance may be affected by the pressure!` });
+                    }
+
+                    const finalGameState = simulateFullGame(homeTeam, awayTeam, isBigGame);
+
+                    if (userTeam) {
+                        finalGameState.injuries.forEach(injury => {
+                            if (injury.teamName === userTeam.name) {
+                                const injuredPlayer = userTeam.roster.find(p => p.id === injury.playerId);
+                                if (injuredPlayer) {
+                                    toast.warning("Player Injured!", { description: `${injuredPlayer.name} was injured during the game. (${injury.injuryType}, out for ${injury.duration} weeks)` });
+                                }
+                            }
+                        });
+                    }
+
+                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState);
+                    tempTeams[homeTeamIndex] = updatedHomeTeam;
+                    tempTeams[awayTeamIndex] = updatedAwayTeam;
+
+                    const scheduleGameIndex = tempSchedule.findIndex(g => g.id === game.id);
+                    if (scheduleGameIndex !== -1) {
+                        tempSchedule[scheduleGameIndex].status = 'completed';
+                        tempSchedule[scheduleGameIndex].result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                    }
+                    
+                    if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
+                        toast.info("Game Auto-Simulated", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
+                    }
+                });
+            }
         }
 
         // Weekly updates for all teams
@@ -628,9 +701,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             allNationalsDivisions.forEach(division => {
                 const teamsInDivision = tempTeams.filter(t => t.nationalsDivision === division);
                 if (teamsInDivision.length >= 2) {
-                    const week = Object.keys(nationalsSchedule).find(w => nationalsSchedule[parseInt(w)].includes(division));
-                    if (week) {
-                        const tournament = createNationalsTournament(division, teamsInDivision, newDate.year, parseInt(week));
+                    const weekEntry = Object.entries(nationalsSchedule).find(([, divisions]) => divisions.includes(division));
+                    if (weekEntry) {
+                        const week = parseInt(weekEntry[0]);
+                        const tournament = createNationalsTournament(division, teamsInDivision, newDate.year, week);
                         newNationalsDataForYear[division] = tournament;
                     }
                 }
@@ -638,6 +712,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             setNationalsData(prev => ({ ...prev, [newDate.year]: newNationalsDataForYear }));
         }
         
+        if (isNationalsWeek) {
+            setNationalsData(tempNationalsData);
+        }
         setTeams(tempTeams);
         setSchedule(tempSchedule);
         setCurrentDate(newDate);

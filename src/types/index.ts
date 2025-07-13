@@ -330,6 +330,7 @@ export type NationalsPlayoffMatch = {
   winner?: string;
   result?: { homeScore: number; awayScore: number };
   status: 'scheduled' | 'completed';
+  date: GameDate; // Added date property
 };
 
 export type NationalsTournament = {

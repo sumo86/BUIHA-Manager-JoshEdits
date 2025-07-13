@@ -1,7 +1,7 @@
-import { Team, NationalsGroup, NationalsTournament, ScheduleEntry, GameDate } from '@/types';
+import { Team, NationalsGroup, NationalsTournament, ScheduleEntry, GameDate, NationalsPlayoffMatch } from '@/types';
 
 // Fisher-Yates shuffle algorithm
-const shuffleArray = <T>(array: T[]): T[] => {
+const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -31,31 +31,54 @@ export const generateNationalsGroups = (allTeamsInDivision: Team[]): NationalsGr
     })),
   });
 
-  return [
-    createGroup("Group A", groupATeams),
-    createGroup("Group B", groupBTeams),
-  ];
+  const groups = [];
+  if (groupATeams.length > 0) groups.push(createGroup("Group A", groupATeams));
+  if (groupBTeams.length > 0) groups.push(createGroup("Group B", groupBTeams));
+  
+  return groups;
 };
 
-export const generateGroupStageSchedule = (groups: NationalsGroup[], date: GameDate): ScheduleEntry[] => {
+export const generateGroupStageSchedule = (groups: NationalsGroup[], startDate: GameDate): ScheduleEntry[] => {
     const schedule: ScheduleEntry[] = [];
-    
+    const allMatches: { homeTeam: string, awayTeam: string }[] = [];
+
     groups.forEach(group => {
         const teams = group.teams;
         for (let i = 0; i < teams.length; i++) {
             for (let j = i + 1; j < teams.length; j++) {
-                schedule.push({
-                    id: crypto.randomUUID(),
-                    homeTeam: teams[i],
-                    awayTeam: teams[j],
-                    date,
-                    status: 'scheduled',
-                });
+                allMatches.push({ homeTeam: teams[i], awayTeam: teams[j] });
             }
         }
     });
 
-    return shuffleArray(schedule);
+    const shuffledMatches = shuffleArray(allMatches);
+
+    const { year, month } = startDate;
+    const startWeek = startDate.week;
+    const gamesPerWeek = 4; // Max 4 games per tournament per week
+
+    shuffledMatches.forEach((match, index) => {
+        const weekOffset = Math.floor(index / gamesPerWeek);
+        const gameWeek = startWeek + weekOffset;
+
+        // Note: This simple logic assumes nationals finish within May.
+        schedule.push({
+            id: crypto.randomUUID(),
+            homeTeam: match.homeTeam,
+            awayTeam: match.awayTeam,
+            date: { year, month, week: gameWeek },
+            status: 'scheduled',
+        });
+    });
+
+    return schedule;
+};
+
+export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate): NationalsPlayoffMatch[] => {
+    // This is a placeholder for future implementation.
+    // It would analyze group standings and create knockout matches.
+    console.log("Generating playoff bracket for", date);
+    return [];
 };
 
 export const createNationalsTournament = (division: string, teams: Team[], year: number, week: number): NationalsTournament => {
@@ -69,6 +92,6 @@ export const createNationalsTournament = (division: string, teams: Team[], year:
         groups,
         groupStageSchedule,
         playoffSchedule: [],
-        status: 'pending',
+        status: 'group-stage',
     };
 };

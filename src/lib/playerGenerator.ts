@@ -3,7 +3,7 @@ import { archetypes } from "@/data/archetypes";
 import { roles } from "@/data/roles";
 import { teams as allTeamsData } from "@/data/teams";
 import { getRandomNationality } from "@/data/nationalityDistributions";
-import { getRandomNameForNationality } from "@/data/names"; // Fixed import syntax
+import { getRandomNameForNationality } => "@/data/names"; // Fixed import syntax
 import { getTierStats, divisionTierStats } from "./leagueUtils";
 import { starRatingDistribution } from "@/data/starRatingDistribution";
 import { skaterAbilityRanges, goalieAbilityRanges } from "@/data/abilityRanges";
@@ -200,11 +200,11 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   if (isSkater) {
     if (Math.random() > 0.5) { 
       const newPosition: Position = getUniqueSkaterPosition(positions);
-      (positions as Position[]).push(newPosition); // Explicit cast to resolve TS2345
+      positions.push(newPosition as Position); // Explicit cast
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       const anotherNewPosition: Position = getUniqueSkaterPosition(positions);
-      (positions as Position[]).push(anotherNewPosition); // Explicit cast to resolve TS2345
+      positions.push(anotherNewPosition as Position); // Explicit cast
     }
   }
 
