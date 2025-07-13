@@ -246,18 +246,14 @@ const Game = () => {
                         <div className="flex justify-around items-center">
                             <span className="w-1/3 text-right flex justify-end items-center gap-4">
                                 {userTeam.name}
-                                {gameState.powerPlayState.isActive && gameState.powerPlayState.teamOnPowerPlay === userTeam.name && (
-                                    <span className="text-lg font-semibold text-green-500">(PP)</span>
-                                )}
+                                {gameState.powerPlayState.isActive && gameState.powerPlayState.teamOnPowerPlay === userTeam.name && <span className="text-sm text-green-500 font-bold">(PP)</span>}
                                 {userTeam.logo && <img src={userTeam.logo} alt={userTeam.name} className="h-10 w-10 object-contain" />}
                             </span>
                             <span className="w-1/3 text-center">{gameState.userScore} - {gameState.opponentScore}</span>
                             <span className="w-1/3 text-left flex items-center gap-4">
                                 {gameOpponentTeam.logo && <img src={gameOpponentTeam.logo} alt={gameOpponentTeam.name} className="h-10 w-10 object-contain" />}
                                 {gameOpponentTeam.name}
-                                {gameState.powerPlayState.isActive && gameState.powerPlayState.teamOnPowerPlay === gameOpponentTeam.name && (
-                                    <span className="text-lg font-semibold text-green-500">(PP)</span>
-                                )}
+                                {gameState.powerPlayState.isActive && gameState.powerPlayState.teamOnPowerPlay === gameOpponentTeam.name && <span className="text-sm text-green-500 font-bold">(PP)</span>}
                             </span>
                         </div>
                     </CardTitle>

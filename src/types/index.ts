@@ -227,6 +227,12 @@ export type GameEvent = {
   description: string;
 };
 
+export type PowerPlayState = {
+  isActive: boolean;
+  teamOnPowerPlay: string | null;
+  timeLeft: number; // in game ticks
+};
+
 export type GameState = {
   userScore: number;
   opponentScore: number;
@@ -237,11 +243,7 @@ export type GameState = {
   isPaused: boolean;
   injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
   possessionHolder: string | null;
-  powerPlayState: {
-    isActive: boolean;
-    teamOnPowerPlay: string | null; // team name
-    timeLeft: number;
-  };
+  powerPlayState: PowerPlayState;
 };
 
 export type GameDate = {

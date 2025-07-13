@@ -6,6 +6,7 @@ import { aiMakeAdjustments } from '@/lib/aiManager';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const POWER_PLAY_MODIFIER = 1.3; // 30% boost on power play
 
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -222,18 +223,13 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const avgDefendingDefense = defendingSkaters.length > 0 ? defendingSkaters.reduce((sum, p) => sum + getSkaterDefensiveRating(p, isBigGame), 0) / defendingSkaters.length : 10;
     let defendingGoalieAbility = defendingGoalie ? getGoalieRating(defendingGoalie, isBigGame) : 10;
 
-    let modifiedAttackRating = avgAttackingOffense * tacticalModifier;
-    const modifiedDefenseRating = avgDefendingDefense / tacticalModifier;
-
-    // Power Play Modifier
-    if (gameState.powerPlayState.isActive) {
-        if (gameState.powerPlayState.teamOnPowerPlay === attackingTeam.name) {
-            modifiedAttackRating *= 1.3; // 30% boost for PP team
-        } else if (gameState.powerPlayState.teamOnPowerPlay === defendingTeam.name) {
-            modifiedAttackRating *= 0.7; // 30% reduction for PK team
-        }
+    let powerPlayModifier = 1.0;
+    if (gameState.powerPlayState.isActive && gameState.powerPlayState.teamOnPowerPlay === attackingTeam.name) {
+        powerPlayModifier = POWER_PLAY_MODIFIER;
     }
 
+    const modifiedAttackRating = avgAttackingOffense * tacticalModifier * powerPlayModifier;
+    const modifiedDefenseRating = avgDefendingDefense / tacticalModifier;
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
     
@@ -311,11 +307,11 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
     let newGameState = { ...gameState };
     newGameState.time += 1;
 
-    // Manage Power Play State
+    // Handle Power Play Countdown
     if (newGameState.powerPlayState.isActive) {
         newGameState.powerPlayState.timeLeft -= 1;
         if (newGameState.powerPlayState.timeLeft <= 0) {
-            newGameState.gameLog = [{ time: formatTime(newGameState.time), period: newGameState.period, team: "System", description: `Power play has expired.` }, ...newGameState.gameLog];
+            newGameState.gameLog = [{ time: formatTime(newGameState.time), period: newGameState.period, team: "System", description: "Power play has expired." }, ...newGameState.gameLog];
             newGameState.powerPlayState = { isActive: false, teamOnPowerPlay: null, timeLeft: 0 };
         }
     }
@@ -333,15 +329,14 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
         if (newEvent.description.startsWith('GOAL!')) {
             if (newEvent.team === userTeam.name) newGameState.userScore++;
             else newGameState.opponentScore++;
-            
+
             // End power play on goal
             if (newGameState.powerPlayState.isActive && newGameState.powerPlayState.teamOnPowerPlay === newEvent.team) {
-                newGameState.gameLog = [{ time: newEvent.time, period: newEvent.period, team: "System", description: `The power play ends due to the goal.` }, ...newGameState.gameLog];
+                newGameState.gameLog = [{ time: newEvent.time, period: newEvent.period, team: "System", description: "Power play ended due to a goal." }, ...newGameState.gameLog];
                 newGameState.powerPlayState = { isActive: false, teamOnPowerPlay: null, timeLeft: 0 };
             }
         }
         if (newEvent.description.startsWith('PENALTY!')) {
-            // For simplicity, a new penalty will override an existing one.
             const teamOnPowerPlay = newEvent.team === userTeam.name ? opponentTeam.name : userTeam.name;
             newGameState.powerPlayState = {
                 isActive: true,

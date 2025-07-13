@@ -38,17 +38,9 @@ const getRandomSkaterPosition = (): Position => {
 // New helper function to get a unique skater position
 const getUniqueSkaterPosition = (currentPositions: Position[]): Position => {
     let newPos: Position;
-    let isUnique: boolean;
     do {
         newPos = getRandomSkaterPosition();
-        isUnique = true;
-        for (const p of currentPositions) {
-            if (p === newPos) {
-                isUnique = false;
-                break;
-            }
-        }
-    } while (!isUnique);
+    } while (currentPositions.some(p => p === newPos));
     return newPos;
 };
 
@@ -208,11 +200,11 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   if (isSkater) {
     if (Math.random() > 0.5) { 
       const newPosition: Position = getUniqueSkaterPosition(positions);
-      positions = [...positions, newPosition]; // Reassign array using spread
+      (positions as Position[]).push(newPosition); // Explicit cast to resolve TS2345
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       const anotherNewPosition: Position = getUniqueSkaterPosition(positions);
-      positions = [...positions, anotherNewPosition]; // Reassign array using spread
+      (positions as Position[]).push(anotherNewPosition); // Explicit cast to resolve TS2345
     }
   }
 
