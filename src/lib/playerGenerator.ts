@@ -38,9 +38,17 @@ const getRandomSkaterPosition = (): Position => {
 // New helper function to get a unique skater position
 const getUniqueSkaterPosition = (currentPositions: Position[]): Position => {
     let newPos: Position;
+    let isUnique: boolean;
     do {
         newPos = getRandomSkaterPosition();
-    } while (currentPositions.some(p => p === newPos));
+        isUnique = true;
+        for (const p of currentPositions) {
+            if (p === newPos) {
+                isUnique = false;
+                break;
+            }
+        }
+    } while (!isUnique);
     return newPos;
 };
 

@@ -222,8 +222,18 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const avgDefendingDefense = defendingSkaters.length > 0 ? defendingSkaters.reduce((sum, p) => sum + getSkaterDefensiveRating(p, isBigGame), 0) / defendingSkaters.length : 10;
     let defendingGoalieAbility = defendingGoalie ? getGoalieRating(defendingGoalie, isBigGame) : 10;
 
-    const modifiedAttackRating = avgAttackingOffense * tacticalModifier;
+    let modifiedAttackRating = avgAttackingOffense * tacticalModifier;
     const modifiedDefenseRating = avgDefendingDefense / tacticalModifier;
+
+    // Power Play Modifier
+    if (gameState.powerPlayState.isActive) {
+        if (gameState.powerPlayState.teamOnPowerPlay === attackingTeam.name) {
+            modifiedAttackRating *= 1.3; // 30% boost for PP team
+        } else if (gameState.powerPlayState.teamOnPowerPlay === defendingTeam.name) {
+            modifiedAttackRating *= 0.7; // 30% reduction for PK team
+        }
+    }
+
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
     
@@ -301,6 +311,15 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
     let newGameState = { ...gameState };
     newGameState.time += 1;
 
+    // Manage Power Play State
+    if (newGameState.powerPlayState.isActive) {
+        newGameState.powerPlayState.timeLeft -= 1;
+        if (newGameState.powerPlayState.timeLeft <= 0) {
+            newGameState.gameLog = [{ time: formatTime(newGameState.time), period: newGameState.period, team: "System", description: `Power play has expired.` }, ...newGameState.gameLog];
+            newGameState.powerPlayState = { isActive: false, teamOnPowerPlay: null, timeLeft: 0 };
+        }
+    }
+
     if (newGameState.possessionHolder === null) {
         newGameState.possessionHolder = determineFaceoffWinner(userTeam, opponentTeam);
     }
@@ -314,6 +333,22 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
         if (newEvent.description.startsWith('GOAL!')) {
             if (newEvent.team === userTeam.name) newGameState.userScore++;
             else newGameState.opponentScore++;
+            
+            // End power play on goal
+            if (newGameState.powerPlayState.isActive && newGameState.powerPlayState.teamOnPowerPlay === newEvent.team) {
+                newGameState.gameLog = [{ time: newEvent.time, period: newEvent.period, team: "System", description: `The power play ends due to the goal.` }, ...newGameState.gameLog];
+                newGameState.powerPlayState = { isActive: false, teamOnPowerPlay: null, timeLeft: 0 };
+            }
+        }
+        if (newEvent.description.startsWith('PENALTY!')) {
+            // For simplicity, a new penalty will override an existing one.
+            const teamOnPowerPlay = newEvent.team === userTeam.name ? opponentTeam.name : userTeam.name;
+            newGameState.powerPlayState = {
+                isActive: true,
+                teamOnPowerPlay: teamOnPowerPlay,
+                timeLeft: 120, // 2 minutes = 120 ticks
+            };
+            newGameState.gameLog = [{ time: newEvent.time, period: newEvent.period, team: "System", description: `${teamOnPowerPlay} is now on the power play.` }, ...newGameState.gameLog];
         }
         if (newEvent.description.includes('hit on') || newEvent.description.includes('check to') || newEvent.description.includes('rocked by a huge hit') || newEvent.description.includes('finishes his check') || newEvent.description.includes('stood up')) {
             const defenderNameMatch = newEvent.description.match(/(?:on|to|from|by)\s(.*?)(?:\.|with|after|$)/);
@@ -358,6 +393,11 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
         isPaused: false,
         injuries: [],
         possessionHolder: null,
+        powerPlayState: {
+            isActive: false,
+            teamOnPowerPlay: null,
+            timeLeft: 0,
+        },
     };
 
     let currentHomeTeam = JSON.parse(JSON.stringify(homeTeam));

@@ -237,6 +237,11 @@ export type GameState = {
   isPaused: boolean;
   injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
   possessionHolder: string | null;
+  powerPlayState: {
+    isActive: boolean;
+    teamOnPowerPlay: string | null; // team name
+    timeLeft: number;
+  };
 };
 
 export type GameDate = {
