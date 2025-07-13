@@ -90,6 +90,11 @@ const PlayerProfile = () => {
   const sortedRoles = isSkater ? Object.entries(player.roleSuitability).sort(([, a]: [string, number], [, b]: [string, number]) => b - a).slice(0, 5) : [];
   const currentSeasonLabel = `${currentDate.year}-${currentDate.year + 1}`;
 
+  let eligibilityText = player.eligibility;
+  if ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && player.yearsLeftInProgram !== undefined) {
+    eligibilityText += ` (${player.yearsLeftInProgram} years left)`;
+  }
+
   return (
     <div className="space-y-6">
       <Button variant="outline" onClick={() => navigate(-1)}>
@@ -104,7 +109,7 @@ const PlayerProfile = () => {
                 <div>
                     <CardTitle className="text-5xl font-extrabold leading-none tracking-tight">{player.name}</CardTitle>
                     <p className="text-4xl font-bold text-primary mt-2">#{player.jerseyNumber}</p>
-                    <p className="text-muted-foreground text-lg mt-1">{player.positions.join(", ")} | {player.age} years old | {player.nationality}</p>
+                    <p className="text-muted-foreground text-lg mt-1">{player.positions.join(", ")} | {player.age} years old | {player.nationality} | {eligibilityText}</p>
                 </div>
             </div>
             <div className="flex flex-col items-end gap-2">

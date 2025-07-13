@@ -14,7 +14,7 @@ export const AlumniTable = ({ alumni }: AlumniTableProps) => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>No Alumni Yet</CardTitle>
+          <CardTitle>No Departed Alumni Yet</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">As your players graduate or retire, they will appear here.</p>
@@ -26,7 +26,7 @@ export const AlumniTable = ({ alumni }: AlumniTableProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Alumni Players</CardTitle>
+        <CardTitle>Departed Alumni</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
