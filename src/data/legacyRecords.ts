@@ -7,14 +7,14 @@ export const legacyRecords: LegacyRecord[] = [
     teamName: "Edinburgh Eagles",
     category: "Points",
     type: "career",
-    value: 250,
+    value: 850, // Adjusted from 250 to a more realistic career points record
   },
   {
     playerName: "Fiona Campbell",
     teamName: "Edinburgh Eagles",
     category: "Goals",
     type: "season",
-    value: 45,
+    value: 68, // Adjusted from 45 to a more realistic single-season goals record
     season: "2010-2011"
   },
   // London Dragons
@@ -23,7 +23,7 @@ export const legacyRecords: LegacyRecord[] = [
     teamName: "London Dragons",
     category: "Assists",
     type: "career",
-    value: 180,
+    value: 520, // Adjusted from 180 to a more realistic career assists record
   },
   // Sheffield Bears
   {
@@ -31,7 +31,7 @@ export const legacyRecords: LegacyRecord[] = [
     teamName: "Sheffield Bears",
     category: "SavePercentage",
     type: "season",
-    value: 0.945,
+    value: 0.938, // Adjusted from 0.945 to a slightly more realistic elite save percentage
     season: "2014-2015"
   },
   // Nottingham Mavericks
@@ -40,7 +40,7 @@ export const legacyRecords: LegacyRecord[] = [
     teamName: "Nottingham Mavericks",
     category: "Shutouts",
     type: "career",
-    value: 22,
+    value: 35, // Adjusted from 22 to a more impressive career shutouts record
   },
   // Oxford University
   {
@@ -48,7 +48,7 @@ export const legacyRecords: LegacyRecord[] = [
     teamName: "Oxford University Blues",
     category: "PenaltyMinutes",
     type: "career",
-    value: 350,
+    value: 600, // Adjusted from 350 to a higher, but believable, career penalty minutes record
   },
   // Cambridge University
   {
@@ -56,7 +56,7 @@ export const legacyRecords: LegacyRecord[] = [
     teamName: "Cambridge Blues",
     category: "GAA",
     type: "season",
-    value: 1.88,
+    value: 1.75, // Adjusted from 1.88 (lower is better for GAA)
     season: "2018-2019"
   }
 ];
