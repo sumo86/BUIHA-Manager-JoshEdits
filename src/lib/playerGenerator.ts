@@ -30,7 +30,9 @@ const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowS
 
 // Helper function to get a random skater position with explicit type
 const getRandomSkaterPosition = (): Position => {
-    return getRandomItem(skaterPositions);
+    // Directly index the array to ensure Position type is strictly maintained
+    const randomIndex = Math.floor(Math.random() * skaterPositions.length);
+    return skaterPositions[randomIndex];
 };
 
 // New helper function to get a unique skater position
@@ -173,7 +175,7 @@ const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDi
     if (isSkater && attributes) {
         const skaterAttrs = attributes as SkaterAttributes;
         const offensiveSkill = (skaterAttrs.offensiveRead + skaterAttrs.shootingAccuracy + skaterAttrs.gettingOpen + skaterAttrs.passing) / 4;
-        const ppg = 0.1 + Math.pow((offensiveSkill - 1) / 19, 2) * (3.0 - 0.1);
+        const ppg = 0.1 + Math.pow((offensiveSkill - 1) / 19, 2) * (2.0 - 0.1);
         const points = Math.round(ppg * (0.8 + Math.random() * 0.4) * gamesPlayed);
         let goals = Math.round(points * (skaterAttrs.shootingAccuracy / (skaterAttrs.shootingAccuracy + skaterAttrs.passing + 0.1)));
         if (goals > points) goals = points;
@@ -198,11 +200,11 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   if (isSkater) {
     if (Math.random() > 0.5) { 
       const newPosition: Position = getUniqueSkaterPosition(positions);
-      positions = positions.concat(newPosition); // Use concat
+      positions = [...positions, newPosition]; // Reassign array using spread
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
       const anotherNewPosition: Position = getUniqueSkaterPosition(positions);
-      positions = positions.concat(anotherNewPosition); // Use concat
+      positions = [...positions, anotherNewPosition]; // Reassign array using spread
     }
   }
 

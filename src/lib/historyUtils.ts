@@ -25,10 +25,9 @@ export const processHistory = (teams: Team[], legacyRecords: LegacyRecord[]): Al
     team.roster.forEach(player => {
       const isSkater = !player.positions.includes('G');
       const categories = isSkater ? skaterCategories : goalieCategories;
-      const careerStats: { [key: string]: number } = { Goals: 0, Assists: 0, Points: 0, PenaltyMinutes: 0, Shutouts: 0, GamesPlayed: 0 };
-      let totalGoalsAgainst = 0;
-      let totalSaves = 0;
-      let totalShotsAgainst = 0;
+      
+      const careerSkaterStats: { [key: string]: number } = { Goals: 0, Assists: 0, Points: 0, PenaltyMinutes: 0 };
+      const careerGoalieStats = { Shutouts: 0, GamesPlayed: 0, totalGAAxGP: 0, totalSVxGP: 0 };
 
       player.history.forEach(season => {
         // Season records
@@ -52,28 +51,26 @@ export const processHistory = (teams: Team[], legacyRecords: LegacyRecord[]): Al
 
         // Aggregate career stats
         if (isSkater) {
-          careerStats.Goals += season.goals ?? 0;
-          careerStats.Assists += season.assists ?? 0;
-          careerStats.Points += season.points ?? 0;
-          careerStats.PenaltyMinutes += season.penaltyMinutes ?? 0;
-        } else {
-          careerStats.Shutouts += season.shutouts ?? 0;
+          careerSkaterStats.Goals += season.goals ?? 0;
+          careerSkaterStats.Assists += season.assists ?? 0;
+          careerSkaterStats.Points += season.points ?? 0;
+          careerSkaterStats.PenaltyMinutes += season.penaltyMinutes ?? 0;
+        } else { // Goalie
+          careerGoalieStats.Shutouts += season.shutouts ?? 0;
           if (season.goalsAgainstAverage && season.gamesPlayed > 0) {
-            // Approximate goals against from GAA
-            const goalsAgainstInSeason = (season.goalsAgainstAverage * season.gamesPlayed * 60) / 60; // Simplified
-            totalGoalsAgainst += goalsAgainstInSeason;
+            careerGoalieStats.totalGAAxGP += season.goalsAgainstAverage * season.gamesPlayed;
           }
           if (season.savePercentage && season.gamesPlayed > 0) {
-             // Cannot accurately reverse-engineer total saves/shots, so we'll use GAA and Shutouts for goalies
+            careerGoalieStats.totalSVxGP += season.savePercentage * season.gamesPlayed;
           }
+          careerGoalieStats.GamesPlayed += season.gamesPlayed;
         }
-        careerStats.GamesPlayed += season.gamesPlayed;
       });
 
-      // Career records
+      // Set career records from current players
       if (isSkater) {
         skaterCategories.forEach(category => {
-            const value = careerStats[category];
+            const value = careerSkaterStats[category];
             const currentRecord = allRecords.career[category];
             if (!currentRecord || value > currentRecord.value) {
                 allRecords.career[category] = {
@@ -83,21 +80,46 @@ export const processHistory = (teams: Team[], legacyRecords: LegacyRecord[]): Al
                 };
             }
         });
-      } else {
-        // For goalies, we'll just use shutouts for career as GAA/SV% aren't simple sums
-        const currentRecord = allRecords.career.Shutouts;
-        if (!currentRecord || careerStats.Shutouts > currentRecord.value) {
+      } else { // Goalie
+        // Require a minimum of 5 games for career goalie rate stats
+        if (careerGoalieStats.GamesPlayed > 5) {
+            const careerGAA = careerGoalieStats.totalGAAxGP / careerGoalieStats.GamesPlayed;
+            const careerSV = careerGoalieStats.totalSVxGP / careerGoalieStats.GamesPlayed;
+
+            // GAA (lower is better)
+            const currentGaaRecord = allRecords.career.GAA;
+            if (!currentGaaRecord || careerGAA < currentGaaRecord.value) {
+                allRecords.career.GAA = {
+                    playerName: player.name,
+                    teamName: team.name,
+                    value: careerGAA,
+                };
+            }
+
+            // Save Percentage (higher is better)
+            const currentSvRecord = allRecords.career.SavePercentage;
+            if (!currentSvRecord || careerSV > currentSvRecord.value) {
+                allRecords.career.SavePercentage = {
+                    playerName: player.name,
+                    teamName: team.name,
+                    value: careerSV,
+                };
+            }
+        }
+        // Shutouts (higher is better)
+        const currentShutoutRecord = allRecords.career.Shutouts;
+        if (!currentShutoutRecord || careerGoalieStats.Shutouts > currentShutoutRecord.value) {
             allRecords.career.Shutouts = {
                 playerName: player.name,
                 teamName: team.name,
-                value: careerStats.Shutouts,
+                value: careerGoalieStats.Shutouts,
             };
         }
       }
     });
   });
 
-  // Process legacy records
+  // Process legacy records, potentially overwriting current player records
   legacyRecords.forEach(record => {
     const recordOrgName = getOrganizationName(record.teamName);
     const isRelevant = teams.some(t => orgNameMap.get(t.name) === recordOrgName);
@@ -116,6 +138,20 @@ export const processHistory = (teams: Team[], legacyRecords: LegacyRecord[]): Al
           season: record.season,
         };
       }
+    }
+  });
+
+  // Sanity check: A career record for a skater cannot be lower than the best single-season record.
+  skaterCategories.forEach(category => {
+    const seasonRecord = allRecords.season[category];
+    const careerRecord = allRecords.career[category];
+
+    if (seasonRecord && careerRecord && seasonRecord.value > careerRecord.value) {
+        allRecords.career[category] = {
+            playerName: seasonRecord.playerName,
+            teamName: seasonRecord.teamName,
+            value: seasonRecord.value,
+        };
     }
   });
 
