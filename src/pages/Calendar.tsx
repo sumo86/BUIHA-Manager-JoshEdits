@@ -1,20 +1,37 @@
+import { useMemo } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { ScheduleEntry, NationalsPlayoffMatch } from '@/types';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 
+type UnifiedGame = (ScheduleEntry | NationalsPlayoffMatch) & { isNationals?: boolean };
+
 const Calendar = () => {
-  const { currentDate, schedule, userTeam } = useTeam();
+  const { currentDate, schedule, userTeam, nationalsData } = useTeam();
 
-  // Filter schedule for games involving the user's team
-  const userTeamGames = schedule.filter(game => 
-    userTeam && (game.homeTeam === userTeam.name || game.awayTeam === userTeam.name)
-  );
+  const allGames = useMemo(() => {
+    if (!userTeam) return [];
 
-  // Group games by month and week
-  const gamesByMonthAndWeek: { [key: string]: { [key: number]: typeof userTeamGames } } = {};
-  userTeamGames.forEach(game => {
+    const regularSeasonGames = schedule.filter(game => 
+      game.homeTeam === userTeam.name || game.awayTeam === userTeam.name
+    );
+
+    const currentYearNationals = nationalsData[currentDate.year] || {};
+    const nationalsGames: UnifiedGame[] = Object.values(currentYearNationals).flatMap(tournament => 
+        [...tournament.groupStageSchedule, ...tournament.playoffSchedule]
+    ).filter(game => 
+        (typeof game.homeTeam === 'string' && game.homeTeam === userTeam.name) || 
+        (typeof game.awayTeam === 'string' && game.awayTeam === userTeam.name)
+    ).map(g => ({ ...g, isNationals: true }));
+    
+    return [...regularSeasonGames, ...nationalsGames];
+  }, [schedule, nationalsData, userTeam, currentDate.year]);
+
+  const gamesByMonthAndWeek: { [key: string]: { [key: number]: UnifiedGame[] } } = {};
+  allGames.forEach(game => {
     const monthKey = game.date.month;
     const weekKey = game.date.week;
     if (!gamesByMonthAndWeek[monthKey]) {
@@ -44,19 +61,16 @@ const Calendar = () => {
                 <div className="grid grid-cols-2 gap-2">
                   {[1, 2, 3, 4].map(week => (
                     <div key={week} className={cn(
-                      "text-center p-2 rounded",
+                      "text-center p-2 rounded min-h-[60px]",
                       month === currentDate.month && week === currentDate.week ? 'bg-primary text-primary-foreground' : 'bg-muted/50'
                     )}>
                       Week {week}
                       {gamesByMonthAndWeek[month] && gamesByMonthAndWeek[month][week] && (
                         <div className="mt-1 text-xs space-y-1">
                           {gamesByMonthAndWeek[month][week].map(game => (
-                            <div key={game.id} className="bg-background p-1 rounded">
-                              {game.homeTeam === userTeam?.name ? (
-                                <>vs {game.awayTeam} (H)</>
-                              ) : (
-                                <>@ {game.homeTeam} (A)</>
-                              )}
+                            <div key={game.id} className="bg-background p-1 rounded text-foreground">
+                              {game.isNationals && <Badge variant="destructive" className="mr-1 h-4 px-1 text-xs">N</Badge>}
+                              {typeof game.homeTeam === 'object' ? `vs ${game.homeTeam.winnerOf}` : game.homeTeam === userTeam?.name ? `vs ${game.awayTeam}` : `@ ${game.homeTeam}`}
                               {game.status === 'completed' && game.result && (
                                 <span className="ml-1 font-bold">
                                   {game.homeTeam === userTeam?.name ? 
