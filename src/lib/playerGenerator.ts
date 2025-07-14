@@ -11,7 +11,7 @@ import { skaterAbilityRanges, goalieAbilityRanges } from "@/data/abilityRanges";
 const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
 const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
 
-const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const getRandomItem = <T extends readonly any[]>(arr: T): T[number] => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const getArchetypeForPosition = (position: Position): PlayerArchetype => {
@@ -72,21 +72,21 @@ const generateAttributesForAbility = (archetype: PlayerArchetype, targetAbility:
 
     visibleKeys.forEach(key => { attributes[key] = clamp(attributes[key]); });
 
-    let currentAbility = visibleKeys.reduce((sum, key) => sum + attributes[key], 0);
+    let currentAbility = visibleKeys.reduce((sum, key) => sum + (attributes as any)[key], 0);
     let diff = Math.round(targetAbility - currentAbility);
     
     let attempts = 0;
     while (diff !== 0 && attempts < 1000) {
         if (diff > 0) {
-            const keyToImprove = getRandomItem(visibleKeys.filter(k => attributes[k] < 20));
+            const keyToImprove = getRandomItem(visibleKeys.filter(k => (attributes as any)[k] < 20));
             if (keyToImprove) {
-                attributes[keyToImprove]++;
+                (attributes as any)[keyToImprove]++;
                 diff--;
             } else break;
         } else {
-            const keyToNerf = getRandomItem(visibleKeys.filter(k => attributes[k] > 1));
+            const keyToNerf = getRandomItem(visibleKeys.filter(k => (attributes as any)[k] > 1));
             if (keyToNerf) {
-                attributes[keyToNerf]--;
+                (attributes as any)[keyToNerf]--;
                 diff++;
             } else break;
         }
@@ -198,10 +198,10 @@ export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Positio
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      positions.push(getUniqueSkaterPosition(positions) as Position);
+      positions.push(getUniqueSkaterPosition(positions));
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      positions.push(getUniqueSkaterPosition(positions) as Position);
+      positions.push(getUniqueSkaterPosition(positions));
     }
   }
 
