@@ -199,6 +199,7 @@ export type Team = {
   wins: number;
   losses: number;
   draws: number;
+  points: number;
   goalsFor: number;
   goalsAgainst: number;
   lineup: Lineup;
@@ -332,4 +333,21 @@ export type NationalsTournament = {
   status: 'pending' | 'group-stage' | 'silver-playoffs' | 'gold-playoffs' | 'completed';
   winner?: string;
   currentRound: number | 'Quarter-Final' | 'Semi-Final' | 'Final';
+};
+
+// History Types
+export type TeamSeasonHistory = {
+  teamName: string;
+  leagueDivision: string;
+  nationalsDivision: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+};
+
+export type SeasonHistory = {
+  [season: string]: TeamSeasonHistory[];
 };

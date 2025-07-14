@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, SeasonHistory, TeamSeasonHistory } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
 import { generateRecruits, generatePlayer, calculateStarRating } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
@@ -65,6 +65,7 @@ interface TeamContextType {
     alumni: Player[];
     playNationalsRound: (division: string, userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }) => void;
     autoSimulateUserNationalsGame: (division: string, gameId: string) => void;
+    seasonHistory: SeasonHistory;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -97,6 +98,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => {
         localStorage.setItem('alumni', JSON.stringify(alumni));
     }, [alumni]);
+
+    const [seasonHistory, setSeasonHistory] = useState<SeasonHistory>(() => {
+        try {
+            const saved = localStorage.getItem('seasonHistory');
+            return saved ? JSON.parse(saved) : {};
+        } catch (error) { return {}; }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('seasonHistory', JSON.stringify(seasonHistory));
+    }, [seasonHistory]);
 
     const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
     const [managedOrganization, setManagedOrganization] = useState<string | null>(() => localStorage.getItem('managedOrganization') || null);
@@ -654,6 +666,22 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 if (month === "July" && months[nextMonthIndex] === "August") {
                     year += 1;
                     toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
+                    
+                    // Archive season standings
+                    const seasonToArchive = `${prevDate.year}-${prevDate.year + 1}`;
+                    const standingsForYear: TeamSeasonHistory[] = tempTeams.map(t => ({
+                        teamName: t.name,
+                        leagueDivision: t.leagueDivision,
+                        nationalsDivision: t.nationalsDivision,
+                        wins: t.wins,
+                        losses: t.losses,
+                        draws: t.draws,
+                        points: t.points,
+                        goalsFor: t.goalsFor,
+                        goalsAgainst: t.goalsAgainst,
+                    }));
+                    setSeasonHistory(prev => ({ ...prev, [seasonToArchive]: standingsForYear }));
+
                     tempSeasonRecords = {}; // Reset season records
                     
                     const newAlumni: Player[] = [];
@@ -710,6 +738,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             } else { // New Degree
                                 player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
                                 player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
+                                player.isContinuingEducation = true;
                                 remainingPlayers.push(player);
                                 toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
                             }
@@ -780,7 +809,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             }
                             return player;
                         });
-                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
+                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 };
                     });
                 }
                 month = months[nextMonthIndex];
@@ -1388,7 +1417,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             managedOrganization, isManagingOrg, managedTeams, selectOrganization, setActiveTeam,
             schedule, gameForCurrentWeek, nationalsData,
             markGameAsCompleted, seasonRecords, careerRecords, alumni,
-            playNationalsRound, autoSimulateUserNationalsGame
+            playNationalsRound, autoSimulateUserNationalsGame,
+            seasonHistory
         }}>
             {children}
         </TeamContext.Provider>
