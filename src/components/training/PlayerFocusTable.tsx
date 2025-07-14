@@ -43,7 +43,7 @@ export const PlayerFocusTable = ({ players, onFocusChange }: PlayerFocusTablePro
                 </TableCell>
                 <TableCell>
                   <Select
-                    value={player.trainingFocus || "None"}
+                    value={(player as Player).trainingFocus || "None"}
                     onValueChange={(value) => onFocusChange(player.id, value === "None" ? null : value as TrainingFocus)}
                   >
                     <SelectTrigger>

@@ -3,7 +3,7 @@ import { archetypes } from "@/data/archetypes";
 import { roles } from "@/data/roles";
 import { teams as allTeamsData } from "@/data/teams";
 import { getRandomNationality } from "@/data/nationalityDistributions";
-import { getRandomNameForNationality } from "@/data/names";
+import { getRandomNameForNationality } from "@/data/names"; // Fixed import syntax
 import { getTierStats, divisionTierStats } from "./leagueUtils";
 import { starRatingDistribution } from "@/data/starRatingDistribution";
 import { skaterAbilityRanges, goalieAbilityRanges } from "@/data/abilityRanges";
@@ -199,10 +199,10 @@ export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Positio
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      positions.push(getUniqueSkaterPosition(positions));
+      positions.push(getUniqueSkaterPosition(positions) as Position); // Explicit cast
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      positions.push(getUniqueSkaterPosition(positions));
+      positions.push(getUniqueSkaterPosition(positions) as Position); // Explicit cast
     }
   }
 
@@ -255,7 +255,7 @@ export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Positio
   const nationality = getRandomNationality(teamName);
   const name = getRandomNameForNationality(nationality, gender);
 
-  return { id: crypto.randomUUID(), jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, yearsLeftInProgram, history, trainingFocus: null, activeInstructions: [], currentStats: [] };
+  return { id: crypto.randomUUID(), jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, yearsLeftInProgram, history, trainingFocus: null, activeInstructions: [], currentStats: [] } as Player; // Explicitly cast to Player
 };
 
 const assignInitialCaptaincy = (roster: Player[]): Player[] => {

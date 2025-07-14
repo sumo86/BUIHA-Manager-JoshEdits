@@ -4,31 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ScheduleEntry, NationalsPlayoffMatch } from '@/types';
+import { Link } from 'react-router-dom';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 
 type UnifiedGame = (ScheduleEntry | NationalsPlayoffMatch) & { isNationals?: boolean };
 
 const Calendar = () => {
-  const { currentDate, schedule, userTeam, nationalsData } = useTeam();
+  const { currentDate, schedule, userTeam } = useTeam();
 
   const allGames = useMemo(() => {
     if (!userTeam) return [];
-
-    const regularSeasonGames = schedule.filter(game => 
+    return schedule.filter(game => 
       game.homeTeam === userTeam.name || game.awayTeam === userTeam.name
     );
-
-    const currentYearNationals = nationalsData[currentDate.year] || {};
-    const nationalsGames: UnifiedGame[] = Object.values(currentYearNationals).flatMap(tournament => 
-        [...tournament.groupStageSchedule, ...tournament.playoffSchedule]
-    ).filter(game => 
-        (typeof game.homeTeam === 'string' && game.homeTeam === userTeam.name) || 
-        (typeof game.awayTeam === 'string' && game.awayTeam === userTeam.name)
-    ).map(g => ({ ...g, isNationals: true }));
-    
-    return [...regularSeasonGames, ...nationalsGames];
-  }, [schedule, nationalsData, userTeam, currentDate.year]);
+  }, [schedule, userTeam]);
 
   const gamesByMonthAndWeek: { [key: string]: { [key: number]: UnifiedGame[] } } = {};
   allGames.forEach(game => {
@@ -65,6 +55,11 @@ const Calendar = () => {
                       month === currentDate.month && week === currentDate.week ? 'bg-primary text-primary-foreground' : 'bg-muted/50'
                     )}>
                       Week {week}
+                      {month === 'May' && (
+                        <Link to="/nationals">
+                          <Badge variant="destructive" className="mt-1 w-full">Nationals</Badge>
+                        </Link>
+                      )}
                       {gamesByMonthAndWeek[month] && gamesByMonthAndWeek[month][week] && (
                         <div className="mt-1 text-xs space-y-1">
                           {gamesByMonthAndWeek[month][week].map(game => (

@@ -5,10 +5,16 @@ import { Swords } from 'lucide-react';
 import NationalsGroupCard from '@/components/nationals/NationalsGroupCard';
 import { NationalsTournament } from '@/types';
 import NationalsSchedule from '@/components/nationals/NationalsSchedule';
+import NationalsPlayoffTree from '@/components/nationals/NationalsPlayoffTree';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { validateLineup } from '@/lib/lineupValidation';
 
 const NationalsPage = () => {
-  const { nationalsData, currentDate } = useTeam();
+  const { nationalsData, currentDate, userTeam, teams, playNationalsRound, autoSimulateUserNationalsGame } = useTeam();
   const [selectedDivision, setSelectedDivision] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const currentYearTournaments = useMemo(() => {
     return nationalsData[currentDate.year] || {};
@@ -29,6 +35,38 @@ const NationalsPage = () => {
     return null;
   }, [selectedDivision, currentYearTournaments, availableDivisions]);
 
+  const handlePlayGame = (gameId: string) => {
+    if (!userTeam) return;
+    const validationError = validateLineup(userTeam);
+    if (validationError) {
+      toast.error("Lineup Error", { description: validationError });
+      return;
+    }
+    navigate(`/game/nationals/${tournamentToDisplay.division}/${gameId}`);
+  };
+
+  const handleSimulateUserGame = (gameId: string) => {
+    if (!tournamentToDisplay) return;
+    autoSimulateUserNationalsGame(tournamentToDisplay.division, gameId);
+  };
+
+  const handleSimulateRound = () => {
+    if (!tournamentToDisplay) return;
+    playNationalsRound(tournamentToDisplay.division);
+  };
+
+  const userHasGameThisRound = useMemo(() => {
+    if (!tournamentToDisplay || !userTeam) return false;
+    const schedule = tournamentToDisplay.status === 'playoffs' ? tournamentToDisplay.playoffSchedule : tournamentToDisplay.groupStageSchedule;
+    const currentRound = tournamentToDisplay.currentRound;
+    
+    return schedule.some(game => 
+        game.round === currentRound &&
+        game.status === 'scheduled' &&
+        ((typeof game.homeTeam === 'string' && game.homeTeam === userTeam.name) || (typeof game.awayTeam === 'string' && game.awayTeam === userTeam.name))
+    );
+  }, [tournamentToDisplay, userTeam]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -43,7 +81,7 @@ const NationalsPage = () => {
 
       {availableDivisions.length > 0 ? (
         <>
-          <div>
+          <div className="flex justify-between items-center">
             <Select value={selectedDivision || ''} onValueChange={setSelectedDivision}>
               <SelectTrigger className="w-[280px]">
                 <SelectValue placeholder="Select a division" />
@@ -56,15 +94,33 @@ const NationalsPage = () => {
                 ))}
               </SelectContent>
             </Select>
+            {tournamentToDisplay && tournamentToDisplay.status !== 'completed' && !userHasGameThisRound && (
+                <Button onClick={handleSimulateRound}>Simulate Next Round</Button>
+            )}
           </div>
 
           {tournamentToDisplay ? (
-            <div className="grid gap-6 md:grid-cols-2">
-              {tournamentToDisplay.groups.map(group => (
-                <NationalsGroupCard key={group.name} group={group} />
-              ))}
-              <NationalsSchedule tournament={tournamentToDisplay} />
-            </div>
+            tournamentToDisplay.status === 'playoffs' || tournamentToDisplay.status === 'completed' ? (
+                <NationalsPlayoffTree 
+                    playoffSchedule={tournamentToDisplay.playoffSchedule}
+                    teams={teams}
+                    userTeamName={userTeam?.name}
+                    onPlayGame={handlePlayGame}
+                    onSimulateGame={handleSimulateUserGame}
+                />
+            ) : (
+                <div className="grid gap-6 md:grid-cols-2">
+                    {tournamentToDisplay.groups.map(group => (
+                        <NationalsGroupCard key={group.name} group={group} />
+                    ))}
+                    <NationalsSchedule 
+                        tournament={tournamentToDisplay} 
+                        onPlayGame={handlePlayGame}
+                        onSimulateGame={handleSimulateUserGame}
+                        userTeamName={userTeam?.name}
+                    />
+                </div>
+            )
           ) : (
              <p>Select a division to view its tournament details.</p>
           )}

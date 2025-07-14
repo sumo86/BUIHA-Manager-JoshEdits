@@ -45,7 +45,7 @@ const PlayGame = () => {
             <Alert>
               <CalendarIcon className="h-4 w-4" />
               <AlertTitle>
-                {gameForCurrentWeek.isNationals ? 'Nationals Match' : 'League Match'} vs {gameForCurrentWeek.opponent}
+                League Match vs {gameForCurrentWeek.opponent}
               </AlertTitle>
               <AlertDescription className="flex justify-between items-center">
                 <p>

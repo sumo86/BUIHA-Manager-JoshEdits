@@ -1,7 +1,5 @@
 import { Team, NationalsGroup, NationalsTournament, ScheduleEntry, GameDate, NationalsPlayoffMatch, NationalsStanding } from '@/types';
 
-const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
-
 // Fisher-Yates shuffle algorithm
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
@@ -40,46 +38,38 @@ export const generateNationalsGroups = (allTeamsInDivision: Team[]): NationalsGr
   return groups;
 };
 
-const advanceDate = (date: GameDate): GameDate => {
-    let { year, month, week } = date;
-    week++;
-    if (week > 4) {
-        week = 1;
-        const monthIndex = months.indexOf(month);
-        let nextMonthIndex = (monthIndex + 1) % months.length;
-        month = months[nextMonthIndex];
-        if (month === 'August') {
-            year++;
-        }
-    }
-    return { year, month, week };
-};
-
 export const generateGroupStageSchedule = (groups: NationalsGroup[], startDate: GameDate): ScheduleEntry[] => {
     const schedule: ScheduleEntry[] = [];
-    const allMatches: { homeTeam: string, awayTeam: string }[] = [];
-
+    
     groups.forEach(group => {
-        const teams = group.teams;
-        for (let i = 0; i < teams.length; i++) {
-            for (let j = i + 1; j < teams.length; j++) {
-                allMatches.push({ homeTeam: teams[i], awayTeam: teams[j] });
+        const teams = [...group.teams];
+        if (teams.length % 2 !== 0) {
+            teams.push("BYE");
+        }
+        const numRounds = teams.length - 1;
+        const half = teams.length / 2;
+
+        for (let round = 0; round < numRounds; round++) {
+            for (let i = 0; i < half; i++) {
+                const home = teams[i];
+                const away = teams[teams.length - 1 - i];
+                if (home !== "BYE" && away !== "BYE") {
+                    schedule.push({
+                        id: crypto.randomUUID(),
+                        homeTeam: home,
+                        awayTeam: away,
+                        date: { ...startDate },
+                        status: 'scheduled',
+                        round: round + 1,
+                    });
+                }
+            }
+            // Rotate teams
+            const lastTeam = teams.pop();
+            if (lastTeam) {
+                teams.splice(1, 0, lastTeam);
             }
         }
-    });
-
-    const shuffledMatches = shuffleArray(allMatches);
-    let currentDate = { ...startDate };
-
-    shuffledMatches.forEach((match) => {
-        schedule.push({
-            id: crypto.randomUUID(),
-            homeTeam: match.homeTeam,
-            awayTeam: match.awayTeam,
-            date: { ...currentDate },
-            status: 'scheduled',
-        });
-        currentDate = advanceDate(currentDate);
     });
 
     return schedule;
@@ -95,7 +85,7 @@ const sortStandings = (standings: NationalsStanding[]): NationalsStanding[] => {
     });
 };
 
-export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate): NationalsPlayoffMatch[] => {
+export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate, startRound: number): NationalsPlayoffMatch[] => {
     if (groups.length < 2 || groups[0].teams.length < 2 || groups[1].teams.length < 2) {
         return []; // Not enough teams for playoffs
     }
@@ -111,17 +101,13 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
     const semiFinal1Id = crypto.randomUUID();
     const semiFinal2Id = crypto.randomUUID();
     
-    let currentDate = { ...date };
-
     const semiFinals: NationalsPlayoffMatch[] = [
-        { id: semiFinal1Id, round: 'Semi-Final', bracket: 'Gold', homeTeam: a1, awayTeam: b2, status: 'scheduled', date: currentDate },
-        { id: semiFinal2Id, round: 'Semi-Final', bracket: 'Gold', homeTeam: b1, awayTeam: a2, status: 'scheduled', date: currentDate },
+        { id: semiFinal1Id, round: 'Semi-Final', bracket: 'Gold', homeTeam: a1, awayTeam: b2, status: 'scheduled', date },
+        { id: semiFinal2Id, round: 'Semi-Final', bracket: 'Gold', homeTeam: b1, awayTeam: a2, status: 'scheduled', date },
     ];
 
-    currentDate = advanceDate(currentDate);
-
     const finals: NationalsPlayoffMatch[] = [
-        { id: crypto.randomUUID(), round: 'Final', bracket: 'Gold', homeTeam: { winnerOf: semiFinal1Id }, awayTeam: { winnerOf: semiFinal2Id }, status: 'scheduled', date: currentDate },
+        { id: crypto.randomUUID(), round: 'Final', bracket: 'Gold', homeTeam: { winnerOf: semiFinal1Id }, awayTeam: { winnerOf: semiFinal2Id }, status: 'scheduled', date },
     ];
 
     return [...semiFinals, ...finals];
@@ -139,5 +125,6 @@ export const createNationalsTournament = (division: string, teams: Team[], year:
         groupStageSchedule,
         playoffSchedule: [],
         status: 'group-stage',
+        currentRound: 1,
     };
 };

@@ -136,7 +136,6 @@ export type Player = {
   captaincy: 'C' | 'A' | null;
   yearsLeftInProgram?: number;
   history: PlayerSeasonStats[];
-  trainingFocus: TrainingFocus;
   currentStats: PlayerSeasonStats[];
   activeInstructions: ActiveInstruction[];
   source?: 'Local' | 'International' | 'Transfer';
@@ -247,6 +246,7 @@ export type ScheduleEntry = {
   date: GameDate;
   status: 'scheduled' | 'completed';
   result?: { homeScore: number; awayScore: number };
+  round?: number;
 };
 
 export type DevelopmentLog = {
@@ -311,14 +311,14 @@ export type NationalsGroup = {
 
 export type NationalsPlayoffMatch = {
   id: string;
-  round: 'Quarter-Final' | 'Semi-Final' | 'Final';
+  round: 'Semi-Final' | 'Final';
   bracket: 'Gold' | 'Silver';
   homeTeam: string | { winnerOf: string };
   awayTeam: string | { winnerOf: string };
   winner?: string;
   result?: { homeScore: number; awayScore: number };
   status: 'scheduled' | 'completed';
-  date: GameDate; // Added date property
+  date: GameDate;
 };
 
 export type NationalsTournament = {
@@ -329,4 +329,5 @@ export type NationalsTournament = {
   playoffSchedule: NationalsPlayoffMatch[];
   status: 'pending' | 'group-stage' | 'playoffs' | 'completed';
   winner?: string;
+  currentRound: number;
 };
