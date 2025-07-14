@@ -20,8 +20,8 @@ const getParticipatingPlayerIds = (team: Team): Set<string> => {
     return ids;
 };
 
-const findOrCreateStatLine = (player: Player, team: Team, season: string): PlayerSeasonStats => {
-    let statLine = player.currentStats.find(s => s.team === team.name && s.season === season);
+const findOrCreateStatLine = (player: Player, team: Team, season: string, isNationals: boolean): PlayerSeasonStats => {
+    let statLine = player.currentStats.find(s => s.team === team.name && s.season === season && !!s.isNationals === isNationals);
     if (!statLine) {
         statLine = {
             season,
@@ -38,6 +38,7 @@ const findOrCreateStatLine = (player: Player, team: Team, season: string): Playe
             goalsAgainstAverage: 0,
             savePercentage: 0,
             shutouts: 0,
+            isNationals: isNationals,
         };
         player.currentStats.push(statLine);
     }
@@ -67,7 +68,7 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
         updatedOpponentTeam.goalsAgainst += gameState.userScore;
     }
 
-    const processPlayerStats = (team: Team, opponent: Team, teamScore: number, opponentScore: number, teamShots: number) => {
+    const processPlayerStats = (team: Team, opponent: Team, teamScore: number, opponentScore: number, teamShots: number, isNationals: boolean) => {
         const participatingIds = getParticipatingPlayerIds(team);
         const allPlayersMap = new Map([...updatedUserTeam.roster, ...updatedOpponentTeam.roster].map(p => [p.name, p]));
 
@@ -76,7 +77,7 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
                 const scorerName = event.description.split(' scores.')[0].split('GOAL! ')[1];
                 const scorer = allPlayersMap.get(scorerName);
                 if (scorer && participatingIds.has(scorer.id)) {
-                    const stats = findOrCreateStatLine(scorer, team, season);
+                    const stats = findOrCreateStatLine(scorer, team, season, isNationals);
                     stats.goals = (stats.goals || 0) + 1;
                     stats.points = (stats.points || 0) + 1;
                 }
@@ -87,7 +88,7 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
                     assisterNames.forEach(name => {
                         const assister = allPlayersMap.get(name);
                         if (assister && participatingIds.has(assister.id)) {
-                            const stats = findOrCreateStatLine(assister, team, season);
+                            const stats = findOrCreateStatLine(assister, team, season, isNationals);
                             stats.assists = (stats.assists || 0) + 1;
                             stats.points = (stats.points || 0) + 1;
                         }
@@ -98,7 +99,7 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
 
         team.roster.forEach((player: Player) => {
             if (participatingIds.has(player.id)) {
-                const stats = findOrCreateStatLine(player, team, season);
+                const stats = findOrCreateStatLine(player, team, season, isNationals);
                 stats.gamesPlayed += 1;
 
                 if (player.id === team.lineup.goalies.starter) {
@@ -123,14 +124,14 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
         if (starterInjured && team.lineup.goalies.backup) {
             const backupGoalie = team.roster.find(p => p.id === team.lineup.goalies.backup);
             if (backupGoalie) {
-                const stats = findOrCreateStatLine(backupGoalie, team, season);
+                const stats = findOrCreateStatLine(backupGoalie, team, season, isNationals);
                 stats.gamesPlayed += 1;
             }
         }
     };
 
-    processPlayerStats(updatedUserTeam, updatedOpponentTeam, gameState.userScore, gameState.opponentScore, gameState.opponentShots);
-    processPlayerStats(updatedOpponentTeam, updatedUserTeam, gameState.opponentScore, gameState.userScore, gameState.userShots);
+    processPlayerStats(updatedUserTeam, updatedOpponentTeam, gameState.userScore, gameState.opponentScore, gameState.opponentShots, isNationalsGame);
+    processPlayerStats(updatedOpponentTeam, updatedUserTeam, gameState.opponentScore, gameState.userScore, gameState.userShots, isNationalsGame);
 
     gameState.injuries.forEach(injuryInfo => {
         const teamToUpdate = injuryInfo.teamName === userTeam.name ? updatedUserTeam : updatedOpponentTeam;

@@ -28,7 +28,11 @@ const PlayGame = () => {
       return;
     }
 
-    navigate(`/game/${encodeURIComponent(opponentName)}`);
+    if (gameForCurrentWeek?.isNationals && userTeam.nationalsDivision) {
+      navigate(`/game/nationals/${userTeam.nationalsDivision}/${gameForCurrentWeek.id}`);
+    } else {
+      navigate(`/game/${encodeURIComponent(opponentName)}`);
+    }
   };
 
   return (
@@ -45,7 +49,7 @@ const PlayGame = () => {
             <Alert>
               <CalendarIcon className="h-4 w-4" />
               <AlertTitle>
-                League Match vs {gameForCurrentWeek.opponent}
+                {gameForCurrentWeek.isNationals ? 'Nationals Match' : 'League Match'} vs {gameForCurrentWeek.opponent}
               </AlertTitle>
               <AlertDescription className="flex justify-between items-center">
                 <p>
@@ -90,7 +94,7 @@ const PlayGame = () => {
                     <TableCell>{team.leagueDivision}</TableCell>
                     <TableCell>{team.nationalsDivision}</TableCell>
                     <TableCell className="text-right">
-                      <Button onClick={() => handlePlayGame(team.name)}>Play Friendly</Button>
+                      <Button onClick={() => navigate(`/game/${encodeURIComponent(team.name)}`)}>Play Friendly</Button>
                     </TableCell>
                   </TableRow>
                 ))}
