@@ -3,29 +3,27 @@ import { useTeam } from '@/context/TeamContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Player } from '@/types';
+import { Player, PlayerSeasonStats } from '@/types';
 import { ColumnDef, flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable, SortingFn } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getAggregatedCurrentStats } from '@/lib/statsUtils';
 
 interface PlayerWithTeam extends Player {
     teamName: string;
+    aggregatedStats: PlayerSeasonStats;
 }
 
 const gaaSorting: SortingFn<PlayerWithTeam> = (rowA, rowB) => {
-    const statsA = rowA.original.currentStats;
-    const statsB = rowB.original.currentStats;
-    const gaaA = statsA.gamesPlayed > 0 ? statsA.goalsAgainst / statsA.gamesPlayed : Infinity;
-    const gaaB = statsB.gamesPlayed > 0 ? statsB.goalsAgainst / statsB.gamesPlayed : Infinity;
+    const gaaA = rowA.original.aggregatedStats.goalsAgainstAverage || Infinity;
+    const gaaB = rowB.original.aggregatedStats.goalsAgainstAverage || Infinity;
     return gaaA < gaaB ? -1 : 1;
 };
 
 const svpSorting: SortingFn<PlayerWithTeam> = (rowA, rowB) => {
-    const statsA = rowA.original.currentStats;
-    const statsB = rowB.original.currentStats;
-    const svpA = statsA.shotsAgainst > 0 ? statsA.saves / statsA.shotsAgainst : 0;
-    const svpB = statsB.shotsAgainst > 0 ? statsB.saves / statsB.shotsAgainst : 0;
+    const svpA = rowA.original.aggregatedStats.savePercentage || 0;
+    const svpB = rowB.original.aggregatedStats.savePercentage || 0;
     return svpA < svpB ? -1 : 1;
 };
 
@@ -43,7 +41,11 @@ const SeasonOverview = () => {
     const divisionPlayers = useMemo(() => 
         teams
             .filter(t => t.leagueDivision === userTeam.leagueDivision)
-            .flatMap(team => team.roster.map(player => ({ ...player, teamName: team.name }))),
+            .flatMap(team => team.roster.map(player => ({ 
+                ...player, 
+                teamName: team.name,
+                aggregatedStats: getAggregatedCurrentStats(player)
+            }))),
     [teams, userTeam.leagueDivision]);
 
     const skaters = useMemo(() => divisionPlayers.filter(p => !p.positions.includes('G')), [divisionPlayers]);
@@ -52,19 +54,19 @@ const SeasonOverview = () => {
     const skaterColumns = useMemo<ColumnDef<PlayerWithTeam>[]>(() => [
         { accessorKey: 'name', header: 'Name' },
         { accessorKey: 'teamName', header: 'Team' },
-        { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => (
+        { accessorKey: 'aggregatedStats.gamesPlayed', header: ({ column }) => (
             <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
         )},
-        { accessorKey: 'currentStats.goals', header: ({ column }) => (
+        { accessorKey: 'aggregatedStats.goals', header: ({ column }) => (
             <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>G<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
         )},
-        { accessorKey: 'currentStats.assists', header: ({ column }) => (
+        { accessorKey: 'aggregatedStats.assists', header: ({ column }) => (
             <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>A<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
         )},
-        { accessorKey: 'currentStats.points', header: ({ column }) => (
+        { accessorKey: 'aggregatedStats.points', header: ({ column }) => (
             <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>P<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
         )},
-        { accessorKey: 'currentStats.penaltyMinutes', header: ({ column }) => (
+        { accessorKey: 'aggregatedStats.penaltyMinutes', header: ({ column }) => (
             <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>PIM<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
         )},
         {
@@ -80,35 +82,24 @@ const SeasonOverview = () => {
     const goalieColumns = useMemo<ColumnDef<PlayerWithTeam>[]>(() => [
         { accessorKey: 'name', header: 'Name' },
         { accessorKey: 'teamName', header: 'Team' },
-        { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => (
+        { accessorKey: 'aggregatedStats.gamesPlayed', header: ({ column }) => (
             <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
-        )},
-        { accessorKey: 'currentStats.wins', header: ({ column }) => (
-            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>W<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
-        )},
-        { accessorKey: 'currentStats.losses', header: ({ column }) => (
-            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>L<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
         )},
         {
             id: 'gaa',
             header: ({ column }) => (<Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GAA<ArrowUpDown className="ml-2 h-4 w-4" /></Button>),
-            cell: ({ row }) => {
-                const { gamesPlayed, goalsAgainst } = row.original.currentStats;
-                if (gamesPlayed === 0) return '0.00';
-                return (goalsAgainst / gamesPlayed).toFixed(2);
-            },
+            cell: ({ row }) => row.original.aggregatedStats.goalsAgainstAverage?.toFixed(2) || '0.00',
             sortingFn: gaaSorting,
         },
         {
             id: 'svp',
             header: ({ column }) => (<Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>SV%<ArrowUpDown className="ml-2 h-4 w-4" /></Button>),
-            cell: ({ row }) => {
-                const { saves, shotsAgainst } = row.original.currentStats;
-                if (shotsAgainst === 0) return '.000';
-                return (saves / shotsAgainst).toFixed(3);
-            },
+            cell: ({ row }) => row.original.aggregatedStats.savePercentage?.toFixed(3) || '.000',
             sortingFn: svpSorting,
         },
+        { accessorKey: 'aggregatedStats.shutouts', header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>SO<ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+        )},
         {
             id: 'actions',
             cell: ({ row }) => (

@@ -88,7 +88,6 @@ const PlayerProfile = () => {
   const goalieAttrs: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
   const allUsedJerseyNumbers = userTeam.roster.map(p => p.jerseyNumber);
   const sortedRoles = isSkater ? Object.entries(player.roleSuitability).sort(([, a]: [string, number], [, b]: [string, number]) => b - a).slice(0, 5) : [];
-  const currentSeasonLabel = `${currentDate.year}-${currentDate.year + 1}`;
 
   return (
     <div className="space-y-6">
@@ -141,9 +140,6 @@ const PlayerProfile = () => {
                 isSkater={isSkater} 
                 teams={teams}
                 currentStats={player.currentStats}
-                currentSeason={currentSeasonLabel}
-                currentTeamName={team.name}
-                currentLeagueName={team.leagueDivision}
             />
         </CardContent>
       </Card>

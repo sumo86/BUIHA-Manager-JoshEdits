@@ -105,27 +105,12 @@ export type PlayerSeasonStats = {
   points?: number;
   penaltyMinutes?: number;
   captaincy?: 'C' | 'A' | null;
+  goalsAgainst?: number;
+  shotsAgainst?: number;
+  saves?: number;
   goalsAgainstAverage?: number;
   savePercentage?: number;
   shutouts?: number;
-};
-
-export type CurrentSeasonStats = {
-  gamesPlayed: number;
-  goals: number;
-  assists: number;
-  points: number;
-  penaltyMinutes: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  goalsAgainst: number;
-  goalsFor: number; // Added this line
-  shotsAgainst: number;
-  saves: number;
-  savePercentage: number;
-  goalsAgainstAverage: number;
-  shutouts: number;
 };
 
 export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
@@ -152,7 +137,7 @@ export type Player = {
   yearsLeftInProgram?: number;
   history: PlayerSeasonStats[];
   trainingFocus: TrainingFocus;
-  currentStats: CurrentSeasonStats;
+  currentStats: PlayerSeasonStats[];
   activeInstructions: ActiveInstruction[];
   source?: 'Local' | 'International' | 'Transfer';
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';

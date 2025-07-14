@@ -1,7 +1,7 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, CurrentSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
-import { generateRecruits } from '@/lib/playerGenerator';
+import { generateRecruits, generatePlayer } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
@@ -347,6 +347,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         const currentYear = currentDate.year;
 
+        if (currentDate.month === 'May' && currentDate.week === 4) {
+            const allTournamentsCompleted = Object.values(tempNationalsData[currentYear] || {}).every(t => t.status === 'completed');
+            if (!allTournamentsCompleted) {
+                toast.error("Nationals In Progress", { description: "You must complete the National Championships before advancing the week." });
+                return;
+            }
+        }
+
         const updateGameRecords = (homeTeam: Team, awayTeam: Team) => {
             const allPlayers = [...homeTeam.roster, ...awayTeam.roster];
             const teamsMap = { [homeTeam.name]: homeTeam, [awayTeam.name]: awayTeam };
@@ -359,11 +367,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const season = `${currentDate.year}-${currentDate.year + 1}`;
         
                 if (isSkater) {
-                    const stats = player.currentStats;
-                    if ((stats.goals || 0) > (tempSeasonRecords['Goals']?.value || 0)) tempSeasonRecords['Goals'] = { playerName: player.name, teamName: team.name, value: stats.goals, season };
-                    if ((stats.assists || 0) > (tempSeasonRecords['Assists']?.value || 0)) tempSeasonRecords['Assists'] = { playerName: player.name, teamName: team.name, value: stats.assists, season };
-                    if ((stats.points || 0) > (tempSeasonRecords['Points']?.value || 0)) tempSeasonRecords['Points'] = { playerName: player.name, teamName: team.name, value: stats.points, season };
-                    if ((stats.penaltyMinutes || 0) > (tempSeasonRecords['PenaltyMinutes']?.value || 0)) tempSeasonRecords['PenaltyMinutes'] = { playerName: player.name, teamName: team.name, value: stats.penaltyMinutes, season };
+                    const stats = player.currentStats[player.currentStats.length - 1];
+                    if (!stats) return;
+                    if ((stats.goals || 0) > (tempSeasonRecords['Goals']?.value || 0)) tempSeasonRecords['Goals'] = { playerName: player.name, teamName: team.name, value: stats.goals || 0, season };
+                    if ((stats.assists || 0) > (tempSeasonRecords['Assists']?.value || 0)) tempSeasonRecords['Assists'] = { playerName: player.name, teamName: team.name, value: stats.assists || 0, season };
+                    if ((stats.points || 0) > (tempSeasonRecords['Points']?.value || 0)) tempSeasonRecords['Points'] = { playerName: player.name, teamName: team.name, value: stats.points || 0, season };
+                    if ((stats.penaltyMinutes || 0) > (tempSeasonRecords['PenaltyMinutes']?.value || 0)) tempSeasonRecords['PenaltyMinutes'] = { playerName: player.name, teamName: team.name, value: stats.penaltyMinutes || 0, season };
                     
                     const careerGoals = (player.history?.reduce((acc, s) => acc + (s.goals || 0), 0) || 0) + (stats.goals || 0);
                     if (careerGoals > (tempCareerRecords['Goals']?.value || 0)) tempCareerRecords['Goals'] = { playerName: player.name, teamName: team.name, value: careerGoals };
@@ -375,12 +384,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (careerPims > (tempCareerRecords['PenaltyMinutes']?.value || 0)) tempCareerRecords['PenaltyMinutes'] = { playerName: player.name, teamName: team.name, value: careerPims };
 
                 } else { // Goalie
-                    const stats = player.currentStats;
+                    const stats = player.currentStats[player.currentStats.length - 1];
+                    if (!stats) return;
                     if (stats.gamesPlayed >= 5) { // Goalie eligibility for in-season records
-                        if (!tempSeasonRecords['GAA'] || (stats.goalsAgainstAverage < tempSeasonRecords['GAA'].value)) tempSeasonRecords['GAA'] = { playerName: player.name, teamName: team.name, value: stats.goalsAgainstAverage, season };
-                        if (stats.savePercentage > (tempSeasonRecords['SavePercentage']?.value || 0)) tempSeasonRecords['SavePercentage'] = { playerName: player.name, teamName: team.name, value: stats.savePercentage, season };
+                        if (!tempSeasonRecords['GAA'] || ((stats.goalsAgainstAverage || 99) < tempSeasonRecords['GAA'].value)) tempSeasonRecords['GAA'] = { playerName: player.name, teamName: team.name, value: stats.goalsAgainstAverage || 99, season };
+                        if ((stats.savePercentage || 0) > (tempSeasonRecords['SavePercentage']?.value || 0)) tempSeasonRecords['SavePercentage'] = { playerName: player.name, teamName: team.name, value: stats.savePercentage || 0, season };
                     }
-                    if ((stats.shutouts || 0) > (tempSeasonRecords['Shutouts']?.value || 0)) tempSeasonRecords['Shutouts'] = { playerName: player.name, teamName: team.name, value: stats.shutouts, season };
+                    if ((stats.shutouts || 0) > (tempSeasonRecords['Shutouts']?.value || 0)) tempSeasonRecords['Shutouts'] = { playerName: player.name, teamName: team.name, value: stats.shutouts || 0, season };
                     
                     const careerShutouts = (player.history?.reduce((acc, s) => acc + (s.shutouts || 0), 0) || 0) + (stats.shutouts || 0);
                     if (careerShutouts > (tempCareerRecords['Shutouts']?.value || 0)) tempCareerRecords['Shutouts'] = { playerName: player.name, teamName: team.name, value: careerShutouts };
@@ -715,14 +725,24 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
                             };
                             const nextEligibility = eligibilityMap[player.eligibility];
+                            
+                            if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
+                                player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
+                                if (player.yearsLeftInProgram < 0) {
+                                    graduatingPlayers.push(player);
+                                    return false;
+                                }
+                            }
+
                             if (nextEligibility) {
                                 player.eligibility = nextEligibility;
                                 player.age += 1;
                                 return true;
-                            } else {
+                            } else if (player.eligibility !== 'Staff') {
                                 graduatingPlayers.push(player);
                                 return false;
                             }
+                            return true; // Staff remain
                         });
 
                         graduatingPlayers.forEach(player => {
@@ -749,6 +769,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 }
                             } else { // New Degree
                                 player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
+                                player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
                                 remainingPlayers.push(player);
                                 toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
                             }
@@ -764,15 +785,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     tempTeams = tempTeams.map(team => {
                         const updatedRoster = team.roster.map(player => {
-                            const isSkater = !player.positions.includes('G');
-                            const seasonStats = player.currentStats;
-                            if (seasonStats.gamesPlayed > 0) {
-                                const historyEntry: PlayerSeasonStats = { season: `${prevDate.year}-${prevDate.year + 1}`, team: team.name, league: team.leagueDivision, gamesPlayed: seasonStats.gamesPlayed, captaincy: player.captaincy };
-                                if (isSkater) { historyEntry.goals = seasonStats.goals; historyEntry.assists = seasonStats.assists; historyEntry.points = seasonStats.points; historyEntry.penaltyMinutes = seasonStats.penaltyMinutes; } 
-                                else { historyEntry.goalsAgainstAverage = seasonStats.goalsAgainstAverage; historyEntry.savePercentage = seasonStats.savePercentage; historyEntry.shutouts = seasonStats.shutouts; }
-                                const newHistory = player.history ? [...player.history, historyEntry] : [historyEntry];
-                                const newCurrentStats: CurrentSeasonStats = { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0 };
-                                return { ...player, history: newHistory, currentStats: newCurrentStats };
+                            if (player.currentStats.length > 0) {
+                                const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
+                                return { ...player, history: newHistory, currentStats: [] };
                             }
                             return player;
                         });

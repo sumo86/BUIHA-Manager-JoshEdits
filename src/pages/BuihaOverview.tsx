@@ -39,7 +39,7 @@ const renderStars = (rating: number) => {
 };
 
 const renderEligibility = (player: Player) => {
-    if ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && player.yearsLeftInProgram) {
+    if ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && player.yearsLeftInProgram !== undefined) {
         const yearsText = player.yearsLeftInProgram === 1 ? '1 year left' : `${player.yearsLeftInProgram} years left`;
         return `${player.eligibility} (${yearsText})`;
     }

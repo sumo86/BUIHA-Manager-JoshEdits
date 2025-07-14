@@ -30,6 +30,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerMovement } from "@/components/roster/PlayerMovement";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getAggregatedCurrentStats } from "@/lib/statsUtils";
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -127,7 +128,7 @@ const Roster = () => {
   }, [roleTypeOrder]);
 
   const renderEligibility = (player: Player) => {
-    if ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && player.yearsLeftInProgram) {
+    if ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && player.yearsLeftInProgram !== undefined) {
         const yearsText = player.yearsLeftInProgram === 1 ? '1 year left' : `${player.yearsLeftInProgram} years left`;
         return `${player.eligibility} (${yearsText})`;
     }
@@ -175,14 +176,14 @@ const Roster = () => {
     if (viewMode === 'stats') {
         return [
             ...baseCols,
-            { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
-            { accessorKey: 'currentStats.goals', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>G<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.goals },
-            { accessorKey: 'currentStats.assists', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>A<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.assists },
-            { accessorKey: 'currentStats.points', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>P<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.points },
-            { accessorKey: 'currentStats.penaltyMinutes', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>PIM<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.penaltyMinutes },
-            { accessorKey: 'currentStats.wins', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>W<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => !row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.wins },
-            { accessorKey: 'currentStats.losses', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>L<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => !row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.losses },
-            { accessorKey: 'currentStats.shutouts', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>SO<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => !row.original.positions.includes('G') ? 'N/A' : row.original.currentStats.shutouts },
+            { accessorKey: 'currentStats.gamesPlayed', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GP<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => getAggregatedCurrentStats(row.original).gamesPlayed },
+            { accessorKey: 'currentStats.goals', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>G<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : getAggregatedCurrentStats(row.original).goals },
+            { accessorKey: 'currentStats.assists', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>A<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : getAggregatedCurrentStats(row.original).assists },
+            { accessorKey: 'currentStats.points', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>P<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : getAggregatedCurrentStats(row.original).points },
+            { accessorKey: 'currentStats.penaltyMinutes', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>PIM<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => row.original.positions.includes('G') ? 'N/A' : getAggregatedCurrentStats(row.original).penaltyMinutes },
+            { accessorKey: 'currentStats.goalsAgainstAverage', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>GAA<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => !row.original.positions.includes('G') ? 'N/A' : getAggregatedCurrentStats(row.original).goalsAgainstAverage?.toFixed(2) },
+            { accessorKey: 'currentStats.savePercentage', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>SV%<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => !row.original.positions.includes('G') ? 'N/A' : getAggregatedCurrentStats(row.original).savePercentage?.toFixed(3) },
+            { accessorKey: 'currentStats.shutouts', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>SO<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => !row.original.positions.includes('G') ? 'N/A' : getAggregatedCurrentStats(row.original).shutouts },
         ];
     }
 

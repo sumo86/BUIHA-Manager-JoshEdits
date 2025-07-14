@@ -1,8 +1,9 @@
-import { Player, SkaterAttributes, GoalieAttributes, CurrentSeasonStats } from '@/types';
+import { Player, PlayerSeasonStats } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getAggregatedCurrentStats } from '@/lib/statsUtils';
 
-type StatKey = keyof CurrentSeasonStats;
+type StatKey = keyof PlayerSeasonStats;
 
 interface PlayerStatsTableProps {
   title: string;
@@ -11,28 +12,28 @@ interface PlayerStatsTableProps {
   category: 'skater' | 'goalie';
 }
 
-const formatValue = (player: Player, stat: StatKey, category: 'goalie' | 'skater') => {
+const formatValue = (stats: PlayerSeasonStats, stat: StatKey) => {
   if (stat === 'savePercentage') {
-    return player.currentStats.savePercentage.toFixed(3);
+    return stats.savePercentage?.toFixed(3);
   }
   if (stat === 'goalsAgainstAverage') {
-    return player.currentStats.goalsAgainstAverage.toFixed(2);
+    return stats.goalsAgainstAverage?.toFixed(2);
   }
-  return player.currentStats[stat] || 0;
+  return stats[stat] || 0;
 };
 
 export const PlayerStatsTable = ({ title, players, stat, category }: PlayerStatsTableProps) => {
   const sortedPlayers = [...players]
-    .filter(p => {
+    .map(p => ({ player: p, stats: getAggregatedCurrentStats(p) }))
+    .filter(({ stats }) => {
       if (category === 'goalie') {
-        // Goalie eligibility for in-season stats: at least 3 games played
-        return p.currentStats.gamesPlayed >= 3;
+        return stats.gamesPlayed >= 3;
       }
       return true;
     })
     .sort((a, b) => {
-      const statA = formatValue(a, stat, category);
-      const statB = formatValue(b, stat, category);
+      const statA = a.stats[stat] || 0;
+      const statB = b.stats[stat] || 0;
       
       if (stat === 'goalsAgainstAverage') {
         return (statA as number) - (statB as number);
@@ -60,11 +61,11 @@ export const PlayerStatsTable = ({ title, players, stat, category }: PlayerStats
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedPlayers.map(player => (
+            {sortedPlayers.map(({ player, stats }) => (
               <TableRow key={player.id}>
                 <TableCell className="font-medium">{player.name}</TableCell>
-                <TableCell>{player.history.length > 0 ? player.history[player.history.length - 1].team : 'N/A'}</TableCell>
-                <TableCell className="text-right font-bold">{formatValue(player, stat, category)}</TableCell>
+                <TableCell>{stats.team}</TableCell>
+                <TableCell className="text-right font-bold">{formatValue(stats, stat)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

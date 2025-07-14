@@ -190,21 +190,19 @@ const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDi
     }
 };
 
-const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, teamName: string, allowedEligibilities?: Player['eligibility'][], options?: { targetStarRating?: number, targetAbility?: number }): Player => {
+export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, teamName: string, allowedEligibilities?: Player['eligibility'][], options?: { targetStarRating?: number, targetAbility?: number }): Player => {
   let jerseyNumber: number;
   do { jerseyNumber = Math.floor(Math.random() * 98) + 1; } while (usedJerseyNumbers.has(jerseyNumber));
   usedJerseyNumbers.add(jerseyNumber);
 
-  let positions: Position[] = [position]; // Changed to 'let' for reassignment
+  let positions: Position[] = [position];
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      const newPosition: Position = getUniqueSkaterPosition(positions);
-      positions.push(newPosition as Position); // Explicit cast here
+      positions.push(getUniqueSkaterPosition(positions));
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      const anotherNewPosition: Position = getUniqueSkaterPosition(positions);
-      positions.push(anotherNewPosition as Position); // Explicit cast here
+      positions.push(getUniqueSkaterPosition(positions));
     }
   }
 
@@ -257,7 +255,7 @@ const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leag
   const nationality = getRandomNationality(teamName);
   const name = getRandomNameForNationality(nationality, gender);
 
-  return { id: crypto.randomUUID(), jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, yearsLeftInProgram, history, trainingFocus: null, activeInstructions: [], currentStats: { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, wins: 0, losses: 0, draws: 0, goalsAgainst: 0, goalsFor: 0, shotsAgainst: 0, saves: 0, savePercentage: 0, goalsAgainstAverage: 0, shutouts: 0 } };
+  return { id: crypto.randomUUID(), jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, yearsLeftInProgram, history, trainingFocus: null, activeInstructions: [], currentStats: [] };
 };
 
 const assignInitialCaptaincy = (roster: Player[]): Player[] => {
