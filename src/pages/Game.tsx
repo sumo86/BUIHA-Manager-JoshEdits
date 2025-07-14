@@ -92,7 +92,7 @@ const Game = () => {
       <GameSummary 
         userTeam={userTeam} 
         opponentTeam={opponentTeam} 
-        gameLog={gameState.gameLog} 
+        gameState={gameState} 
       />
 
       <div className="mt-4 flex justify-center gap-2">

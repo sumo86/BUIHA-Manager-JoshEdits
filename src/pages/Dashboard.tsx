@@ -23,7 +23,7 @@ const Dashboard = () => {
         </Card>
       )}
       <div className="flex items-center gap-4 mb-4">
-        {userTeam.logo && <img src={userTeam.logo} alt={userTeam.name} className="h-12 w-12 object-contain" />}
+        {userTeam && userTeam.logo && <img src={userTeam.logo} alt={userTeam.name} className="h-12 w-12 object-contain" />}
         <h1 className="text-3xl font-bold">Welcome, Manager!</h1>
       </div>
       <p className="text-lg text-muted-foreground">
