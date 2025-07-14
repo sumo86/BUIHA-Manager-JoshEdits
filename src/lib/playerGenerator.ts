@@ -235,8 +235,8 @@ export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Positio
   let role: string | undefined, roleSuitability: { [key: string]: number } = {};
   if (isSkater) {
       const skaterAttributes = attributes as SkaterAttributes;
-      const isForward = ['C', 'LW', 'RW'].some(p => positions.includes(p));
-      const isDefenceman = ['LD', 'RD'].some(p => positions.includes(p));
+      const isForward = (['C', 'LW', 'RW'] as Position[]).some(p => positions.includes(p));
+      const isDefenceman = (['LD', 'RD'] as Position[]).some(p => positions.includes(p));
       let finalSuitabilities: { [key: string]: number } = {}, bestRoleOverall = '', highestSuitabilityOverall = -1;
       if (isForward) { const { suitabilities, bestRole, highestSuitability } = calculateRoleSuitability(skaterAttributes, 'Forward'); finalSuitabilities = { ...finalSuitabilities, ...suitabilities }; if (highestSuitability > highestSuitabilityOverall) { highestSuitabilityOverall = highestSuitability; bestRoleOverall = bestRole; } }
       if (isDefenceman) { const { suitabilities, bestRole, highestSuitability } = calculateRoleSuitability(skaterAttributes, 'Defenceman'); finalSuitabilities = { ...finalSuitabilities, ...suitabilities }; if (highestSuitability > highestSuitabilityOverall) { highestSuitabilityOverall = highestSuitability; bestRoleOverall = bestRole; } }
