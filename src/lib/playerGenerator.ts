@@ -11,7 +11,7 @@ import { skaterAbilityRanges, goalieAbilityRanges } from "@/data/abilityRanges";
 const eligibilities = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"] as const;
 const skaterPositions = ["C", "LW", "RW", "LD", "RD"] as const;
 
-const getRandomItem = <T extends readonly any[]>(arr: T): T[number] => arr[Math.floor(Math.random() * arr.length)];
+const getRandomItem = <TItem>(arr: readonly TItem[]): TItem => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const getArchetypeForPosition = (position: Position): PlayerArchetype => {
@@ -316,23 +316,24 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         const sourceRoll = Math.random();
         const source: Player['source'] = sourceRoll < 0.6 ? 'Local' : (sourceRoll < 0.9 ? 'International' : 'Transfer');
         const eligibility = source === 'Transfer' 
-            ? getRandomItem(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"] as const) as Player['eligibility']
+            ? getRandomItem(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"] as const) 
             : (Math.random() < 0.85 
                 ? "UG Year 1" 
-                : getRandomItem(["UG Year 2", "Masters"] as const) as Player['eligibility']);
+                : getRandomItem(["UG Year 2", "Masters"] as const));
         
         const qualityRoll = Math.random();
         let estimatedQuality: Player['estimatedQuality'];
         if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else if (qualityRoll < 0.99) estimatedQuality = 'Elite'; else estimatedQuality = 'Elite'; // Ensure Elite is possible
         
         const allRecruitPositions = [...skaterPositions, 'G'] as const;
-        const position = getRandomItem(allRecruitPositions) as Position;
+        const position = getRandomItem(allRecruitPositions);
         const isSkater = position !== 'G';
 
         let targetCurrentAbilityMin: number, targetCurrentAbilityMax: number;
         if (estimatedQuality === 'Beginner') { targetCurrentAbilityMin = isSkater ? divisionTierStats[5].skater : divisionTierStats[5].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie; }
         else if (estimatedQuality === 'Moderate') { targetCurrentAbilityMin = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie; }
         else if (estimatedQuality === 'Intermediate') { targetCurrentAbilityMin = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie; }
+        else if (estimatedQuality === 'Experienced') { targetCurrentAbilityMin = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[1].skater : divisionTierStats[1].goalie; }
         else { const tier1 = divisionTierStats[1]; targetCurrentAbilityMin = isSkater ? tier1.skater + (tier1.step.skater * 0.25) : tier1.goalie + (tier1.step.goalie * 0.25); targetCurrentAbilityMax = isSkater ? tier1.skater + (tier1.step.skater * 2.0) : tier1.goalie + (tier1.step.goalie * 2.0); }
 
         const targetAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);
