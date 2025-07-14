@@ -136,7 +136,7 @@ export type Player = {
   captaincy: 'C' | 'A' | null;
   yearsLeftInProgram?: number;
   history: PlayerSeasonStats[];
-  trainingFocus: TrainingFocus; // This line is crucial
+  trainingFocus: TrainingFocus;
   currentStats: PlayerSeasonStats[];
   activeInstructions: ActiveInstruction[];
   source?: 'Local' | 'International' | 'Transfer';
@@ -312,7 +312,7 @@ export type NationalsGroup = {
 
 export type NationalsPlayoffMatch = {
   id: string;
-  round: 'Semi-Final' | 'Final';
+  round: 'Quarter-Final' | 'Semi-Final' | 'Final';
   bracket: 'Gold' | 'Silver';
   homeTeam: string | { winnerOf: string };
   awayTeam: string | { winnerOf: string };

@@ -24,40 +24,38 @@ export const aiMakeAdjustments = (team: Team, opponent: Team, scoreDifference: n
 export const rebalanceOrganizationRosters = (teamsInOrg: Team[]): Team[] => {
     if (teamsInOrg.length <= 1) return teamsInOrg;
 
-    // Sort teams by level (assuming naming convention like "Team A", "Team B")
+    // Sort teams by level (e.g., "Team A", "Team B")
     const sortedTeams = [...teamsInOrg].sort((a, b) => a.name.localeCompare(b.name));
 
-    // Pool all players from the organization
+    // Pool all players from the organization and sort by ability
     const allPlayers = sortedTeams.flatMap(team => team.roster);
-
-    // Sort all players by current ability
     allPlayers.sort((a, b) => b.currentAbility - a.currentAbility);
 
     // Clear existing rosters
     const updatedTeams = sortedTeams.map(team => ({ ...team, roster: [] as Player[] }));
-    const assignedPlayerIds = new Set<string>();
 
-    // Re-distribute players, filling top teams first
-    for (const team of updatedTeams) {
-        const rosterLimit = 21; // A standard roster size
-        while (team.roster.length < rosterLimit && allPlayers.length > 0) {
-            const playerIndex = allPlayers.findIndex(p => !assignedPlayerIds.has(p.id));
-            if (playerIndex === -1) break; // No unassigned players left
-            
-            const playerToAssign = allPlayers[playerIndex];
-            team.roster.push(playerToAssign);
-            assignedPlayerIds.add(playerToAssign.id);
-        }
-    }
-
-    // Distribute any remaining players to the lowest-level team
-    const lowestTeam = updatedTeams[updatedTeams.length - 1];
-    allPlayers.forEach(p => {
-        if (!assignedPlayerIds.has(p.id)) {
-            lowestTeam.roster.push(p);
-            assignedPlayerIds.add(p.id);
-        }
+    // Distribute players in a "snake" draft style to ensure top teams get better players
+    // but roster sizes remain relatively even.
+    allPlayers.forEach((player, index) => {
+        const teamIndex = index % sortedTeams.length;
+        updatedTeams[teamIndex].roster.push(player);
     });
+
+    // Ensure minimum roster size by moving players from bottom up if needed
+    for (let i = updatedTeams.length - 1; i > 0; i--) {
+        const currentTeam = updatedTeams[i];
+        const teamAbove = updatedTeams[i - 1];
+        while (currentTeam.roster.length < 16 && teamAbove.roster.length > 16) {
+            // Move worst player from team above to current team
+            teamAbove.roster.sort((a, b) => a.currentAbility - b.currentAbility);
+            const playerToMove = teamAbove.roster.shift();
+            if (playerToMove) {
+                currentTeam.roster.push(playerToMove);
+            }
+        }
+        // sort back
+        teamAbove.roster.sort((a, b) => b.currentAbility - a.currentAbility);
+    }
 
     return updatedTeams;
 };

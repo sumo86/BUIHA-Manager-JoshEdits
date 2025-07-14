@@ -69,7 +69,7 @@ const Sidebar = () => {
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <a href="/" className="flex items-center gap-2 font-semibold">
             {userTeam?.logo && <img src={userTeam.logo} alt={userTeam.name} className="h-6 w-6 object-contain" />}
-            <span className="">{managedOrganization || userTeam?.name}</span>
+            <span className="">{isManagingOrg ? managedOrganization : userTeam?.name}</span>
           </a>
         </div>
         <ScrollArea className="flex-1">

@@ -199,10 +199,10 @@ export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Positio
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      positions.push(getUniqueSkaterPosition(positions) as Position); // Explicit cast
+      positions.push(getUniqueSkaterPosition(positions) as typeof positions[number]); // Explicit cast
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      positions.push(getUniqueSkaterPosition(positions) as Position); // Explicit cast
+      positions.push(getUniqueSkaterPosition(positions) as typeof positions[number]); // Explicit cast
     }
   }
 

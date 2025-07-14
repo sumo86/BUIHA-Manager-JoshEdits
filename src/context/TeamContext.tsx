@@ -866,8 +866,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const allGroupGamesPlayed = tournament.groupStageSchedule.every((g: ScheduleEntry) => g.status === 'completed');
         if (allGroupGamesPlayed && tournament.status === 'group-stage') {
             toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
-            const playoffStartRound = tournament.currentRound;
-            tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date, playoffStartRound);
+            tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date);
             tournament.status = 'playoffs';
             if (tournament.playoffSchedule.length === 0) {
                 tournament.status = 'completed';
