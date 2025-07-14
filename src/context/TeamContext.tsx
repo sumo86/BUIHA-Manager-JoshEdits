@@ -1283,3 +1283,119 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             });
         } else {
             const updatedTeam = { ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations } };
+            const roundedNewAllocations: BudgetAllocations = Object.fromEntries(
+                Object.entries(newAllocations).map(([key, value]) => [key, Math.round(value)])
+            ) as unknown as BudgetAllocations;
+
+            updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: roundedNewAllocations } });
+        }
+    };
+
+    const startFacilityProject = (projectId: string) => {
+        if (!userTeam) return;
+
+        if (managedOrganization) {
+            const project = userTeam.facilities.find(p => p.id === projectId);
+            if (!project) return;
+
+            const cost = project.cost;
+            const currentBudget = organizationFinancials?.budgetAllocations.Facilities || 0;
+
+            if (currentBudget < cost) {
+                toast.error("Insufficient Facilities Budget", {
+                    description: `You need £${cost.toLocaleString()} but only have £${(currentBudget).toLocaleString()} available in the organization's budget.`,
+                });
+                return;
+            }
+
+            const newBudgetAllocations = {
+                ...(organizationFinancials?.budgetAllocations || {}),
+                Facilities: Math.round(currentBudget - cost),
+            } as BudgetAllocations;
+            updateBudgetAllocations(newBudgetAllocations);
+
+            setTeams(currentTeams => {
+                return currentTeams.map(team => {
+                    if (managedTeams.some(mt => mt.name === team.name)) {
+                        const newFacilities = team.facilities.map(p => 
+                            p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress', weeksToComplete: 12 } : p
+                        );
+                        return { ...team, facilities: newFacilities };
+                    }
+                    return team;
+                });
+            });
+
+            toast.success(`${project.name} project has started!`, {
+                description: `Cost: £${cost.toLocaleString()}.`,
+            });
+
+        } else {
+            const project = userTeam.facilities.find(p => p.id === projectId);
+            if (!project) return;
+
+            const cost = project.cost;
+            const currentBudget = userTeam.financials.budgetAllocations.Facilities;
+
+            if (currentBudget < cost) {
+                toast.error("Insufficient Facilities Budget", {
+                    description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+                });
+                return;
+            }
+
+            const newBudgetAllocations = {
+                ...userTeam.financials.budgetAllocations,
+                Facilities: Math.round(currentBudget - cost),
+            };
+            const newFacilities = userTeam.facilities.map(p =>
+                p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress', weeksToComplete: 12 } : p
+            );
+            const updatedTeam = {
+                ...userTeam,
+                financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations },
+                facilities: newFacilities,
+            };
+            updateTeam(updatedTeam);
+            toast.success(`${project.name} project has started!`, {
+                description: `Cost: £${cost.toLocaleString()}.`,
+            });
+        }
+    };
+
+    const markGameAsCompleted = (gameId: string, homeScore: number, awayScore: number) => {
+        setSchedule(prevSchedule =>
+            prevSchedule.map(entry =>
+                entry.id === gameId
+                    ? { ...entry, status: 'completed', result: { homeScore, awayScore } }
+                    : entry
+            )
+        );
+    };
+
+    return (
+        <TeamContext.Provider value={{ 
+            teams, updateTeam, userTeam, 
+            organizationFinancials, organizationFacilities,
+            selectTeam, scoutingPool, recruitedPool, fairHosted,
+            generateScoutingPool, recruitPlayer, assignPlayerToRoster, discardRecruit,
+            updateBudgetAllocations, runStudentLifeInitiative, startFacilityProject,
+            currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
+            autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
+            managedOrganization, isManagingOrg, managedTeams, selectOrganization, setActiveTeam,
+            schedule, gameForCurrentWeek, nationalsData,
+            markGameAsCompleted, seasonRecords, careerRecords, alumni, additionalDegreePlayers, historicalStandings,
+            playNationalsRound, autoSimulateUserNationalsGame
+        }}>
+            {children}
+        </TeamContext.Provider>
+    );
+};
+
+export const useTeam = () => {
+    const context = useContext(TeamContext);
+    if (context === undefined) {
+        throw new Error('useTeam must be used within a TeamProvider');
+    }
+    return context;
+};
