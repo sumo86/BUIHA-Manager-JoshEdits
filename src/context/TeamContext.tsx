@@ -297,8 +297,52 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const opponent = regularGame.homeTeam === userTeam.name ? regularGame.awayTeam : regularGame.homeTeam;
             return { ...regularGame, opponent, isNationals: false };
         }
+
+        // Check for Nationals game
+        const currentYearNationals = nationalsData[currentDate.year];
+        if (currentYearNationals && userTeam.nationalsDivision) {
+            const tournament = currentYearNationals[userTeam.nationalsDivision];
+            if (tournament && (tournament.status === 'group-stage' || tournament.status === 'playoffs')) {
+                const gamesToCheck = tournament.status === 'group-stage' 
+                    ? tournament.groupStageSchedule 
+                    : tournament.playoffSchedule;
+
+                const userGame = gamesToCheck.find(g => {
+                    if (g.status !== 'scheduled') return false;
+                    
+                    const isUserGame = (typeof g.homeTeam === 'string' && g.homeTeam === userTeam.name) || 
+                                     (typeof g.awayTeam === 'string' && g.awayTeam === userTeam.name);
+
+                    if (!isUserGame) return false;
+
+                    if (tournament.status === 'group-stage') {
+                        return g.round === tournament.currentRound;
+                    }
+                    if (tournament.status === 'playoffs') {
+                        return g.round === tournament.currentRound;
+                    }
+                    return false;
+                });
+
+                if (userGame) {
+                    const opponentName = (typeof userGame.homeTeam === 'string' && userGame.homeTeam === userTeam.name)
+                        ? (typeof userGame.awayTeam === 'string' ? userGame.awayTeam : 'TBD')
+                        : (typeof userGame.homeTeam === 'string' ? userGame.homeTeam : 'TBD');
+                    
+                    return {
+                        id: userGame.id,
+                        opponent: opponentName,
+                        date: userGame.date,
+                        isNationals: true,
+                        homeTeam: userGame.homeTeam,
+                        awayTeam: userGame.awayTeam as string | { winnerOf: string }, // Ensure type correctness
+                    };
+                }
+            }
+        }
+
         return null;
-    }, [userTeam, schedule, currentDate]);
+    }, [userTeam, schedule, currentDate, nationalsData]);
 
     const updateTeam = (updatedTeam: Team) => {
         setTeams(currentTeams =>
@@ -318,15 +362,35 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
 
         let tempTeams = JSON.parse(JSON.stringify(teams)) as Team[];
+        
+        // AI Organization Roster Rebalancing
+        const allOrgs = getTeamOrganizations();
+        const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
+
+        aiOrgs.forEach(org => {
+            const orgTeamNames = org.teams.map(t => t.name);
+            const teamsForRebalancing = tempTeams.filter(t => orgTeamNames.includes(t.name));
+            if (teamsForRebalancing.length > 1) {
+                const rebalancedTeams = rebalanceOrganizationRosters(teamsForRebalancing);
+                rebalancedTeams.forEach(rebalancedTeam => {
+                    const index = tempTeams.findIndex(t => t.name === rebalancedTeam.name);
+                    if (index !== -1) {
+                        tempTeams[index] = rebalancedTeam;
+                    }
+                });
+            }
+        });
+
         let tempSchedule = JSON.parse(JSON.stringify(schedule)) as ScheduleEntry[];
         let newDevelopmentLogs: DevelopmentLog[] = [];
         const managedTeamNames = managedTeams.map(t => t.name);
 
-        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as typeof nationalsData;
-        let tempSeasonRecords = JSON.parse(JSON.stringify(seasonRecords));
-        let tempCareerRecords = JSON.parse(JSON.stringify(careerRecords));
-
         const currentYear = currentDate.year;
+
+        // Declare and initialize temporary variables for records and nationals data
+        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as { [year: number]: { [division: string]: NationalsTournament } };
+        let tempSeasonRecords = JSON.parse(JSON.stringify(seasonRecords)) as { [key in RecordCategory]?: TeamRecord };
+        let tempCareerRecords = JSON.parse(JSON.stringify(careerRecords)) as { [key in RecordCategory]?: TeamRecord };
 
         if (currentDate.month === 'May' && currentDate.week === 4) {
             const allTournamentsCompleted = Object.values(tempNationalsData[currentYear] || {}).every(t => t.status === 'completed');
@@ -749,7 +813,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const toTeam = teams.find(t => t.name === toTeamName);
         const player = fromTeam?.roster.find(p => p.id === playerId);
 
-        if (!fromTeam || !toTeam || !player) {
+            if (!fromTeam || !toTeam || !player) {
                 toast.error("Could not request player. Team or player not found.");
                 return;
             }
@@ -805,6 +869,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 awayTeamName: opponentTeam.name,
             };
             playNationalsRound(nationalsDivision, completedGame);
+        } else if (gameId) { // Handle regular season game completion
+            markGameAsCompleted(gameId, gameState.userScore, gameState.opponentScore);
         }
     };
 
@@ -872,6 +938,92 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 if (tournament.playoffSchedule.length === 0) {
                     tournament.status = 'completed';
                     toast.info(`${division} tournament has concluded as no playoffs could be generated.`);
+                }
+            }
+        } else if (tournament.status === 'playoffs') {
+            const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
+                if (!match.result) return undefined;
+                if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
+                if (match.result.awayScore > match.result.homeScore) return typeof match.awayTeam === 'string' ? match.awayTeam : undefined;
+                // Random winner on a draw for now to prevent getting stuck.
+                return Math.random() > 0.5 ? (typeof match.homeTeam === 'string' ? match.homeTeam : undefined) : (typeof match.awayTeam === 'string' ? match.awayTeam : undefined);
+            };
+
+            const allPlayoffGames = tournament.playoffSchedule as NationalsPlayoffMatch[];
+            
+            // Resolve teams for the current round first
+            allPlayoffGames.forEach((game: NationalsPlayoffMatch) => {
+                if (game.round === tournament.currentRound && game.status === 'scheduled') {
+                    if (typeof game.homeTeam !== 'string') {
+                        const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
+                        if (feederMatch && feederMatch.status === 'completed') {
+                            game.homeTeam = getWinner(feederMatch) || 'TBD';
+                        }
+                    }
+                    if (typeof game.awayTeam !== 'string') {
+                        const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
+                        if (feederMatch && feederMatch.status === 'completed') {
+                            game.awayTeam = getWinner(feederMatch) || 'TBD';
+                        }
+                    }
+                }
+            });
+
+            const gamesToSim = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.round === tournament.currentRound && g.status === 'scheduled');
+
+            if (userGameResult) {
+                const userGame = gamesToSim.find(g => g.id === userGameResult.gameId);
+                if (userGame) {
+                    userGame.status = 'completed';
+                    userGame.result = { homeScore: userGameResult.homeScore, awayScore: userGameResult.awayScore };
+                    userGame.winner = getWinner(userGame);
+                }
+            }
+
+            gamesToSim.forEach((game: NationalsPlayoffMatch) => {
+                if (game.status === 'completed') return;
+                if (typeof game.homeTeam !== 'string' || typeof game.awayTeam !== 'string' || game.homeTeam === 'TBD' || game.awayTeam === 'TBD') {
+                    return; // Skip games where teams are not yet decided
+                };
+
+                const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
+                const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+
+                if (homeTeam && awayTeam) {
+                    const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+                    const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                    tempTeams = tempTeams.map((t: Team) => {
+                        if (t.name === homeTeam.name) return updatedUserTeam;
+                        if (t.name === awayTeam.name) return updatedOpponentTeam;
+                        return t;
+                    });
+                    game.status = 'completed';
+                    game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                    game.winner = getWinner(game);
+                }
+            });
+
+            const currentRoundGames = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.round === tournament.currentRound);
+            const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
+
+            if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
+                const nextRoundMap: { [key: string]: 'Semi-Final' | 'Final' } = { 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
+                
+                if (tournament.currentRound === 'Final') {
+                    tournament.status = 'completed';
+                    const finalMatch = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Gold');
+                    tournament.winner = finalMatch?.winner;
+                    if (tournament.winner) {
+                        toast.success(`${tournament.winner} has won the ${division} National Championship!`);
+                    } else {
+                        toast.info(`The ${division} National Championship has concluded.`);
+                    }
+                } else {
+                    const nextRound = nextRoundMap[tournament.currentRound as 'Quarter-Final' | 'Semi-Final'];
+                    if (nextRound) {
+                        tournament.currentRound = nextRound;
+                        toast.info(`Advancing to the ${nextRound} of the ${division} playoffs.`);
+                    }
                 }
             }
         }

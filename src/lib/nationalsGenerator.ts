@@ -94,18 +94,14 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
 
     const goldQualifiersA: string[] = [];
     const goldQualifiersB: string[] = [];
-    const silverQualifiersA: string[] = [];
-    const silverQualifiersB: string[] = [];
-
+    
     const numGoldQualifiersPerGroup = totalTeams >= 13 ? 3 : 2;
 
     sortedGroupA.forEach((standing, i) => {
         if (i < numGoldQualifiersPerGroup) goldQualifiersA.push(standing.teamName);
-        else silverQualifiersA.push(standing.teamName);
     });
     sortedGroupB.forEach((standing, i) => {
         if (i < numGoldQualifiersPerGroup) goldQualifiersB.push(standing.teamName);
-        else silverQualifiersB.push(standing.teamName);
     });
 
     const playoffs: NationalsPlayoffMatch[] = [];
@@ -136,14 +132,44 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
     }
 
     // Silver Bracket
-    const allSilverQualifiers = shuffleArray([...silverQualifiersA, ...silverQualifiersB]);
-    if (allSilverQualifiers.length >= 4) {
-        const [s1, s2, s3, s4] = allSilverQualifiers;
-        const silverSf1Id = crypto.randomUUID();
-        const silverSf2Id = crypto.randomUUID();
-        playoffs.push({ id: silverSf1Id, round: 'Semi-Final', bracket: 'Silver', homeTeam: s1, awayTeam: s4, status: 'scheduled', date });
-        playoffs.push({ id: silverSf2Id, round: 'Semi-Final', bracket: 'Silver', homeTeam: s2, awayTeam: s3, status: 'scheduled', date });
-        playoffs.push({ id: crypto.randomUUID(), round: 'Final', bracket: 'Silver', homeTeam: { winnerOf: silverSf1Id }, awayTeam: { winnerOf: silverSf2Id }, status: 'scheduled', date });
+    const allSilverStandings = [
+        ...groups[0].standings.filter(s => !goldQualifiersA.includes(s.teamName)),
+        ...groups[1].standings.filter(s => !goldQualifiersB.includes(s.teamName))
+    ];
+    const sortedSilverStandings = sortStandings(allSilverStandings);
+    let silverTeams: (string | { winnerOf: string })[] = sortedSilverStandings.map(s => s.teamName);
+
+    if (silverTeams.length >= 2) {
+        const bracketRounds: ('Quarter-Final' | 'Semi-Final' | 'Final')[] = [];
+        if (silverTeams.length > 4) bracketRounds.push('Quarter-Final');
+        if (silverTeams.length > 2) bracketRounds.push('Semi-Final');
+        bracketRounds.push('Final');
+
+        for (const round of bracketRounds) {
+            const roundMatches: NationalsPlayoffMatch[] = [];
+            const numTeamsInRound = silverTeams.length;
+            
+            // Give byes if not a power of 2
+            const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(numTeamsInRound)));
+            const numByes = nextPowerOf2 - numTeamsInRound;
+            const teamsWithByes = silverTeams.slice(0, numByes);
+            const teamsInMatches = silverTeams.slice(numByes);
+
+            // Create matches
+            while (teamsInMatches.length > 0) {
+                const home = teamsInMatches.shift()!;
+                const away = teamsInMatches.pop()!;
+                const matchId = crypto.randomUUID();
+                roundMatches.push({ id: matchId, round, bracket: 'Silver', homeTeam: home, awayTeam: away, status: 'scheduled', date });
+            }
+            
+            playoffs.push(...roundMatches);
+            
+            // Prepare teams for next round
+            silverTeams = [...teamsWithByes, ...roundMatches.map(m => ({ winnerOf: m.id }))];
+            
+            if (round === 'Final' || silverTeams.length < 2) break;
+        }
     }
 
     return playoffs;

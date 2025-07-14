@@ -30,19 +30,17 @@ const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowS
 
 // Helper function to get a random skater position with explicit type
 const getRandomSkaterPosition = (): Position => {
-    // Directly index the array to ensure Position type is strictly maintained
-    const randomIndex = Math.floor(Math.random() * skaterPositions.length);
-    const selectedPosition: Position = skaterPositions[randomIndex]; // Explicitly type the variable
-    return selectedPosition;
+    return getRandomItem(skaterPositions);
 };
 
 // New helper function to get a unique skater position
 const getUniqueSkaterPosition = (currentPositions: Position[]): Position => {
-    let newPos: Position;
-    do {
-        newPos = getRandomSkaterPosition(); // This should now be guaranteed Position
-    } while (currentPositions.some(p => p === newPos));
-    return newPos;
+    const availablePositions = skaterPositions.filter(p => !currentPositions.includes(p));
+    if (availablePositions.length === 0) {
+        // Fallback if no unique position can be found (shouldn't happen with 5 positions and max 3 assigned)
+        return getRandomItem(skaterPositions);
+    }
+    return getRandomItem(availablePositions);
 };
 
 const generateAttributesForAbility = (archetype: PlayerArchetype, targetAbility: number, isSkater: boolean): SkaterAttributes | GoalieAttributes => {
@@ -200,10 +198,10 @@ export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Positio
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      positions.push(getUniqueSkaterPosition(positions)); // Removed redundant cast, type is now explicit from helper
+      positions.push(getUniqueSkaterPosition(positions) as Position);
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      positions.push(getUniqueSkaterPosition(positions)); // Removed redundant cast, type is now explicit from helper
+      positions.push(getUniqueSkaterPosition(positions) as Position);
     }
   }
 
