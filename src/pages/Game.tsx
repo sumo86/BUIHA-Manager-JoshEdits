@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useParams, useBlocker, useNavigate } from 'react-router-dom';
+import { useParams, useBlocker } from 'react-router-dom';
 import { useTeam } from '@/context/TeamContext';
-import { GameState, Team, Lineup, NationalsPlayoffMatch, ScheduleEntry } from '@/types';
+import { GameState, Team, Lineup } from '@/types';
 import { simulateTick } from '@/lib/gameEngine';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,34 +31,9 @@ const formatClockTime = (seconds: number) => {
 };
 
 const Game = () => {
-    const { userTeam, teams, updateTeam, processGameResults, gameForCurrentWeek, markGameAsCompleted, nationalsData, currentDate } = useTeam();
-    const { opponentName, division, gameId } = useParams<{ opponentName?: string, division?: string, gameId?: string }>();
-    const navigate = useNavigate();
-
-    const isNationalsGame = !!(division && gameId);
-
-    const opponentTeamFromContext = useMemo(() => {
-        if (isNationalsGame && division && gameId && userTeam) {
-            const tournament = nationalsData[currentDate.year]?.[division];
-            if (!tournament) return undefined;
-
-            const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
-            const game = allGames.find(g => g.id === gameId);
-            if (!game) return undefined;
-
-            const getTeamName = (team: string | { winnerOf: string }): string | null => {
-                if (typeof team === 'string') return team;
-                return null; // Cannot determine opponent if it's a winnerOf object
-            };
-
-            const homeTeamName = getTeamName(game.homeTeam);
-            const awayTeamName = getTeamName(game.awayTeam);
-
-            const opponent = homeTeamName === userTeam.name ? awayTeamName : homeTeamName;
-            return teams.find(t => t.name === opponent);
-        }
-        return teams.find(t => t.name === opponentName);
-    }, [teams, opponentName, isNationalsGame, division, gameId, userTeam, nationalsData, currentDate.year]);
+    const { userTeam, teams, updateTeam, processGameResults, gameForCurrentWeek, markGameAsCompleted } = useTeam();
+    const { opponentName } = useParams<{ opponentName: string }>();
+    const opponentTeamFromContext = useMemo(() => teams.find(t => t.name === opponentName), [teams, opponentName]);
     
     const [gameProcessed, setGameProcessed] = useState(false);
     const [gameUserTeam, setGameUserTeam] = useState<Team>(userTeam);
@@ -81,11 +56,6 @@ const Game = () => {
         if (isBigGame) {
             toast.info("It's a Rivalry Game!", {
                 description: `The atmosphere is electric for ${userTeam.name} vs ${gameOpponentTeam?.name}. Players' performance may be affected by the pressure!`
-            });
-        }
-        if (isNationalsGame) {
-            toast.info("It's a Nationals Game!", {
-                description: `A high-stakes match in the ${division} tournament!`
             });
         }
 
@@ -118,7 +88,7 @@ const Game = () => {
 
         toast.info(title, { description });
 
-    }, [isBigGame, isNationalsGame, userTeam, gameOpponentTeam, division]);
+    }, [isBigGame, userTeam, gameOpponentTeam]);
 
     const [gameState, setGameState] = useState<GameState>({
         userScore: 0,
@@ -145,29 +115,29 @@ const Game = () => {
     useEffect(() => {
         if (!gameState.isPaused && !gameState.isGameOver && gameOpponentTeam) {
             intervalRef.current = setInterval(() => {
-                setGameState(prev => simulateTick(prev, gameUserTeam, gameOpponentTeam, isBigGame, isNationalsGame));
+                setGameState(prev => simulateTick(prev, gameUserTeam, gameOpponentTeam, isBigGame));
             }, 50);
         } else {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
         };
-    }, [gameState.isPaused, gameState.isGameOver, gameUserTeam, gameOpponentTeam, isBigGame, isNationalsGame]);
+    }, [gameState.isPaused, gameState.isGameOver, gameUserTeam, gameOpponentTeam, isBigGame]);
 
     useEffect(() => {
         if (gameState.isGameOver && !gameProcessed && gameOpponentTeam) {
-            processGameResults(userTeam, gameOpponentTeam, gameState, isNationalsGame, division, gameId);
+            processGameResults(userTeam, gameOpponentTeam, gameState);
             setGameProcessed(true);
             toast.success("Game finished and stats have been updated.");
 
-            if (!isNationalsGame && gameForCurrentWeek) {
+            if (gameForCurrentWeek) {
                 const userIsHome = userTeam.name === gameForCurrentWeek.homeTeam;
                 const finalHomeScore = userIsHome ? gameState.userScore : gameState.opponentScore;
                 const finalAwayScore = userIsHome ? gameState.opponentScore : gameState.userScore;
                 markGameAsCompleted(gameForCurrentWeek.id, finalHomeScore, finalAwayScore);
             }
         }
-    }, [gameState.isGameOver, gameProcessed, processGameResults, userTeam, gameOpponentTeam, gameState, gameForCurrentWeek, markGameAsCompleted, isNationalsGame, division, gameId]);
+    }, [gameState.isGameOver, gameProcessed, processGameResults, userTeam, gameOpponentTeam, gameState, gameForCurrentWeek, markGameAsCompleted]);
 
     const handlePlayPause = () => {
         if (gameState.isGameOver) return;
@@ -259,10 +229,9 @@ const Game = () => {
         updateTeam(updatedOpponentTeam);
 
         blocker.proceed?.();
-        navigate('/dashboard');
     };
 
-    if (!gameOpponentTeam) return <div>Opponent not found. Please check the game details.</div>;
+    if (!gameOpponentTeam) return <div>Opponent not found.</div>;
 
     const getPeriodText = () => {
         if (gameState.isGameOver) return "Final";

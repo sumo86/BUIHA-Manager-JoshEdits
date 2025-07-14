@@ -36,7 +36,7 @@ const NationalsPage = () => {
   }, [selectedDivision, currentYearTournaments, availableDivisions]);
 
   const handlePlayGame = (gameId: string) => {
-    if (!userTeam || !tournamentToDisplay) return;
+    if (!userTeam) return;
     const validationError = validateLineup(userTeam);
     if (validationError) {
       toast.error("Lineup Error", { description: validationError });
@@ -57,19 +57,14 @@ const NationalsPage = () => {
 
   const userHasGameThisRound = useMemo(() => {
     if (!tournamentToDisplay || !userTeam) return false;
-    
-    const isPlayoffs = tournamentToDisplay.status === 'playoffs';
-    const schedule = isPlayoffs ? tournamentToDisplay.playoffSchedule : tournamentToDisplay.groupStageSchedule;
+    const schedule = (tournamentToDisplay.status === 'silver-playoffs' || tournamentToDisplay.status === 'gold-playoffs') ? tournamentToDisplay.playoffSchedule : tournamentToDisplay.groupStageSchedule;
     const currentRound = tournamentToDisplay.currentRound;
     
-    return schedule.some(game => {
-        if (game.status !== 'scheduled' || game.round !== currentRound) return false;
-        
-        const homeTeamName = typeof game.homeTeam === 'string' ? game.homeTeam : null;
-        const awayTeamName = typeof game.awayTeam === 'string' ? game.awayTeam : null;
-
-        return homeTeamName === userTeam.name || awayTeamName === userTeam.name;
-    });
+    return schedule.some(game => 
+        game.round === currentRound &&
+        game.status === 'scheduled' &&
+        ((typeof game.homeTeam === 'string' && game.homeTeam === userTeam.name) || (typeof game.awayTeam === 'string' && game.awayTeam === userTeam.name))
+    );
   }, [tournamentToDisplay, userTeam]);
 
   return (
@@ -105,7 +100,7 @@ const NationalsPage = () => {
           </div>
 
           {tournamentToDisplay ? (
-            tournamentToDisplay.status === 'playoffs' || tournamentToDisplay.status === 'completed' ? (
+            tournamentToDisplay.status === 'silver-playoffs' || tournamentToDisplay.status === 'gold-playoffs' || tournamentToDisplay.status === 'completed' ? (
                 <NationalsPlayoffTree 
                     playoffSchedule={tournamentToDisplay.playoffSchedule}
                     teams={teams}

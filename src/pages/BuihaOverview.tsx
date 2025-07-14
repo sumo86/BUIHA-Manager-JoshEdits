@@ -8,8 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Star, StarHalf } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SeasonHistoryDisplay } from '@/components/history/SeasonHistoryDisplay';
 
 type PlayerWithTeamInfo = Player & {
   teamName: string;
@@ -115,70 +113,59 @@ const BuihaOverview = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>BUIHA Overview</CardTitle>
+        <CardTitle>BUIHA Player Overview</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="players">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="players">Player Overview</TabsTrigger>
-            <TabsTrigger value="history">Season History</TabsTrigger>
-          </TabsList>
-          <TabsContent value="players" className="mt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <Input placeholder="Filter by name..." value={filters.name} onChange={e => handleFilterChange('name', e.target.value)} />
-              <Select value={filters.team} onValueChange={value => handleFilterChange('team', value)}>
-                <SelectTrigger><SelectValue placeholder="Filter by team..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Teams</SelectItem>
-                  {uniqueTeams.map((team: string) => <SelectItem key={team} value={team}>{team}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={filters.division} onValueChange={value => handleFilterChange('division', value)}>
-                <SelectTrigger><SelectValue placeholder="Filter by division..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Divisions</SelectItem>
-                  {uniqueDivisions.map((div: string) => <SelectItem key={div} value={div}>{div}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={filters.position} onValueChange={value => handleFilterChange('position', value)}>
-                <SelectTrigger><SelectValue placeholder="Filter by position..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Positions</SelectItem>
-                  {uniquePositions.map((pos: Position) => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableHeader sortKey="name">Name</SortableHeader>
-                    <SortableHeader sortKey="teamName">Team</SortableHeader>
-                    <SortableHeader sortKey="starRating">Rating</SortableHeader>
-                    <SortableHeader sortKey="age">Age</SortableHeader>
-                    <SortableHeader sortKey="positions">Position</SortableHeader>
-                    <SortableHeader sortKey="eligibility">Eligibility</SortableHeader>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAndSortedPlayers.map(player => (
-                    <TableRow key={player.id} onClick={() => navigate(`/player/${player.id}`)} className="cursor-pointer">
-                      <TableCell className="font-medium">{player.name}</TableCell>
-                      <TableCell>{player.teamName}</TableCell>
-                      <TableCell>{renderStars(player.starRating)}</TableCell>
-                      <TableCell>{player.age}</TableCell>
-                      <TableCell>{player.positions.join(', ')}</TableCell>
-                      <TableCell>{renderEligibility(player)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-          <TabsContent value="history" className="mt-6">
-            <SeasonHistoryDisplay />
-          </TabsContent>
-        </Tabs>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <Input placeholder="Filter by name..." value={filters.name} onChange={e => handleFilterChange('name', e.target.value)} />
+          <Select value={filters.team} onValueChange={value => handleFilterChange('team', value)}>
+            <SelectTrigger><SelectValue placeholder="Filter by team..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Teams</SelectItem>
+              {uniqueTeams.map((team: string) => <SelectItem key={team} value={team}>{team}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filters.division} onValueChange={value => handleFilterChange('division', value)}>
+            <SelectTrigger><SelectValue placeholder="Filter by division..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Divisions</SelectItem>
+              {uniqueDivisions.map((div: string) => <SelectItem key={div} value={div}>{div}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filters.position} onValueChange={value => handleFilterChange('position', value)}>
+            <SelectTrigger><SelectValue placeholder="Filter by position..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Positions</SelectItem>
+              {uniquePositions.map((pos: Position) => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="border rounded-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableHeader sortKey="name">Name</SortableHeader>
+                <SortableHeader sortKey="teamName">Team</SortableHeader>
+                <SortableHeader sortKey="starRating">Rating</SortableHeader>
+                <SortableHeader sortKey="age">Age</SortableHeader>
+                <SortableHeader sortKey="positions">Position</SortableHeader>
+                <SortableHeader sortKey="eligibility">Eligibility</SortableHeader>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAndSortedPlayers.map(player => (
+                <TableRow key={player.id} onClick={() => navigate(`/player/${player.id}`)} className="cursor-pointer">
+                  <TableCell className="font-medium">{player.name}</TableCell>
+                  <TableCell>{player.teamName}</TableCell>
+                  <TableCell>{renderStars(player.starRating)}</TableCell>
+                  <TableCell>{player.age}</TableCell>
+                  <TableCell>{player.positions.join(', ')}</TableCell>
+                  <TableCell>{renderEligibility(player)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
