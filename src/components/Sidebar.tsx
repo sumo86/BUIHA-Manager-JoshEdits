@@ -90,7 +90,7 @@ const Sidebar = () => {
               </NavLink>
             ))}
           </nav>
-          {managedOrganization && isManagingOrg && (
+          {isManagingOrg && (
              <div className="px-4 mt-4">
                 <h3 className="mb-2 px-4 text-lg font-semibold tracking-tight">
                     Your Teams

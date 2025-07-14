@@ -33,28 +33,44 @@ export const rebalanceOrganizationRosters = (teamsInOrg: Team[]): Team[] => {
 
     // Clear existing rosters
     const updatedTeams = sortedTeams.map(team => ({ ...team, roster: [] as Player[] }));
+    const assignedPlayerIds = new Set<string>();
 
-    // Distribute players in a "snake" draft style to ensure top teams get better players
-    // but roster sizes remain relatively even.
-    allPlayers.forEach((player, index) => {
-        const teamIndex = index % sortedTeams.length;
-        updatedTeams[teamIndex].roster.push(player);
+    // Assign players hierarchically
+    let playerPoolIndex = 0;
+    for (const team of updatedTeams) {
+        const rosterSize = 21; // Standard roster size
+        while (team.roster.length < rosterSize && playerPoolIndex < allPlayers.length) {
+            const player = allPlayers[playerPoolIndex];
+            if (!assignedPlayerIds.has(player.id)) {
+                team.roster.push(player);
+                assignedPlayerIds.add(player.id);
+            }
+            playerPoolIndex++;
+        }
+    }
+
+    // Assign remaining players to the lowest team
+    const lowestTeam = updatedTeams[updatedTeams.length - 1];
+    allPlayers.forEach(p => {
+        if (!assignedPlayerIds.has(p.id)) {
+            lowestTeam.roster.push(p);
+        }
     });
 
-    // Ensure minimum roster size by moving players from bottom up if needed
-    for (let i = updatedTeams.length - 1; i > 0; i--) {
-        const currentTeam = updatedTeams[i];
-        const teamAbove = updatedTeams[i - 1];
-        while (currentTeam.roster.length < 16 && teamAbove.roster.length > 16) {
-            // Move worst player from team above to current team
+    // Ensure minimum roster size by moving players down
+    for (let i = 0; i < updatedTeams.length - 1; i++) {
+        const teamAbove = updatedTeams[i];
+        const teamBelow = updatedTeams[i+1];
+        while (teamBelow.roster.length < 16 && teamAbove.roster.length > 16) {
+            // Move worst player from team above to team below
             teamAbove.roster.sort((a, b) => a.currentAbility - b.currentAbility);
             const playerToMove = teamAbove.roster.shift();
             if (playerToMove) {
-                currentTeam.roster.push(playerToMove);
+                teamBelow.roster.push(playerToMove);
             }
+            // sort back
+            teamAbove.roster.sort((a, b) => b.currentAbility - a.currentAbility);
         }
-        // sort back
-        teamAbove.roster.sort((a, b) => b.currentAbility - a.currentAbility);
     }
 
     return updatedTeams;

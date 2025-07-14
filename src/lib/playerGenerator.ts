@@ -32,14 +32,15 @@ const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowS
 const getRandomSkaterPosition = (): Position => {
     // Directly index the array to ensure Position type is strictly maintained
     const randomIndex = Math.floor(Math.random() * skaterPositions.length);
-    return skaterPositions[randomIndex];
+    const selectedPosition: Position = skaterPositions[randomIndex]; // Explicitly type the variable
+    return selectedPosition;
 };
 
 // New helper function to get a unique skater position
 const getUniqueSkaterPosition = (currentPositions: Position[]): Position => {
     let newPos: Position;
     do {
-        newPos = getRandomSkaterPosition();
+        newPos = getRandomSkaterPosition(); // This should now be guaranteed Position
     } while (currentPositions.some(p => p === newPos));
     return newPos;
 };
@@ -199,10 +200,10 @@ export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Positio
   const isSkater = position !== 'G';
   if (isSkater) {
     if (Math.random() > 0.5) { 
-      positions.push(getUniqueSkaterPosition(positions) as typeof positions[number]); // Explicit cast
+      positions.push(getUniqueSkaterPosition(positions)); // Removed redundant cast, type is now explicit from helper
     }
     if (positions.length === 2 && Math.random() > 0.8) { 
-      positions.push(getUniqueSkaterPosition(positions) as typeof positions[number]); // Explicit cast
+      positions.push(getUniqueSkaterPosition(positions)); // Removed redundant cast, type is now explicit from helper
     }
   }
 

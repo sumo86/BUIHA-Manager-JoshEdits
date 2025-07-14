@@ -330,5 +330,5 @@ export type NationalsTournament = {
   playoffSchedule: NationalsPlayoffMatch[];
   status: 'pending' | 'group-stage' | 'playoffs' | 'completed';
   winner?: string;
-  currentRound: number;
+  currentRound: number | 'Quarter-Final' | 'Semi-Final' | 'Final';
 };
