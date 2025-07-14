@@ -16,7 +16,8 @@ const Layout = () => {
     managedOrganization, 
     managedTeams, 
     userTeam, 
-    setActiveTeam 
+    setActiveTeam,
+    isManagingOrg // Added isManagingOrg here
   } = useTeam();
   const isMobile = useIsMobile();
 
@@ -45,7 +46,7 @@ const Layout = () => {
               <Calendar className="h-5 w-5" />
               <span>{currentDate.month} {currentDate.year}, Week {currentDate.week}</span>
             </div>
-            {managedOrganization && userTeam && (
+            {managedOrganization && isManagingOrg && (
               <div className="flex items-center gap-2 flex-shrink min-w-0">
                 <span className="text-sm font-medium text-muted-foreground hidden md:inline">{managedOrganization}:</span>
                 <Select value={userTeam.name} onValueChange={setActiveTeam}>
