@@ -136,6 +136,7 @@ export type Player = {
   captaincy: 'C' | 'A' | null;
   yearsLeftInProgram?: number;
   history: PlayerSeasonStats[];
+  trainingFocus: TrainingFocus; // This line is crucial
   currentStats: PlayerSeasonStats[];
   activeInstructions: ActiveInstruction[];
   source?: 'Local' | 'International' | 'Transfer';

@@ -32,7 +32,7 @@ export const PlayerFocusTable = ({ players, onFocusChange }: PlayerFocusTablePro
         <TableBody>
           {sortedPlayers.map((player) => {
             const isGoalie = player.positions.includes('G');
-            const applicableFocuses = isGoalie ? skaterFocuses : goalieFocuses; // Fixed: Use skaterFocuses for skaters, goalieFocuses for goalies
+            const applicableFocuses = isGoalie ? goalieFocuses : skaterFocuses;
             
             return (
               <TableRow key={player.id}>
