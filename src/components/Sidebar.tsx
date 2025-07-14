@@ -48,7 +48,7 @@ const navItems = [
 ];
 
 const Sidebar = () => {
-  const { userTeam, advanceWeek, selectTeam, managedOrganization, managedTeams, setActiveTeam, selectOrganization, gameForCurrentWeek } = useTeam();
+  const { userTeam, advanceWeek, selectTeam, managedOrganization, managedTeams, setActiveTeam, selectOrganization, gameForCurrentWeek, isManagingOrg } = useTeam();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -90,7 +90,7 @@ const Sidebar = () => {
               </NavLink>
             ))}
           </nav>
-          {managedOrganization && (
+          {managedOrganization && isManagingOrg && (
              <div className="px-4 mt-4">
                 <h3 className="mb-2 px-4 text-lg font-semibold tracking-tight">
                     Your Teams

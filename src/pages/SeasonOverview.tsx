@@ -8,7 +8,7 @@ import { ColumnDef, flexRender, getCoreRowModel, getSortedRowModel, SortingState
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getAggregatedCurrentStats } from '@/lib/statsUtils';
+import { getDivisionAggregatedStats } from '@/lib/statsUtils';
 
 interface PlayerWithTeam extends Player {
     teamName: string;
@@ -44,7 +44,7 @@ const SeasonOverview = () => {
             .flatMap(team => team.roster.map(player => ({ 
                 ...player, 
                 teamName: team.name,
-                aggregatedStats: getAggregatedCurrentStats(player)
+                aggregatedStats: getDivisionAggregatedStats(player, userTeam.leagueDivision)
             }))),
     [teams, userTeam.leagueDivision]);
 

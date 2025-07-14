@@ -1,59 +1,63 @@
-import { Team } from '@/types';
+import { Team, Player, SkaterAttributes } from '@/types';
 import { tactics } from '@/data/tactics';
-import { calculateTacticSuitability } from '@/lib/tactics';
 
-/**
- * Allows an AI team to make tactical adjustments based on the game situation.
- * @param aiTeam The AI team to potentially adjust.
- * @param playerTeam The opponent (player) team.
- * @param scoreDifference The score from the AI's perspective (e.g., -1 means losing by 1).
- * @returns The potentially updated AI team.
- */
-export const aiMakeAdjustments = (aiTeam: Team, playerTeam: Team, scoreDifference: number): Team => {
-    // If AI is winning or tied, it's less likely to make a change.
-    if (scoreDifference >= 0 && Math.random() < 0.75) {
-        return aiTeam;
-    }
-
-    const newAiTeam = JSON.parse(JSON.stringify(aiTeam));
-    let changeMade = false;
-
-    // --- Defensive Tactic Adjustment ---
-    const playerAttackTacticName = playerTeam.tactics['Attacking Zone Offence'];
-    const aiDefendTacticName = aiTeam.tactics['Defensive Zone Coverage'];
-    const playerAttackTactic = tactics.find(t => t.tactic === playerAttackTacticName);
-    const aiDefendTactic = tactics.find(t => t.tactic === aiDefendTacticName);
-
-    if (playerAttackTactic && aiDefendTactic) {
-        const isCountered = playerAttackTactic.strongVs === aiDefendTactic.tactic;
-        const suitability = calculateTacticSuitability(aiDefendTactic, aiTeam.roster);
-
-        // Change if losing and countered, or if suitability is poor.
-        if (scoreDifference < 0 || isCountered || suitability.score <= 2) {
-            const possibleTactics = tactics.filter(t => t.category === 'Defensive Zone Coverage');
-            
-            const bestTactic = possibleTactics
-                .map(t => ({
-                    tactic: t,
-                    suitability: calculateTacticSuitability(t, aiTeam.roster),
-                    isCounterToPlayer: t.strongVs === playerAttackTactic.tactic,
-                }))
-                .sort((a, b) => {
-                    // Prioritize counters, then suitability
-                    if (a.isCounterToPlayer && !b.isCounterToPlayer) return -1;
-                    if (!a.isCounterToPlayer && b.isCounterToPlayer) return 1;
-                    return b.suitability.score - a.suitability.score;
-                })[0];
-
-            if (bestTactic && bestTactic.tactic.tactic !== aiDefendTactic.tactic) {
-                newAiTeam.tactics['Defensive Zone Coverage'] = bestTactic.tactic.tactic;
-                changeMade = true;
-            }
+export const aiMakeAdjustments = (team: Team, opponent: Team, scoreDifference: number): Team => {
+    const newTeam = JSON.parse(JSON.stringify(team));
+    
+    // Tactic adjustment logic
+    const currentAttackTacticName = newTeam.tactics['Attacking Zone Offence'];
+    const currentDefendTacticName = newTeam.tactics['Defensive Zone Coverage'];
+    const opponentDefendTacticName = opponent.tactics['Defensive Zone Coverage'];
+    
+    const currentAttackTactic = tactics.find(t => t.tactic === currentAttackTacticName);
+    
+    if (scoreDifference < -1 && currentAttackTactic && currentAttackTactic.weakVs === opponentDefendTacticName) {
+        const betterTactics = tactics.filter(t => t.phase === 'Offence' && t.tactic !== currentAttackTacticName && t.weakVs !== opponentDefendTacticName);
+        if (betterTactics.length > 0) {
+            newTeam.tactics['Attacking Zone Offence'] = betterTactics[Math.floor(Math.random() * betterTactics.length)].tactic;
         }
     }
-    
-    // A similar logic could be added for AI's offense vs player's defense.
-    // For now, just adjusting the defensive tactic is a great start.
 
-    return newAiTeam;
+    return newTeam;
+};
+
+export const rebalanceOrganizationRosters = (teamsInOrg: Team[]): Team[] => {
+    if (teamsInOrg.length <= 1) return teamsInOrg;
+
+    // Sort teams by level (assuming naming convention like "Team A", "Team B")
+    const sortedTeams = [...teamsInOrg].sort((a, b) => a.name.localeCompare(b.name));
+
+    // Pool all players from the organization
+    const allPlayers = sortedTeams.flatMap(team => team.roster);
+
+    // Sort all players by current ability
+    allPlayers.sort((a, b) => b.currentAbility - a.currentAbility);
+
+    // Clear existing rosters
+    const updatedTeams = sortedTeams.map(team => ({ ...team, roster: [] as Player[] }));
+    const assignedPlayerIds = new Set<string>();
+
+    // Re-distribute players, filling top teams first
+    for (const team of updatedTeams) {
+        const rosterLimit = 21; // A standard roster size
+        while (team.roster.length < rosterLimit && allPlayers.length > 0) {
+            const playerIndex = allPlayers.findIndex(p => !assignedPlayerIds.has(p.id));
+            if (playerIndex === -1) break; // No unassigned players left
+            
+            const playerToAssign = allPlayers[playerIndex];
+            team.roster.push(playerToAssign);
+            assignedPlayerIds.add(playerToAssign.id);
+        }
+    }
+
+    // Distribute any remaining players to the lowest-level team
+    const lowestTeam = updatedTeams[updatedTeams.length - 1];
+    allPlayers.forEach(p => {
+        if (!assignedPlayerIds.has(p.id)) {
+            lowestTeam.roster.push(p);
+            assignedPlayerIds.add(p.id);
+        }
+    });
+
+    return updatedTeams;
 };

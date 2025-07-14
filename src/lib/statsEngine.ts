@@ -16,7 +16,7 @@ const getParticipatingPlayerIds = (team: Team): Set<string> => {
     team.lineup.defence.ld.forEach(id => id && ids.add(id));
     team.lineup.defence.rd.forEach(id => id && ids.add(id));
     if (team.lineup.goalies.starter) ids.add(team.lineup.goalies.starter);
-    if (team.lineup.goalies.backup) ids.add(team.lineup.goalies.backup);
+    // Backup goalie is handled separately
     return ids;
 };
 
@@ -117,6 +117,16 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
                 }
             }
         });
+
+        // Handle backup goalie appearance
+        const starterInjured = gameState.injuries.some(i => i.playerId === team.lineup.goalies.starter);
+        if (starterInjured && team.lineup.goalies.backup) {
+            const backupGoalie = team.roster.find(p => p.id === team.lineup.goalies.backup);
+            if (backupGoalie) {
+                const stats = findOrCreateStatLine(backupGoalie, team, season);
+                stats.gamesPlayed += 1;
+            }
+        }
     };
 
     processPlayerStats(updatedUserTeam, updatedOpponentTeam, gameState.userScore, gameState.opponentScore, gameState.opponentShots);

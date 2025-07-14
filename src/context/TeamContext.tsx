@@ -13,6 +13,7 @@ import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
 import { NationalsTournament } from '@/types';
 import { isRivalryGame } from '@/lib/rivalries';
+import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -51,6 +52,7 @@ interface TeamContextType {
     movePlayer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
     requestPlayerTransfer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
     managedOrganization: string | null;
+    isManagingOrg: boolean;
     managedTeams: Team[];
     selectOrganization: (orgName: string | null) => void;
     setActiveTeam: (teamName: string) => void;
@@ -98,6 +100,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
     const [managedOrganization, setManagedOrganization] = useState<string | null>(() => localStorage.getItem('managedOrganization') || null);
+    const [isManagingOrg, setIsManagingOrg] = useState<boolean>(() => localStorage.getItem('isManagingOrg') === 'true');
     
     const [schedule, setSchedule] = useState<ScheduleEntry[]>(() => {
         try {
@@ -187,15 +190,19 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (team) {
                 const orgName = getOrganizationName(team.name);
                 localStorage.setItem('activeTeamName', teamName);
-                localStorage.setItem('managedOrganization', orgName); // Set managedOrganization even for single teams
+                localStorage.setItem('managedOrganization', orgName);
+                localStorage.setItem('isManagingOrg', 'false');
                 setActiveTeamName(teamName);
                 setManagedOrganization(orgName);
+                setIsManagingOrg(false);
             }
         } else {
             localStorage.removeItem('activeTeamName');
             localStorage.removeItem('managedOrganization');
+            localStorage.removeItem('isManagingOrg');
             setActiveTeamName(null);
             setManagedOrganization(null);
+            setIsManagingOrg(false);
         }
     };
 
@@ -207,14 +214,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const mainTeam = org.teams[0];
                 localStorage.setItem('managedOrganization', orgName);
                 localStorage.setItem('activeTeamName', mainTeam.name);
+                localStorage.setItem('isManagingOrg', 'true');
                 setManagedOrganization(orgName);
                 setActiveTeamName(mainTeam.name);
+                setIsManagingOrg(true);
             }
         } else {
             localStorage.removeItem('managedOrganization');
             localStorage.removeItem('activeTeamName');
+            localStorage.removeItem('isManagingOrg');
             setManagedOrganization(null);
             setActiveTeamName(null);
+            setIsManagingOrg(false);
         }
     };
 
@@ -487,7 +498,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                     (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                     playerChanged = true;
-                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
+                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: -improvement, newRating: newAttrValue, date: currentDate });
                                 }
                             }
                         }
@@ -1139,7 +1150,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             updateBudgetAllocations, runStudentLifeInitiative, startFacilityProject,
             currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
             autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
-            managedOrganization, managedTeams, selectOrganization, setActiveTeam,
+            managedOrganization, isManagingOrg, managedTeams, selectOrganization, setActiveTeam,
             schedule, gameForCurrentWeek, nationalsData,
             markGameAsCompleted, seasonRecords, careerRecords, alumni,
             playNationalsRound, autoSimulateUserNationalsGame
