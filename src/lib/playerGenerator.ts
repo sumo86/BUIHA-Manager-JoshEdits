@@ -8,10 +8,10 @@ import { getTierStats, divisionTierStats } from "./leagueUtils";
 import { starRatingDistribution } from "@/data/starRatingDistribution";
 import { skaterAbilityRanges, goalieAbilityRanges } from "@/data/abilityRanges";
 
-const eligibilities: Player['eligibility'][] = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"];
-const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
+const eligibilities = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"] as const;
+const skaterPositions = ["C", "LW", "RW", "LD", "RD"] as const;
 
-const getRandomItem = <T extends readonly any[]>(arr: T): T[number] => arr[Math.floor(Math.random() * arr.length)];
+const getRandomItem = <TItem>(arr: readonly TItem[]): TItem => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const getArchetypeForPosition = (position: Position): PlayerArchetype => {
@@ -306,27 +306,27 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
   return finalRoster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 };
 
-export const generateRecruits = (userLeagueDivision: string, allTeamNames: string[]): Player[] => {
+export const generateRecruits = (userLeagueDivision: string, allTeamNames: string[], count?: number): Player[] => {
     const recruits: Player[] = [];
     const usedJerseyNumbers = new Set<number>();
-    const numRecruits = 30 + Math.floor(Math.random() * 21);
+    const numRecruits = count || (30 + Math.floor(Math.random() * 21));
     const teamDivisionMap = new Map(allTeamsData.map(team => [team.name, team.leagueDivision]));
 
     for (let i = 0; i < numRecruits; i++) {
         const sourceRoll = Math.random();
         const source: Player['source'] = sourceRoll < 0.6 ? 'Local' : (sourceRoll < 0.9 ? 'International' : 'Transfer');
         const eligibility = source === 'Transfer' 
-            ? getRandomItem<Player['eligibility']>(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"]) 
+            ? getRandomItem(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"] as const) 
             : (Math.random() < 0.85 
                 ? "UG Year 1" 
-                : getRandomItem<Player['eligibility']>(["UG Year 2", "Masters"]));
+                : getRandomItem(["UG Year 2", "Masters"] as const));
         
         const qualityRoll = Math.random();
         let estimatedQuality: Player['estimatedQuality'];
         if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else if (qualityRoll < 0.99) estimatedQuality = 'Elite'; else estimatedQuality = 'Elite'; // Ensure Elite is possible
         
-        const allRecruitPositions: Position[] = [...skaterPositions, 'G'];
-        const position = getRandomItem<Position>(allRecruitPositions);
+        const allRecruitPositions = [...skaterPositions, 'G'] as const;
+        const position = getRandomItem(allRecruitPositions);
         const isSkater = position !== 'G';
 
         let targetCurrentAbilityMin: number, targetCurrentAbilityMax: number;

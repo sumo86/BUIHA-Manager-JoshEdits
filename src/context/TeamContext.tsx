@@ -1,9 +1,9 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
-import { generateRecruits, generatePlayer } from '@/lib/playerGenerator';
+import { generateRecruits, generatePlayer, calculateStarRating } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
-import { calculateCurrentAbility, calculateStarRating } from '@/lib/playerGenerator';
+import { calculateCurrentAbility } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
 import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
 import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
@@ -721,6 +721,55 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     if (newAlumni.length > 0) {
                         setAlumni(prev => [...prev, ...newAlumni]);
+                    }
+
+                    // AI Recruitment Logic
+                    const allOrgs = getTeamOrganizations();
+                    const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
+                    const allTeamNames = tempTeams.map(t => t.name);
+                    let recruitmentOccurred = false;
+
+                    aiOrgs.forEach(org => {
+                        const orgTeamNames = org.teams.map(t => t.name);
+                        const orgTeams = tempTeams.filter(t => orgTeamNames.includes(t.name));
+                        if (orgTeams.length === 0) return;
+
+                        const targetRosterSize = orgTeams.length * 21; // Standard roster size
+                        const currentRosterSize = orgTeams.reduce((sum, team) => sum + team.roster.length, 0);
+                        const playersToRecruitCount = Math.max(0, targetRosterSize - currentRosterSize);
+
+                        if (playersToRecruitCount > 0) {
+                            recruitmentOccurred = true;
+                            const primaryTeam = orgTeams.sort((a, b) => a.name.localeCompare(b.name))[0];
+                            const prospects = generateRecruits(primaryTeam.leagueDivision, allTeamNames, playersToRecruitCount * 2);
+                            
+                            prospects.sort((a, b) => b.potentialAbility - a.potentialAbility);
+                            const newRecruits = prospects.slice(0, playersToRecruitCount);
+
+                            const lowestTierTeamName = orgTeams.sort((a, b) => b.name.localeCompare(a.name))[0].name;
+                            const lowestTierTeamIndex = tempTeams.findIndex(t => t.name === lowestTierTeamName);
+
+                            if (lowestTierTeamIndex !== -1) {
+                                const teamToUpdate = tempTeams[lowestTierTeamIndex];
+                                const usedJerseyNumbers = new Set(teamToUpdate.roster.map(p => p.jerseyNumber));
+                                
+                                newRecruits.forEach(recruit => {
+                                    let newJerseyNumber = 1;
+                                    while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
+                                    recruit.jerseyNumber = newJerseyNumber;
+                                    usedJerseyNumbers.add(newJerseyNumber);
+                                    const isSkater = recruit.positions[0] !== 'G';
+                                    recruit.starRating = calculateStarRating(recruit.currentAbility, isSkater, teamToUpdate.leagueDivision);
+                                });
+
+                                teamToUpdate.roster.push(...newRecruits);
+                                tempTeams[lowestTierTeamIndex] = teamToUpdate;
+                            }
+                        }
+                    });
+
+                    if (recruitmentOccurred) {
+                        toast.info("AI teams have recruited new players for the upcoming season.");
                     }
 
                     tempTeams = tempTeams.map(team => {
