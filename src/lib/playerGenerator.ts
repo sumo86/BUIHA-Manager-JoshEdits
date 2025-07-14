@@ -38,9 +38,9 @@ const getUniqueSkaterPosition = (currentPositions: Position[]): Position => {
     const availablePositions = skaterPositions.filter(p => !currentPositions.includes(p));
     if (availablePositions.length === 0) {
         // Fallback if no unique position can be found (shouldn't happen with 5 positions and max 3 assigned)
-        return getRandomItem(skaterPositions);
+        return getRandomItem(skaterPositions) as Position; // Explicit cast here
     }
-    return getRandomItem(availablePositions);
+    return getRandomItem(availablePositions) as Position; // Explicit cast here
 };
 
 const generateAttributesForAbility = (archetype: PlayerArchetype, targetAbility: number, isSkater: boolean): SkaterAttributes | GoalieAttributes => {

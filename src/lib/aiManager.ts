@@ -27,46 +27,62 @@ export const rebalanceOrganizationRosters = (teamsInOrg: Team[]): Team[] => {
     // Sort teams by level (e.g., "Team A", "Team B")
     const sortedTeams = [...teamsInOrg].sort((a, b) => a.name.localeCompare(b.name));
 
-    // Pool all players from the organization and sort by ability
+    // Pool all players from the organization and sort by ability within position groups
     const allPlayers = sortedTeams.flatMap(team => team.roster);
-    allPlayers.sort((a, b) => b.currentAbility - a.currentAbility);
+    const allGoalies = allPlayers.filter(p => p.positions.includes('G')).sort((a, b) => b.currentAbility - a.currentAbility);
+    const allSkaters = allPlayers.filter(p => !p.positions.includes('G')).sort((a, b) => b.currentAbility - a.currentAbility);
 
     // Clear existing rosters
     const updatedTeams = sortedTeams.map(team => ({ ...team, roster: [] as Player[] }));
     const assignedPlayerIds = new Set<string>();
 
-    // Assign players hierarchically
-    let playerPoolIndex = 0;
+    // Assign goalies first, ensuring 2 per team
     for (const team of updatedTeams) {
-        const rosterSize = 21; // Standard roster size
-        while (team.roster.length < rosterSize && playerPoolIndex < allPlayers.length) {
-            const player = allPlayers[playerPoolIndex];
-            if (!assignedPlayerIds.has(player.id)) {
-                team.roster.push(player);
-                assignedPlayerIds.add(player.id);
+        const goaliesNeeded = 2;
+        while (team.roster.filter(p => p.positions.includes('G')).length < goaliesNeeded && allGoalies.length > 0) {
+            const goalie = allGoalies.shift();
+            if (goalie && !assignedPlayerIds.has(goalie.id)) {
+                team.roster.push(goalie);
+                assignedPlayerIds.add(goalie.id);
             }
-            playerPoolIndex++;
         }
     }
 
-    // Assign remaining players to the lowest team
+    // Assign skaters to fill up rosters
+    for (const team of updatedTeams) {
+        const rosterSize = 21; // Standard roster size
+        while (team.roster.length < rosterSize && allSkaters.length > 0) {
+            const skater = allSkaters.shift();
+            if (skater && !assignedPlayerIds.has(skater.id)) {
+                team.roster.push(skater);
+                assignedPlayerIds.add(skater.id);
+            }
+        }
+    }
+
+    // Assign remaining players (if any) to the lowest team
     const lowestTeam = updatedTeams[updatedTeams.length - 1];
-    allPlayers.forEach(p => {
+    [...allGoalies, ...allSkaters].forEach(p => {
         if (!assignedPlayerIds.has(p.id)) {
             lowestTeam.roster.push(p);
         }
     });
 
-    // Ensure minimum roster size by moving players down
+    // Ensure minimum roster size by moving players down, being careful with goalies
     for (let i = 0; i < updatedTeams.length - 1; i++) {
         const teamAbove = updatedTeams[i];
-        const teamBelow = updatedTeams[i+1];
+        const teamBelow = updatedTeams[i + 1];
         while (teamBelow.roster.length < 16 && teamAbove.roster.length > 16) {
-            // Move worst player from team above to team below
+            // Find the worst skater to move down, preserving goalie counts
             teamAbove.roster.sort((a, b) => a.currentAbility - b.currentAbility);
-            const playerToMove = teamAbove.roster.shift();
-            if (playerToMove) {
+            const playerToMoveIndex = teamAbove.roster.findIndex(p => !p.positions.includes('G'));
+
+            if (playerToMoveIndex !== -1) {
+                const [playerToMove] = teamAbove.roster.splice(playerToMoveIndex, 1);
                 teamBelow.roster.push(playerToMove);
+            } else {
+                // No skaters to move, break to avoid infinite loop
+                break;
             }
             // sort back
             teamAbove.roster.sort((a, b) => b.currentAbility - a.currentAbility);

@@ -302,7 +302,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const currentYearNationals = nationalsData[currentDate.year];
         if (currentYearNationals && userTeam.nationalsDivision) {
             const tournament = currentYearNationals[userTeam.nationalsDivision];
-            if (tournament && (tournament.status === 'group-stage' || tournament.status === 'playoffs')) {
+            if (tournament && (tournament.status === 'group-stage' || tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs')) {
                 const gamesToCheck = tournament.status === 'group-stage' 
                     ? tournament.groupStageSchedule 
                     : tournament.playoffSchedule;
@@ -318,8 +318,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (tournament.status === 'group-stage') {
                         return g.round === tournament.currentRound;
                     }
-                    if (tournament.status === 'playoffs') {
-                        return g.round === tournament.currentRound;
+                    if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
+                        const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
+                        return (g as NationalsPlayoffMatch).round === tournament.currentRound && (g as NationalsPlayoffMatch).bracket === currentBracket;
                     }
                     return false;
                 });
@@ -933,14 +934,29 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (allGroupGamesPlayed) {
                 toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
                 tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date);
-                tournament.status = 'playoffs';
-                tournament.currentRound = 'Quarter-Final';
+                
+                const silverPlayoffExists = tournament.playoffSchedule.some((m: NationalsPlayoffMatch) => m.bracket === 'Silver');
+
+                if (silverPlayoffExists) {
+                    tournament.status = 'silver-playoffs';
+                    const firstSilverRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Silver')?.round || 'Final';
+                    tournament.currentRound = firstSilverRound;
+                    toast.info(`The ${division} Silver Playoffs will now begin.`);
+                } else {
+                    tournament.status = 'gold-playoffs';
+                    const firstGoldRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Gold')?.round || 'Final';
+                    tournament.currentRound = firstGoldRound;
+                    toast.info(`The ${division} Gold Playoffs will now begin.`);
+                }
+
                 if (tournament.playoffSchedule.length === 0) {
                     tournament.status = 'completed';
                     toast.info(`${division} tournament has concluded as no playoffs could be generated.`);
                 }
             }
-        } else if (tournament.status === 'playoffs') {
+        } else if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
+            const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
+
             const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
                 if (!match.result) return undefined;
                 if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
@@ -953,7 +969,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             
             // Resolve teams for the current round first
             allPlayoffGames.forEach((game: NationalsPlayoffMatch) => {
-                if (game.round === tournament.currentRound && game.status === 'scheduled') {
+                if (game.bracket === currentBracket && game.round === tournament.currentRound && game.status === 'scheduled') {
                     if (typeof game.homeTeam !== 'string') {
                         const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
                         if (feederMatch && feederMatch.status === 'completed') {
@@ -969,7 +985,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
             });
 
-            const gamesToSim = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.round === tournament.currentRound && g.status === 'scheduled');
+            const gamesToSim = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.bracket === currentBracket && g.round === tournament.currentRound && g.status === 'scheduled');
 
             if (userGameResult) {
                 const userGame = gamesToSim.find(g => g.id === userGameResult.gameId);
@@ -1003,26 +1019,36 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
             });
 
-            const currentRoundGames = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.round === tournament.currentRound);
+            const currentRoundGames = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.bracket === currentBracket && g.round === tournament.currentRound);
             const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
 
             if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
                 const nextRoundMap: { [key: string]: 'Semi-Final' | 'Final' } = { 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
                 
                 if (tournament.currentRound === 'Final') {
-                    tournament.status = 'completed';
-                    const finalMatch = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Gold');
-                    tournament.winner = finalMatch?.winner;
-                    if (tournament.winner) {
-                        toast.success(`${tournament.winner} has won the ${division} National Championship!`);
-                    } else {
-                        toast.info(`The ${division} National Championship has concluded.`);
+                    if (currentBracket === 'Silver') {
+                        const silverFinal = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Silver');
+                        toast.success(`${silverFinal?.winner || 'The winner'} has won the ${division} Silver Championship!`);
+                        
+                        tournament.status = 'gold-playoffs';
+                        const firstGoldRound = allPlayoffGames.find(m => m.bracket === 'Gold')?.round || 'Final';
+                        tournament.currentRound = firstGoldRound;
+                        toast.info(`The ${division} Gold Playoffs will now begin.`);
+                    } else { // Gold Final
+                        tournament.status = 'completed';
+                        const finalMatch = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Gold');
+                        tournament.winner = finalMatch?.winner;
+                        if (tournament.winner) {
+                            toast.success(`${tournament.winner} has won the ${division} National Championship!`);
+                        } else {
+                            toast.info(`The ${division} National Championship has concluded.`);
+                        }
                     }
                 } else {
                     const nextRound = nextRoundMap[tournament.currentRound as 'Quarter-Final' | 'Semi-Final'];
                     if (nextRound) {
                         tournament.currentRound = nextRound;
-                        toast.info(`Advancing to the ${nextRound} of the ${division} playoffs.`);
+                        toast.info(`Advancing to the ${nextRound} of the ${division} ${currentBracket} playoffs.`);
                     }
                 }
             }

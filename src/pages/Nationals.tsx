@@ -57,7 +57,7 @@ const NationalsPage = () => {
 
   const userHasGameThisRound = useMemo(() => {
     if (!tournamentToDisplay || !userTeam) return false;
-    const schedule = tournamentToDisplay.status === 'playoffs' ? tournamentToDisplay.playoffSchedule : tournamentToDisplay.groupStageSchedule;
+    const schedule = (tournamentToDisplay.status === 'silver-playoffs' || tournamentToDisplay.status === 'gold-playoffs') ? tournamentToDisplay.playoffSchedule : tournamentToDisplay.groupStageSchedule;
     const currentRound = tournamentToDisplay.currentRound;
     
     return schedule.some(game => 
@@ -100,7 +100,7 @@ const NationalsPage = () => {
           </div>
 
           {tournamentToDisplay ? (
-            tournamentToDisplay.status === 'playoffs' || tournamentToDisplay.status === 'completed' ? (
+            tournamentToDisplay.status === 'silver-playoffs' || tournamentToDisplay.status === 'gold-playoffs' || tournamentToDisplay.status === 'completed' ? (
                 <NationalsPlayoffTree 
                     playoffSchedule={tournamentToDisplay.playoffSchedule}
                     teams={teams}
