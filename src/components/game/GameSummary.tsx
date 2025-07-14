@@ -1,13 +1,12 @@
-import { Team, GameEvent, GameState } from '@/types';
+import { GameEvent, Team } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMemo } from "react";
-import { Progress } from '@/components/ui/progress'; // Import Progress component
 
 interface GameSummaryProps {
+  gameLog: GameEvent[];
   userTeam: Team;
   opponentTeam: Team;
-  gameState: GameState; // Added gameState prop
 }
 
 const parseGoal = (description: string) => {
@@ -27,14 +26,14 @@ const parsePenalty = (description: string) => {
     };
 };
 
-export const GameSummary = ({ userTeam, opponentTeam, gameState }: GameSummaryProps) => {
+export const GameSummary = ({ gameLog, userTeam, opponentTeam }: GameSummaryProps) => {
     const { goals, penalties } = useMemo(() => {
         const goals: (GameEvent & { score: { user: number, opp: number } })[] = [];
         const penalties: GameEvent[] = [];
         let userScore = 0;
         let opponentScore = 0;
 
-        [...gameState.gameLog].reverse().forEach(event => {
+        [...gameLog].reverse().forEach(event => {
             if (event.description.startsWith('GOAL!')) {
                 if (event.team === userTeam.name) userScore++;
                 else opponentScore++;
@@ -42,14 +41,14 @@ export const GameSummary = ({ userTeam, opponentTeam, gameState }: GameSummaryPr
             }
         });
 
-        gameState.gameLog.forEach(event => {
+        gameLog.forEach(event => {
             if (event.description.startsWith('PENALTY!')) {
                 penalties.push(event);
             }
         });
 
         return { goals, penalties };
-    }, [gameState.gameLog, userTeam.name]);
+    }, [gameLog, userTeam.name]);
 
     const renderPeriodRows = (items: GameEvent[], period: number, type: 'goal' | 'penalty') => {
         const periodItems = items.filter(item => item.period === period);
@@ -96,38 +95,8 @@ export const GameSummary = ({ userTeam, opponentTeam, gameState }: GameSummaryPr
         );
     };
 
-    const totalTime = 3 * 20 * 60; // 3 periods * 20 minutes * 60 seconds
-    const timeElapsed = (gameState.period - 1) * 20 * 60 + gameState.time;
-    const progress = (timeElapsed / totalTime) * 100;
-
     return (
         <div className="grid md:grid-cols-2 gap-6">
-            <Card className="text-center">
-                <CardHeader>
-                    <CardTitle className="text-3xl">
-                        {userTeam.name} vs {opponentTeam.name}
-                    </CardTitle>
-                    <p className="text-lg text-muted-foreground">
-                        Period {gameState.period} - {Math.floor((1200 - gameState.time) / 60).toString().padStart(2, '0')}:{(1200 - gameState.time) % 60 < 0 ? '00' : (1200 - gameState.time) % 60..toString().padStart(2, '0')}
-                    </p>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex justify-around items-center text-4xl font-bold mb-4">
-                        <span>{gameState.userScore}</span>
-                        <span>-</span>
-                        <span>{gameState.opponentScore}</span>
-                    </div>
-                    <div className="flex justify-around items-center text-lg mb-4">
-                        <span>Shots: {gameState.userShots}</span>
-                        <span>Shots: {gameState.opponentShots}</span>
-                    </div>
-                    <Progress value={progress} className="w-full" />
-                    {gameState.isGameOver && (
-                        <p className="text-xl font-semibold mt-4">Game Over!</p>
-                    )}
-                </CardContent>
-            </Card>
-
             <Card>
                 <CardHeader>
                     <CardTitle>Scoring Summary</CardTitle>

@@ -111,7 +111,6 @@ export type PlayerSeasonStats = {
   goalsAgainstAverage?: number;
   savePercentage?: number;
   shutouts?: number;
-  isNationals?: boolean;
 };
 
 export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
