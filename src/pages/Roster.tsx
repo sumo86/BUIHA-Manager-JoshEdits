@@ -31,7 +31,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerMovement } from "@/components/roster/PlayerMovement";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getAggregatedCurrentStats } from "@/lib/statsUtils";
-import { JerseyManager } from "@/components/roster/JerseyManager";
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -251,10 +250,9 @@ const Roster = () => {
       <p className="text-lg text-muted-foreground mb-6">Manage your players, lines, and training schedules here.</p>
       
       <Tabs defaultValue="roster">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="roster">Player Roster</TabsTrigger>
           <TabsTrigger value="movement">Player Movement</TabsTrigger>
-          <TabsTrigger value="jerseys">Jersey Numbers</TabsTrigger>
         </TabsList>
         <TabsContent value="roster" className="mt-4">
           <Card className="mb-6">
@@ -301,9 +299,6 @@ const Roster = () => {
         </TabsContent>
         <TabsContent value="movement" className="mt-4">
           <PlayerMovement />
-        </TabsContent>
-        <TabsContent value="jerseys" className="mt-4">
-          <JerseyManager />
         </TabsContent>
       </Tabs>
     </div>

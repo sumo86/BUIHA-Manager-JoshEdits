@@ -7,12 +7,12 @@ import { Player } from '@/types';
 
 const StandingsPage = () => {
   const { teams } = useTeam();
+  const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
+
   const leagues = useMemo(() => {
     const leagueSet = new Set(teams.map(team => team.leagueDivision));
     return Array.from(leagueSet).sort();
   }, [teams]);
-
-  const [selectedLeague, setSelectedLeague] = useState<string | null>(leagues.length > 0 ? leagues[0] : null);
 
   const { displayedTeams, leaguePlayers } = useMemo(() => {
     const leagueToDisplay = selectedLeague || leagues[0];
@@ -50,7 +50,7 @@ const StandingsPage = () => {
         <h1 className="text-3xl font-bold">League Standings</h1>
         <p className="text-muted-foreground">View team standings and player leaderboards.</p>
       </div>
-      <Select value={selectedLeague || leagues[0]} onValueChange={(value: string) => setSelectedLeague(value)}>
+      <Select value={selectedLeague || leagues[0]} onValueChange={setSelectedLeague}>
         <SelectTrigger className="w-[280px]">
           <SelectValue placeholder="Select a league" />
         </SelectTrigger>

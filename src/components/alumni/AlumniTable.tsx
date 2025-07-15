@@ -2,7 +2,6 @@ import { Player } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Link } from 'react-router-dom';
 
 interface AlumniTableProps {
   alumni: Player[];
@@ -42,11 +41,7 @@ export const AlumniTable = ({ alumni }: AlumniTableProps) => {
               const careerPoints = player.history.reduce((sum, season) => sum + (season.points || 0), 0);
               return (
                 <TableRow key={player.id}>
-                  <TableCell className="font-medium">
-                    <Link to={`/player/${player.id}`} className="hover:underline">
-                      {player.name}
-                    </Link>
-                  </TableCell>
+                  <TableCell className="font-medium">{player.name}</TableCell>
                   <TableCell>{player.history[player.history.length - 1]?.team || 'N/A'}</TableCell>
                   <TableCell>
                     <Badge variant={player.alumniStatus === 'Retired' ? 'destructive' : 'secondary'}>
