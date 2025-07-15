@@ -200,7 +200,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const inProgress = allVersions.find(p => p.status === 'In Progress');
             
             const newStatus = (completed?.status || inProgress?.status || 'Not Started') as 'Not Started' | 'In Progress' | 'Completed';
-            return { ...project, status: newStatus };
+            
+            // Destructure to explicitly remove the old 'status' property before spreading
+            // and then add the new, correctly typed 'status'.
+            const { status: oldStatus, ...restOfProject } = project;
+            return { ...restOfProject, status: newStatus };
         });
     }, [managedOrganization, managedTeams]);
 
@@ -826,6 +830,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 if (teamToUpdateIndex !== -1) {
                                     const teamToUpdate = tempTeams[teamToUpdateIndex];
                                     const usedJerseyNumbers = new Set(teamToUpdate.roster.map(p => p.jerseyNumber));
+                                    
                                     let newJerseyNumber = 1;
                                     while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
                                     player.jerseyNumber = newJerseyNumber;
@@ -1281,7 +1286,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.info("Tournament already completed.");
             return;
         }
-    }; // Added missing closing brace
+    };
 
     const generateScoutingPool = () => {
         if (!userTeam) {
