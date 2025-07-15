@@ -2,7 +2,7 @@ import { Lineup, Player, Position } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Star, StarHalf } from 'lucide-react';
-import { roles, Role } from '@/data/roles'; // Corrected import for Role
+import { roles, Role } from '@/data/roles';
 
 interface LineupManagerProps {
   lineup: Lineup;
@@ -10,9 +10,6 @@ interface LineupManagerProps {
   onLineupChange: (lineup: Lineup) => void;
   onRoleChange: (playerId: string, newRole: string) => void;
 }
-
-const forwardPositions: Position[] = ['LW', 'C', 'RW'];
-const defencePositions: Position[] = ['LD', 'RD'];
 
 const renderStars = (rating: number) => {
   const fullStars = Math.floor(rating);
@@ -37,8 +34,8 @@ const getAttributeColorClass = (value: number) => {
 
 const getApplicableRoles = (player: Player): Role[] => {
     if (player.positions.includes('G')) return [];
-    const isForward = forwardPositions.some(p => player.positions.includes(p));
-    const isDefenceman = defencePositions.some(p => player.positions.includes(p));
+    const isForward = ['C', 'LW', 'RW'].some(p => player.positions.includes(p as Position));
+    const isDefenceman = ['LD', 'RD'].some(p => player.positions.includes(p as Position));
     if (isForward && isDefenceman) return roles;
     if (isForward) return roles.filter(r => r.positions.includes('Forward'));
     if (isDefenceman) return roles.filter(r => r.positions.includes('Defenceman'));
@@ -46,33 +43,41 @@ const getApplicableRoles = (player: Player): Role[] => {
 };
 
 export const LineupManager = ({ lineup, roster, onLineupChange, onRoleChange }: LineupManagerProps) => {
-  const getAvailablePlayers = (position: Position, currentId: string | null) => {
-    const usedPlayerIds = new Set(Object.values(lineup).flatMap(group => Object.values(group).flat()).filter(id => id !== currentId));
-    let positionGroup: Position[] = [];
-    if (forwardPositions.includes(position)) positionGroup = forwardPositions;
-    if (defencePositions.includes(position)) positionGroup = defencePositions;
-    if (position === 'G') positionGroup = ['G'];
-    return roster.filter(p => !usedPlayerIds.has(p.id) && p.positions.some(pos => positionGroup.includes(pos)));
+  const getAvailablePlayers = (isGoalie: boolean, currentId: string | null) => {
+    const usedPlayerIds = new Set(
+        [
+            ...Object.values(lineup.forwards).flat(),
+            ...Object.values(lineup.defence).flat(),
+            lineup.goalies.starter,
+            lineup.goalies.backup
+        ].filter(id => id !== currentId && id !== null)
+    );
+    
+    return roster.filter(p => {
+        const isPlayerGoalie = p.positions.includes('G');
+        if (isGoalie !== isPlayerGoalie) return false;
+        return !usedPlayerIds.has(p.id);
+    });
   };
 
-  const handlePlayerChange = (group: keyof Lineup, position: string, index: number | null, playerId: string | null) => {
+  const handlePlayerChange = (group: keyof Lineup, lineKey: keyof Lineup['forwards'] | keyof Lineup['defence'] | keyof Lineup['goalies'], index: number | null, playerId: string | null) => {
     const newLineup = JSON.parse(JSON.stringify(lineup));
-    if (index !== null) {
-      newLineup[group][position][index] = playerId;
-    } else {
-      newLineup[group][position] = playerId;
+    if (group === 'goalies') {
+        newLineup.goalies[lineKey as keyof Lineup['goalies']] = playerId;
+    } else if (index !== null) {
+        (newLineup[group] as any)[lineKey][index] = playerId;
     }
     onLineupChange(newLineup);
   };
 
-  const PlayerSlot = ({ value, position, group, posKey, index }: { value: string | null, position: Position, group: keyof Lineup, posKey: string, index: number | null }) => {
+  const PlayerSlot = ({ value, isGoalie, group, lineKey, index }: { value: string | null, isGoalie: boolean, group: keyof Lineup, lineKey: any, index: number | null }) => {
     const currentPlayer = roster.find(p => p.id === value);
-    const availablePlayers = getAvailablePlayers(position, value);
+    const availablePlayers = getAvailablePlayers(isGoalie, value);
     const applicableRoles = currentPlayer ? getApplicableRoles(currentPlayer) : [];
 
     return (
       <div className="p-2 border rounded-md bg-muted/30 space-y-2">
-        <Select value={value || 'empty'} onValueChange={(val) => handlePlayerChange(group, posKey, index, val === 'empty' ? null : val)}>
+        <Select value={value || 'empty'} onValueChange={(val) => handlePlayerChange(group, lineKey, index, val === 'empty' ? null : val)}>
           <SelectTrigger>
             <SelectValue placeholder="Empty" />
           </SelectTrigger>
@@ -125,23 +130,24 @@ export const LineupManager = ({ lineup, roster, onLineupChange, onRoleChange }: 
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-semibold mb-2">Forwards</h3>
-          {[...Array(3)].map((_, i) => (
-            <LineRow key={i} title={`Line ${i + 1}`}>
+          {Object.entries(lineup.forwards).map(([lineKey, players]) => (
+            <LineRow key={lineKey} title={lineKey.replace('line', 'Line ')}>
               <div className="grid grid-cols-3 gap-2">
-                <PlayerSlot value={lineup.forwards.lw[i]} position="LW" group="forwards" posKey="lw" index={i} />
-                <PlayerSlot value={lineup.forwards.c[i]} position="C" group="forwards" posKey="c" index={i} />
-                <PlayerSlot value={lineup.forwards.rw[i]} position="RW" group="forwards" posKey="rw" index={i} />
+                {players.map((playerId, index) => (
+                  <PlayerSlot key={`${lineKey}-${index}`} value={playerId} isGoalie={false} group="forwards" lineKey={lineKey} index={index} />
+                ))}
               </div>
             </LineRow>
           ))}
         </div>
         <div>
           <h3 className="text-lg font-semibold mb-2">Defence</h3>
-          {[...Array(3)].map((_, i) => (
-            <LineRow key={i} title={`Pairing ${i + 1}`}>
+          {Object.entries(lineup.defence).map(([pairKey, players]) => (
+            <LineRow key={pairKey} title={pairKey.replace('pair', 'Pair ')}>
               <div className="grid grid-cols-2 gap-2">
-                <PlayerSlot value={lineup.defence.ld[i]} position="LD" group="defence" posKey="ld" index={i} />
-                <PlayerSlot value={lineup.defence.rd[i]} position="RD" group="defence" posKey="rd" index={i} />
+                {players.map((playerId, index) => (
+                  <PlayerSlot key={`${pairKey}-${index}`} value={playerId} isGoalie={false} group="defence" lineKey={pairKey} index={index} />
+                ))}
               </div>
             </LineRow>
           ))}
@@ -149,10 +155,10 @@ export const LineupManager = ({ lineup, roster, onLineupChange, onRoleChange }: 
         <div>
           <h3 className="text-lg font-semibold mb-2">Goalies</h3>
           <LineRow title="Starter">
-            <PlayerSlot value={lineup.goalies.starter} position="G" group="goalies" posKey="starter" index={null} />
+            <PlayerSlot value={lineup.goalies.starter} isGoalie={true} group="goalies" lineKey="starter" index={null} />
           </LineRow>
           <LineRow title="Backup">
-            <PlayerSlot value={lineup.goalies.backup} position="G" group="goalies" posKey="backup" index={null} />
+            <PlayerSlot value={lineup.goalies.backup} isGoalie={true} group="goalies" lineKey="backup" index={null} />
           </LineRow>
         </div>
       </div>

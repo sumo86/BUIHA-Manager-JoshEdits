@@ -10,11 +10,8 @@ const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['
 
 const getParticipatingPlayerIds = (team: Team): Set<string> => {
     const ids = new Set<string>();
-    team.lineup.forwards.lw.forEach(id => id && ids.add(id));
-    team.lineup.forwards.c.forEach(id => id && ids.add(id));
-    team.lineup.forwards.rw.forEach(id => id && ids.add(id));
-    team.lineup.defence.ld.forEach(id => id && ids.add(id));
-    team.lineup.defence.rd.forEach(id => id && ids.add(id));
+    Object.values(team.lineup.forwards).flat().forEach(id => id && ids.add(id));
+    Object.values(team.lineup.defence).flat().forEach(id => id && ids.add(id));
     if (team.lineup.goalies.starter) ids.add(team.lineup.goalies.starter);
     // Backup goalie is handled separately
     return ids;

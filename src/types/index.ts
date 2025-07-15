@@ -148,13 +148,15 @@ export type Player = {
 
 export type Lineup = {
   forwards: {
-    lw: (string | null)[];
-    c: (string | null)[];
-    rw: (string | null)[];
+    line1: (string | null)[];
+    line2: (string | null)[];
+    line3: (string | null)[];
+    line4: (string | null)[];
   };
   defence: {
-    ld: (string | null)[];
-    rd: (string | null)[];
+    pair1: (string | null)[];
+    pair2: (string | null)[];
+    pair3: (string | null)[];
   };
   goalies: {
     starter: string | null;
@@ -262,13 +264,15 @@ export type DevelopmentLog = {
 };
 
 export type Tactic = {
+  name: string; // Added name property for Tactic
   phase: string;
   category: string;
-  tactic: string;
   description: string;
   bestUsedWith: string;
   strongVs: string;
   weakVs: string;
+  affectedAttributes: string[]; // Added affectedAttributes
+  bestForRoles: string[]; // Added bestForRoles
 };
 
 export type TacticSuitability = {

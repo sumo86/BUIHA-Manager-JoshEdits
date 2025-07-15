@@ -327,7 +327,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     ? tournament.groupStageSchedule 
                     : tournament.playoffSchedule;
 
-                const userGame = gamesToCheck.find(g => {
+                const userGame = gamesToCheck.find(g => { // Removed explicit type annotation for 'g'
                     if (g.status !== 'scheduled') return false;
                     
                     const isUserGame = (typeof g.homeTeam === 'string' && g.homeTeam === userTeam.name) || 
@@ -340,7 +340,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }
                     if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
                         const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
-                        return (g as NationalsPlayoffMatch).round === tournament.currentRound && (g as NationalsPlayoffMatch).bracket === currentBracket;
+                        // Use type guard to safely access 'bracket'
+                        if ('bracket' in g) {
+                            return g.round === tournament.currentRound && g.bracket === currentBracket;
+                        }
+                        return false; // Should not happen if logic is correct
                     }
                     return false;
                 });
@@ -381,6 +385,36 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setTeams(currentTeams =>
             currentTeams.map(t => (t.name === updatedTeam.name ? updatedTeam : t))
         );
+    };
+
+    const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
+        if (!userTeam) return;
+        const playerToUpdate = userTeam.roster.find(p => p.id === playerId);
+        if (!playerToUpdate) {
+            toast.error("Player not found.");
+            return;
+        }
+        const updatedRoster = userTeam.roster.map(player =>
+            player.id === playerId ? { ...player, trainingFocus: focus } : player
+        );
+        updateTeam({ ...userTeam, roster: updatedRoster });
+        toast.success(`${playerToUpdate.name}'s training focus updated to ${focus}.`);
+    };
+
+    const autoAssignTrainingFocuses = () => {
+        if (!userTeam) return;
+        const updatedRoster = userTeam.roster.map(player => {
+            if (!player.trainingFocus) {
+                const isSkater = !player.positions.includes('G');
+                const availableFocuses = isSkater ? skaterFocuses : goalieFocuses;
+                // Assign a random focus or a default one
+                const newFocus = availableFocuses[Math.floor(Math.random() * availableFocuses.length)];
+                return { ...player, trainingFocus: newFocus };
+            }
+            return player;
+        });
+        updateTeam({ ...userTeam, roster: updatedRoster });
+        toast.success("Training focuses auto-assigned for players without one.");
     };
 
     const advanceWeek = () => {
@@ -630,7 +664,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 if (project.status === 'In Progress' && project.weeksToComplete) {
                     project.weeksToComplete -= 1;
                     if (project.weeksToComplete <= 0) {
-                        project.status = 'Completed';
+                        project.status = 'Completed' as 'Completed'; // Explicit cast
                         if (team.name === userTeam?.name) toast.info("Facility Project Completed", { description: `${project.name} is now complete.` });
                         if (project.id === 'locker_room_1') {
                             newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
@@ -1113,17 +1147,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 
                 const silverPlayoffExists = tournament.playoffSchedule.some((m: NationalsPlayoffMatch) => m.bracket === 'Silver');
 
-                if (silverPlayoffExists) {
-                    tournament.status = 'silver-playoffs';
-                    const firstSilverRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Silver')?.round || 'Final';
-                    tournament.currentRound = firstSilverRound;
-                    toast.info(`The ${division} Silver Playoffs will now begin.`);
-                } else {
-                    tournament.status = 'gold-playoffs';
-                    const firstGoldRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Gold')?.round || 'Final';
-                    tournament.currentRound = firstGoldRound;
-                    toast.info(`The ${division} Gold Playoffs will now begin.`);
-                }
+                    if (silverPlayoffExists) {
+                        tournament.status = 'silver-playoffs';
+                        const firstSilverRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Silver')?.round || 'Final';
+                        tournament.currentRound = firstSilverRound;
+                        toast.info(`The ${division} Silver Playoffs will now begin.`);
+                    } else {
+                        tournament.status = 'gold-playoffs';
+                        const firstGoldRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Gold')?.round || 'Final';
+                        tournament.currentRound = firstGoldRound;
+                        toast.info(`The ${division} Gold Playoffs will now begin.`);
+                    }
 
                 if (tournament.playoffSchedule.length === 0) {
                     tournament.status = 'completed';
@@ -1619,22 +1653,24 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
 
         if (isManagingOrg) {
-            const totalOrgBudget = managedTeams.reduce((sum, t) => sum + t.financials.totalBudget, 0);
-            const updatedTeams = managedTeams.map(team => {
-                const teamBudgetShare = team.financials.totalBudget / totalOrgBudget;
-                const newFacilitiesBudget = Math.round(facilitiesBudget - (project.cost * teamBudgetShare));
-                const newAllocations = { ...team.financials.budgetAllocations, Facilities: newFacilitiesBudget };
-                const newProjects = [...team.facilities.filter(p => p.id !== projectId), { ...project, status: 'In Progress', weeksToComplete: project.weeksToComplete }];
-                return { ...team, financials: { ...team.financials, budgetAllocations: newAllocations }, facilities: newProjects };
+            // Deduct cost from the active user team's budget (representing the organization's budget)
+            const updatedUserTeamBudget = userTeam.financials.budgetAllocations.Facilities - project.cost;
+            const newUserTeamAllocations = { ...userTeam.financials.budgetAllocations, Facilities: updatedUserTeamBudget };
+            updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newUserTeamAllocations } });
+
+            // Add the facility project to all managed teams
+            const updatedManagedTeams = managedTeams.map(team => {
+                const newProjects = [...team.facilities.filter(p => p.id !== projectId), { ...project, status: 'In Progress' as 'In Progress', weeksToComplete: project.weeksToComplete }];
+                return { ...team, facilities: newProjects };
             });
             setTeams(currentTeams => currentTeams.map(t => {
-                const updatedTeam = updatedTeams.find(ut => ut.name === t.name);
+                const updatedTeam = updatedManagedTeams.find(ut => ut.name === t.name);
                 return updatedTeam || t;
             }));
         } else {
             const updatedBudget = facilitiesBudget - project.cost;
             const newAllocations = { ...userTeam.financials.budgetAllocations, Facilities: updatedBudget };
-            const newProjects = [...userTeam.facilities.filter(p => p.id !== projectId), { ...project, status: 'In Progress', weeksToComplete: project.weeksToComplete }];
+            const newProjects = [...userTeam.facilities.filter(p => p.id !== projectId), { ...project, status: 'In Progress' as 'In Progress', weeksToComplete: project.weeksToComplete }];
             updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations }, facilities: newProjects });
         }
         toast.success(`${project.name} project started!`);

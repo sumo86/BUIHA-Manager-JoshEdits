@@ -182,10 +182,15 @@ const getTacticalModifier = (attackingTeam: Team, defendingTeam: Team): number =
 
 const determineFaceoffWinner = (teamA: Team, teamB: Team): string => {
     const getTeamFaceoffRating = (team: Team) => {
-        const centers = team.lineup.forwards.c
+        const playersOnIce = Object.values(team.lineup.forwards)[0] || []; // Assume first line is on ice
+        const centers = playersOnIce
             .map(id => team.roster.find(p => p.id === id))
-            .filter((p): p is Player => !!p);
-        if (centers.length === 0) return 5; // Low default if no centers
+            .filter((p): p is Player => !!p && p.positions.includes('C'));
+        if (centers.length === 0) { // Fallback if no center on the line
+            const allCenters = team.roster.filter(p => p.positions.includes('C'));
+            if (allCenters.length > 0) return Math.max(...allCenters.map(c => (c.attributes as SkaterAttributes).faceoffs));
+            return 5;
+        }
         return Math.max(...centers.map(c => (c.attributes as SkaterAttributes).faceoffs));
     };
 
