@@ -1099,7 +1099,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
 
             if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
-                const nextRoundMap: { [key: string]: 'Semi-Final' | 'Final' } = { 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
+                const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
                 
                 if (tournament.currentRound === 'Final') {
                     if (currentBracket === 'Silver') {
@@ -1121,7 +1121,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         }
                     }
                 } else {
-                    const nextRound = nextRoundMap[tournament.currentRound as 'Quarter-Final' | 'Semi-Final'];
+                    const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
                     if (nextRound) {
                         tournament.currentRound = nextRound;
                         toast.info(`Advancing to the ${nextRound} of the ${division} ${currentBracket} playoffs.`);
@@ -1248,7 +1248,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
     
                 if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
-                    const nextRoundMap: { [key: string]: 'Semi-Final' | 'Final' } = { 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
+                    const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
                     if (tournament.currentRound === 'Final') {
                         if (currentBracket === 'Silver') {
                             tournament.status = 'gold-playoffs';
@@ -1259,7 +1259,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             tournament.winner = finalMatch?.winner;
                         }
                     } else {
-                        const nextRound = nextRoundMap[tournament.currentRound as 'Quarter-Final' | 'Semi-Final'];
+                        const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
                         if (nextRound) tournament.currentRound = nextRound;
                     }
                 }

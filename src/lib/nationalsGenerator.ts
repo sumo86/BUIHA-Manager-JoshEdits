@@ -140,22 +140,20 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
     let silverTeams: (string | { winnerOf: string })[] = sortedSilverStandings.map(s => s.teamName);
 
     if (silverTeams.length >= 2) {
-        let roundCount = 0;
-        while (silverTeams.length > 1) {
-            roundCount++;
-            const numTeamsInRound = silverTeams.length;
-            let roundName: 'Quarter-Final' | 'Semi-Final' | 'Final' | 'Preliminary' = 'Final';
-            if (numTeamsInRound > 4) roundName = 'Quarter-Final';
-            else if (numTeamsInRound > 2) roundName = 'Semi-Final';
-            
-            if (roundCount === 1 && numTeamsInRound > 8) roundName = 'Preliminary';
-
-
+        let currentContestants = silverTeams;
+        while (currentContestants.length > 1) {
+            const numTeamsInRound = currentContestants.length;
             const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(numTeamsInRound)));
+            
+            let roundName: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' = 'Final';
+            if (nextPowerOf2 > 8) roundName = 'Preliminary';
+            else if (nextPowerOf2 === 8) roundName = 'Quarter-Final';
+            else if (nextPowerOf2 === 4) roundName = 'Semi-Final';
+
             const numByes = nextPowerOf2 - numTeamsInRound;
             
-            const teamsWithByes = silverTeams.slice(0, numByes);
-            const teamsInMatches = silverTeams.slice(numByes);
+            const teamsWithByes = currentContestants.slice(0, numByes);
+            const teamsInMatches = currentContestants.slice(numByes);
             
             const roundMatches: NationalsPlayoffMatch[] = [];
             while (teamsInMatches.length > 0) {
@@ -167,7 +165,7 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
             
             playoffs.push(...roundMatches);
             
-            silverTeams = [...teamsWithByes, ...roundMatches.map(m => ({ winnerOf: m.id }))];
+            currentContestants = [...teamsWithByes, ...roundMatches.map(m => ({ winnerOf: m.id }))];
         }
     }
 

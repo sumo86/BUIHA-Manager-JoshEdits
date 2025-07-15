@@ -332,7 +332,7 @@ export type NationalsTournament = {
   playoffSchedule: NationalsPlayoffMatch[];
   status: 'pending' | 'group-stage' | 'silver-playoffs' | 'gold-playoffs' | 'completed';
   winner?: string;
-  currentRound: number | 'Quarter-Final' | 'Semi-Final' | 'Final';
+  currentRound: number | 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final';
 };
 
 // History Types

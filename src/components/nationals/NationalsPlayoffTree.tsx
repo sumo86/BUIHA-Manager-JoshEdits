@@ -22,15 +22,15 @@ const TeamBox = ({ team, score, isWinner }: { team: string | { winnerOf: string 
   );
 };
 
-const Matchup = ({ match, children, onPlayGame, onSimulateGame, onSimulateSingleGame, userTeamName }: { match: NationalsPlayoffMatch, children?: React.ReactNode, onPlayGame: (gameId: string) => void, onSimulateGame: (gameId: string) => void, onSimulateSingleGame: (gameId: string) => void, userTeamName: string | undefined }) => {
+const Matchup = ({ match, onPlayGame, onSimulateGame, onSimulateSingleGame, userTeamName }: { match: NationalsPlayoffMatch, onPlayGame: (gameId: string) => void, onSimulateGame: (gameId: string) => void, onSimulateSingleGame: (gameId: string) => void, userTeamName: string | undefined }) => {
   const isUserGame = userTeamName && (
     (typeof match.homeTeam === 'string' && match.homeTeam === userTeamName) ||
     (typeof match.awayTeam === 'string' && match.awayTeam === userTeamName)
   );
 
   return (
-    <div className="flex flex-col items-center justify-center">
-      <div className="space-y-2 p-3 border rounded-lg bg-background w-64">
+    <div className="flex flex-col items-center justify-center relative">
+      <div className="space-y-2 p-3 border rounded-lg bg-background w-64 z-10">
         <TeamBox team={match.homeTeam} score={match.result?.homeScore} isWinner={match.winner === match.homeTeam} />
         <div className="text-center text-xs text-muted-foreground">vs</div>
         <TeamBox team={match.awayTeam} score={match.result?.awayScore} isWinner={match.winner === match.awayTeam} />
@@ -46,15 +46,11 @@ const Matchup = ({ match, children, onPlayGame, onSimulateGame, onSimulateSingle
             </div>
         )}
       </div>
-      {children && <div className="flex justify-center w-full mt-4">{children}</div>}
     </div>
   );
 };
 
 const NationalsPlayoffTree = ({ playoffSchedule, userTeamName, onPlayGame, onSimulateGame, onSimulateSingleGame, bracket }: NationalsPlayoffTreeProps) => {
-  const semiFinals = playoffSchedule.filter(m => m.round === 'Semi-Final');
-  const final = playoffSchedule.find(m => m.round === 'Final');
-
   if (playoffSchedule.length === 0) {
     return (
         <div className="text-center py-10">
@@ -64,37 +60,47 @@ const NationalsPlayoffTree = ({ playoffSchedule, userTeamName, onPlayGame, onSim
     )
   }
 
-  return (
-    <div className="flex flex-col items-center p-4 space-y-8">
-      <h3 className="text-2xl font-bold">{bracket} Playoff Bracket</h3>
-      <div className="flex items-center">
-        {/* Semi-Finals Column */}
-        <div className="flex flex-col gap-16">
-          {semiFinals.map(match => (
-            <Matchup key={match.id} match={match} onPlayGame={onPlayGame} onSimulateGame={onSimulateGame} onSimulateSingleGame={onSimulateSingleGame} userTeamName={userTeamName} />
-          ))}
-        </div>
+  const rounds = playoffSchedule.reduce((acc, match) => {
+      const round = match.round;
+      if (!acc[round]) {
+          acc[round] = [];
+      }
+      acc[round].push(match);
+      return acc;
+  }, {} as Record<string, NationalsPlayoffMatch[]>);
 
-        {/* Connecting Lines and Final Column */}
-        {final && (
-          <>
-            <div className="flex flex-col items-center h-full mx-8">
-                <div className="w-px bg-border h-1/4"></div>
-                <div className="h-1/2 w-8 border-y border-r rounded-r-md"></div>
-                <div className="w-px bg-border h-1/4"></div>
-            </div>
-            <div className="flex items-center">
-              <Matchup match={final} onPlayGame={onPlayGame} onSimulateGame={onSimulateGame} onSimulateSingleGame={onSimulateSingleGame} userTeamName={userTeamName} />
-            </div>
-          </>
-        )}
-      </div>
-      {final?.winner && (
-        <div className="mt-8 text-center">
-            <p className="text-muted-foreground">Tournament Winner</p>
-            <h4 className="text-3xl font-extrabold tracking-tight text-primary">{final.winner}</h4>
+  const roundOrder: ('Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final')[] = ['Preliminary', 'Quarter-Final', 'Semi-Final', 'Final'];
+  const orderedRounds = roundOrder.filter(r => rounds[r]);
+  const finalMatch = playoffSchedule.find(m => m.round === 'Final');
+
+  return (
+    <div className="p-4">
+        <h3 className="text-2xl font-bold text-center mb-8">{bracket} Playoff Bracket</h3>
+        <div className="flex justify-center items-start space-x-12 overflow-x-auto pb-8">
+            {orderedRounds.map((roundName) => (
+                <div key={roundName} className="flex flex-col items-center flex-shrink-0">
+                    <h4 className="text-lg font-semibold mb-6 capitalize">{roundName.replace('-', ' ')}</h4>
+                    <div className="flex flex-col gap-16">
+                        {rounds[roundName].map(match => (
+                            <Matchup 
+                                key={match.id} 
+                                match={match} 
+                                onPlayGame={onPlayGame} 
+                                onSimulateGame={onSimulateGame} 
+                                onSimulateSingleGame={onSimulateSingleGame} 
+                                userTeamName={userTeamName} 
+                            />
+                        ))}
+                    </div>
+                </div>
+            ))}
         </div>
-      )}
+        {finalMatch?.winner && (
+            <div className="mt-8 text-center">
+                <p className="text-muted-foreground">{bracket} Bracket Winner</p>
+                <h4 className="text-3xl font-extrabold tracking-tight text-primary">{finalMatch.winner}</h4>
+            </div>
+        )}
     </div>
   );
 };
