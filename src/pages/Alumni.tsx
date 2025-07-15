@@ -1,8 +1,12 @@
 import { useTeam } from '@/context/TeamContext';
 import { AlumniTable } from '@/components/alumni/AlumniTable';
+import { AdditionalDegreesTable } from '@/components/alumni/AdditionalDegreesTable';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const AlumniPage = () => {
-  const { alumni } = useTeam();
+  const { alumni, userTeam } = useTeam();
+
+  const continuingPlayers = userTeam?.roster.filter(p => p.isContinuingEducation) || [];
 
   return (
     <div className="space-y-6">
@@ -12,7 +16,18 @@ const AlumniPage = () => {
           Track the careers of players who have graduated from your organization.
         </p>
       </div>
-      <AlumniTable alumni={alumni} />
+      <Tabs defaultValue="graduated" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="graduated">Graduated Alumni</TabsTrigger>
+          <TabsTrigger value="continuing">Continuing Education</TabsTrigger>
+        </TabsList>
+        <TabsContent value="graduated">
+          <AlumniTable alumni={alumni} />
+        </TabsContent>
+        <TabsContent value="continuing">
+          <AdditionalDegreesTable players={continuingPlayers} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

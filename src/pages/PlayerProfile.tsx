@@ -16,6 +16,7 @@ import { PlayerEditForm } from "@/components/player/PlayerEditForm";
 import { PlayerScoutingReport } from "@/components/player/PlayerScoutingReport";
 import { useState, useMemo } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { formatPlayerEligibility } from '@/lib/utils';
 
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
@@ -103,7 +104,7 @@ const PlayerProfile = () => {
                 <div>
                     <CardTitle className="text-5xl font-extrabold leading-none tracking-tight">{player.name}</CardTitle>
                     <p className="text-4xl font-bold text-primary mt-2">#{player.jerseyNumber}</p>
-                    <p className="text-muted-foreground text-lg mt-1">{player.positions.join(", ")} | {player.age} years old | {player.nationality}</p>
+                    <p className="text-muted-foreground text-lg mt-1">{player.positions.join(", ")} | {player.age} years old | {player.nationality} | {formatPlayerEligibility(player)}</p>
                 </div>
             </div>
             <div className="flex flex-col items-end gap-2">

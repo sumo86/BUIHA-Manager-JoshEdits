@@ -165,6 +165,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const organizationFinancials = useMemo(() => {
         if (!managedOrganization || managedTeams.length === 0) return null;
         return {
+            baseBudget: managedTeams.reduce((sum, t) => sum + t.financials.baseBudget, 0),
             totalBudget: managedTeams.reduce((sum, t) => sum + t.financials.totalBudget, 0),
             budgetAllocations: managedTeams.reduce((acc, t) => {
                 (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
@@ -677,6 +678,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         points: t.points,
                         goalsFor: t.goalsFor,
                         goalsAgainst: t.goalsAgainst,
+                        nationalsResult: tempNationalsData[prevDate.year]?.[t.nationalsDivision]?.winner === t.name ? 'Winner' : tempNationalsData[prevDate.year]?.[t.nationalsDivision]?.playoffSchedule.find(m => m.round === 'Final' && (m.homeTeam === t.name || m.awayTeam === t.name)) ? 'Finalist' : undefined,
                     }));
                     setSeasonHistory(prev => ({ ...prev, [seasonToArchive]: standingsForYear }));
 
@@ -684,8 +686,20 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     
                     const newAlumni: Player[] = [];
                     tempTeams = tempTeams.map(team => {
+                        const unspentBudget = team.financials.totalBudget - Object.values(team.financials.budgetAllocations).reduce((a, b) => a + b, 0);
+                        team.financials.totalBudget = team.financials.baseBudget + (unspentBudget > 0 ? unspentBudget : 0);
+
                         const graduatingPlayers: Player[] = [];
                         const remainingPlayers = team.roster.filter(player => {
+                            if (player.eligibility === 'Staff') {
+                                player.yearsAsStaff = (player.yearsAsStaff || 0) + 1;
+                                if (player.yearsAsStaff >= (player.staffCareerLength || 10)) {
+                                    graduatingPlayers.push(player);
+                                    return false;
+                                }
+                                return true;
+                            }
+
                             const eligibilityMap: { [key in Player['eligibility']]: Player['eligibility'] | null } = {
                                 "UG Year 1": "UG Year 2", "UG Year 2": "UG Year 3", "UG Year 3": "UG Year 4",
                                 "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
@@ -694,7 +708,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             
                             if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
                                 player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
-                                if (player.yearsLeftInProgram < 0) {
+                                if (player.yearsLeftInProgram <= 0) {
                                     graduatingPlayers.push(player);
                                     return false;
                                 }
@@ -714,14 +728,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         graduatingPlayers.forEach(player => {
                             const isManaged = managedTeamNames.includes(team.name);
                             const roll = Math.random();
-                            // 30% retire, 40% transfer, 30% new degree
-                            if (roll < 0.3) { // Retire
+                            
+                            if (player.eligibility === 'Staff' || roll < 0.85) { // Retire
                                 if (isManaged) {
                                     player.alumniStatus = 'Retired';
                                     newAlumni.push(player);
                                     toast.info(`${player.name} has retired from university hockey.`);
                                 }
-                            } else if (roll < 0.7) { // Transfer
+                            } else if (roll < 0.95) { // Transfer
                                 const otherTeams = tempTeams.filter(t => t.name !== team.name);
                                 if (otherTeams.length > 0) {
                                     const newTeam = getRandomItem(otherTeams);
@@ -809,6 +823,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         });
                         return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 };
                     });
+
+                    setScoutingPool([]);
+                    setRecruitedPool([]);
+                    setFairHosted(false);
                 }
                 month = months[nextMonthIndex];
             }
@@ -915,7 +933,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.success("Transfer Approved!", {
                 description: `${player.name} has agreed to the move and their coach has approved the transfer.`
             });
-            movePlayer(playerId, fromTeamName, toTeamName);
+            if (toTeam.name === userTeam?.name) {
+                const playerToTransfer = { ...player, source: 'Transfer' as const };
+                setRecruitedPool(prev => [...prev, playerToTransfer]);
+                const newFromRoster = fromTeam.roster.filter(p => p.id !== playerId);
+                updateTeam({ ...fromTeam, roster: newFromRoster });
+                toast.info(`${player.name} is awaiting your contract offer in the Recruitment screen.`);
+            } else {
+                movePlayer(playerId, fromTeamName, toTeamName);
+            }
         } else {
             const reasonRoll = Math.random();
             let reasonText: string;
@@ -1147,7 +1173,2065 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         let safety = 0;
         while (tournament.status !== 'completed' && safety < 20) {
             if (tournament.status === 'group-stage') {
-                const gamesToSim = tournament.groupStageSchedule.filter((g: ScheduleEntry) => g.round === tournament.currentRound && g.status === 'scheduled');
+                const gamesToSim = tournament.groupStageSchedule.filter((g: ScheduleEntry) => g.status === 'scheduled');
+                
+                gamesToSim.forEach((game: ScheduleEntry) => {
+                    const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
+                    const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+                    if (homeTeam && awayTeam) {
+                        const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+                        const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                        tempTeams = tempTeams.map((t: Team) => {
+                            if (t.name === homeTeam.name) return updatedUserTeam;
+                            if (t.name === awayTeam.name) return updatedOpponentTeam;
+                            return t;
+                        });
+                        game.status = 'completed';
+                        game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                    }
+                });
+    
+                tournament.groups.forEach((group: any) => {
+                    group.standings.forEach((standing: any) => {
+                        const teamGames = tournament.groupStageSchedule.filter((g: ScheduleEntry) => (g.homeTeam === standing.teamName || g.awayTeam === standing.teamName) && g.round === tournament.currentRound && g.result);
+                        teamGames.forEach((game: ScheduleEntry) => {
+                            standing.played++;
+                            const isHome = game.homeTeam === standing.teamName;
+                            const homeScore = game.result!.homeScore;
+                            const awayScore = game.result!.awayScore;
+                            standing.goalsFor += isHome ? homeScore : awayScore;
+                            standing.goalsAgainst += isHome ? awayScore : homeScore;
+                            if (homeScore === awayScore) { standing.draws++; standing.points++; }
+                            else if ((isHome && homeScore > awayScore) || (!isHome && awayScore > homeScore)) { standing.wins++; standing.points += 3; }
+                            else { standing.losses++; }
+                        });
+                    });
+                });
+    
+                tournament.currentRound = (tournament.currentRound as number) + 1;
+                
+                const allGroupGamesPlayed = tournament.groupStageSchedule.every((g: ScheduleEntry) => g.status === 'completed');
+                if (allGroupGamesPlayed) {
+                    toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
+                    tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date);
+                    const silverPlayoffExists = tournament.playoffSchedule.some((m: NationalsPlayoffMatch) => m.bracket === 'Silver');
+
+                    if (silverPlayoffExists) {
+                        tournament.status = 'silver-playoffs';
+                        tournament.currentRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Silver')?.round || 'Final';
+                    } else {
+                        tournament.status = 'gold-playoffs';
+                        tournament.currentRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Gold')?.round || 'Final';
+                    }
+
+                    if (tournament.playoffSchedule.length === 0) tournament.status = 'completed';
+                }
+            } else if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
+                const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
+
+                const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
+                    if (!match.result) return undefined;
+                    if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
+                    if (match.result.awayScore > match.result.homeScore) return typeof match.awayTeam === 'string' ? match.awayTeam : undefined;
+                    return Math.random() > 0.5 ? (typeof match.homeTeam === 'string' ? match.homeTeam : undefined) : (typeof match.awayTeam === 'string' ? match.awayTeam : undefined);
+                };
+                const allPlayoffGames = tournament.playoffSchedule as NationalsPlayoffMatch[];
+                
+                allPlayoffGames.forEach((game: NationalsPlayoffMatch) => {
+                    if (game.bracket === currentBracket && game.round === tournament.currentRound && game.status === 'scheduled') {
+                        if (typeof game.homeTeam !== 'string') {
+                            const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
+                            if (feederMatch && feederMatch.status === 'completed') game.homeTeam = getWinner(feederMatch) || 'TBD';
+                        }
+                        if (typeof game.awayTeam !== 'string') {
+                            const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
+                            if (feederMatch && feederMatch.status === 'completed') game.awayTeam = getWinner(feederMatch) || 'TBD';
+                        }
+                    }
+                });
+    
+                const gamesToSim = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.bracket === currentBracket && g.round === tournament.currentRound && g.status === 'scheduled');
+    
+                gamesToSim.forEach((game: NationalsPlayoffMatch) => {
+                    if (typeof game.homeTeam !== 'string' || typeof game.awayTeam !== 'string' || game.homeTeam === 'TBD' || game.awayTeam === 'TBD') return;
+                    const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
+                    const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+                    if (homeTeam && awayTeam) {
+                        const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+                        const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                        tempTeams = tempTeams.map((t: Team) => {
+                            if (t.name === homeTeam.name) return updatedUserTeam;
+                            if (t.name === awayTeam.name) return updatedOpponentTeam;
+                            return t;
+                        });
+                        game.status = 'completed';
+                        game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                        game.winner = getWinner(game);
+                    }
+                });
+    
+                const currentRoundGames = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.bracket === currentBracket && g.round === tournament.currentRound);
+                const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
+    
+                if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
+                    const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
+                    if (tournament.currentRound === 'Final') {
+                        if (currentBracket === 'Silver') {
+                            tournament.status = 'gold-playoffs';
+                            tournament.currentRound = allPlayoffGames.find(m => m.bracket === 'Gold')?.round || 'Final';
+                        } else {
+                            tournament.status = 'completed';
+                            const finalMatch = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Gold');
+                            tournament.winner = finalMatch?.winner;
+                        }
+                    } else {
+                        const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
+                        if (nextRound) tournament.currentRound = nextRound;
+                    }
+                }
+            }
+            safety++;
+        }
+
+        setTeams(tempTeams);
+        setNationalsData(tempNationalsData);
+        toast.success(`Full tournament for ${division} has been simulated.`);
+    };
+
+    const autoSimulateUserNationalsGame = (division: string, gameId: string) => {
+        const tournament = nationalsData[currentDate.year]?.[division];
+        if (!tournament || !userTeam) return;
+
+        const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
+        const game = allGames.find(g => g.id === gameId);
+        if (!game) return;
+
+        const homeTeamName = typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD';
+        const awayTeamName = typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD';
+
+        const opponentName = homeTeamName === userTeam.name ? awayTeamName : homeTeamName;
+        const opponent = teams.find(t => t.name === opponentName);
+        if (!opponent) return;
+
+        const finalGameState = simulateFullGame(userTeam, opponent, true);
+        processGameResults(userTeam, opponent, finalGameState, true, division, gameId);
+    };
+
+    const simulateSingleNationalsGame = (division: string, gameId: string) => {
+        const tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
+        const tournament = tempNationalsData[currentDate.year]?.[division];
+        if (!tournament) return;
+
+        const allGames = tournament.playoffSchedule as NationalsPlayoffMatch[];
+        const game = allGames.find(g => g.id === gameId);
+
+        if (!game || typeof game.homeTeam !== 'string' || typeof game.awayTeam !== 'string') {
+            toast.error("Cannot simulate game", { description: "One of the teams has not been determined yet." });
+            return;
+        }
+
+        let tempTeams = JSON.parse(JSON.stringify(teams));
+        const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
+        const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+
+        if (homeTeam && awayTeam) {
+            const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+            const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+            
+            tempTeams = tempTeams.map((t: Team) => {
+                if (t.name === homeTeam.name) return updatedUserTeam;
+                if (t.name === awayTeam.name) return updatedOpponentTeam;
+                return t;
+            });
+
+            game.status = 'completed';
+            game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+            
+            const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
+                if (!match.result) return undefined;
+                if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
+                if (match.result.awayScore > match.result.homeScore) return typeof match.awayTeam === 'string' ? match.awayTeam : undefined;
+                return Math.random() > 0.5 ? (typeof match.homeTeam === 'string' ? match.homeTeam : undefined) : (typeof match.awayTeam === 'string' ? match.awayTeam : undefined);
+            };
+            game.winner = getWinner(game);
+
+            setTeams(tempTeams);
+            setNationalsData(tempNationalsData);
+            toast.info("Game Simulated", { description: `${game.homeTeam} ${game.result.homeScore} - ${game.awayTeam} ${game.result.awayScore}` });
+        }
+    };
+
+    const runStudentLifeInitiative = () => {
+        if (!userTeam) return;
+        const cost = 500;
+        const budgetCategory = "Student Life";
+        const currentBudget = userTeam.financials.budgetAllocations[budgetCategory];
+
+        if (currentBudget < cost) {
+            toast.error("Insufficient Student Life Budget", {
+                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+            });
+            return;
+        }
+
+        const newBudgetAllocations = {
+            ...userTeam.financials.budgetAllocations,
+            [budgetCategory]: currentBudget - cost,
+        };
+        
+        const newRoster = userTeam.roster.map(player => ({
+            ...player,
+            morale: updateMorale(player.morale, 1)
+        }));
+
+        updateTeam({ ...userTeam, roster: newRoster, financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations } });
+        toast.success("Student Life Initiative Successful!", {
+            description: `Cost: £${cost.toLocaleString()}.`,
+        });
+    };
+
+    const startFacilityProject = (projectId: string) => {
+        if (!userTeam) return;
+        // Placeholder for now, actual logic to be implemented later
+        toast.info(`Attempting to start facility project: ${projectId}`);
+    };
+
+    const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
+        if (!userTeam) return;
+        const newRoster = userTeam.roster.map(p => p.id === playerId ? { ...(p as Player), trainingFocus: focus } : p);
+        updateTeam({ ...userTeam, roster: newRoster });
+    };
+
+    const autoAssignTrainingFocuses = () => {
+        if (!userTeam) return;
+        const newRoster = userTeam.roster.map(player => {
+            const isSkater = !player.positions.includes('G');
+            const applicableFocuses = isSkater ? skaterFocuses : goalieFocuses;
+            
+            let weakestFocus: TrainingFocus = null;
+            let lowestAverage = Infinity;
+
+            for (const focus of applicableFocuses) {
+                if (!focus) continue;
+                const focusAttributes = trainingFocusesMap[focus];
+                const relevantPlayerAttributes = focusAttributes.filter(attr => player.attributes.hasOwnProperty(attr));
+                if (relevantPlayerAttributes.length === 0) continue;
+                const totalValue = relevantPlayerAttributes.reduce((sum, attr) => sum + (player.attributes[attr as keyof typeof player.attributes] as number), 0);
+                const averageValue = totalValue / relevantPlayerAttributes.length;
+                if (averageValue < lowestAverage) {
+                    lowestAverage = averageValue;
+                    weakestFocus = focus;
+                }
+            }
+            return { ...(player as Player), trainingFocus: weakestFocus };
+        });
+
+        updateTeam({ ...userTeam, roster: newRoster });
+        toast.success("Training focuses have been auto-assigned based on players' weakest areas.");
+    };
+
+    const generateScoutingPool = () => {
+        if (!userTeam) return;
+        const allTeamNames = teams.map(t => t.name).filter(name => name !== userTeam.name);
+        const newRecruits = generateRecruits(userTeam.leagueDivision, allTeamNames);
+        setScoutingPool(newRecruits);
+        setFairHosted(true);
+    };
+
+    const recruitPlayer = (playerId: string) => {
+        if (!userTeam) return;
+        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        if (!playerToRecruit) return;
+
+        const cost = playerToRecruit.recruitmentCost || 0;
+        const currentBudget = userTeam.financials.budgetAllocations.Recruiting;
+
+        if (currentBudget < cost) {
+            toast.error("Insufficient Recruiting Budget", {
+                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+            });
+            return;
+        }
+
+        const newBudgetAllocations = {
+            ...userTeam.financials.budgetAllocations,
+            Recruiting: Math.round(currentBudget - cost),
+        };
+        
+        updateBudgetAllocations(newBudgetAllocations);
+        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        setRecruitedPool(prev => [...prev, playerToRecruit]);
+        toast.success(`${playerToRecruit.name} recruited!`, {
+            description: `Cost: £${cost.toLocaleString()}. Remaining budget: £${(currentBudget - cost).toLocaleString()}`,
+        });
+    };
+
+    const assignPlayerToRoster = (playerId: string) => {
+        if (!userTeam) return;
+        const playerToAssign = recruitedPool.find(p => p.id === playerId);
+        if (playerToAssign) {
+            const usedJerseyNumbers = new Set(userTeam.roster.map(p => p.jerseyNumber));
+            let newJerseyNumber = 1;
+            while (usedJerseyNumbers.has(newJerseyNumber)) {
+                newJerseyNumber++;
+            }
+            playerToAssign.jerseyNumber = newJerseyNumber;
+
+            const newRoster = [...userTeam.roster, playerToAssign].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+            updateTeam({ ...userTeam, roster: newRoster });
+            setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+            toast.success(`${playerToAssign.name} has been added to the roster.`);
+        }
+    };
+
+    const discardRecruit = (playerId: string) => {
+        const player = recruitedPool.find(p => p.id === playerId);
+        if (player) {
+            setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+            toast.info(`${player.name} has been discarded.`);
+        }
+    };
+
+    const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {
+        if (!userTeam) return;
+
+        if (managedOrganization) {
+            const oldOrgAllocations = managedTeams.reduce((acc, t) => {
+                (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
+                    acc[key] = (acc[key] || 0) + t.financials.budgetAllocations[key];
+                });
+                return acc;
+            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations);
+
+            const newOrgAllocations = Object.keys(newAllocations).reduce((acc, key) => {
+                acc[key as BudgetCategory] = (acc[key as BudgetCategory] || 0) + newAllocations[key as BudgetCategory];
+                return acc;
+            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations);
+
+            // Calculate the difference for each category
+            const allocationDifferences: BudgetAllocations = {
+                Travel: newOrgAllocations.Travel - oldOrgAllocations.Travel,
+                Equipment: newOrgAllocations.Equipment - oldOrgAllocations.Equipment,
+                "Ice Time": newOrgAllocations["Ice Time"] - oldOrgAllocations["Ice Time"],
+                Recruiting: newOrgAllocations.Recruiting - oldOrgAllocations.Recruiting,
+                "Student Life": newOrgAllocations["Student Life"] - oldOrgAllocations["Student Life"],
+                Facilities: newOrgAllocations.Facilities - oldOrgAllocations.Facilities,
+            };
+
+            // Distribute the changes proportionally among managed teams
+            setTeams(currentTeams => currentTeams.map(team => {
+                if (managedTeams.some(mt => mt.name === team.name)) {
+                    const updatedFinancials = { ...team.financials };
+                    (Object.keys(allocationDifferences) as BudgetCategory[]).forEach(key => {
+                        // Simple distribution: divide by number of managed teams
+                        updatedFinancials.budgetAllocations[key] = Math.round(team.financials.budgetAllocations[key] + ((allocationDifferences[key] || 0) / managedTeams.length));
+                    });
+                    return { ...team, financials: updatedFinancials };
+                }
+                return team;
+            }));
+        } else {
+            // Single team mode
+            updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations } });
+        }
+    };
+
+    const markGameAsCompleted = (gameId: string, homeScore: number, awayScore: number) => {
+        setSchedule(prevSchedule => prevSchedule.map(game => {
+            if (game.id === gameId) {
+                return { ...game, status: 'completed', result: { homeScore, awayScore } };
+            }
+            return game;
+        }));
+    };
+
+    return (
+        <TeamContext.Provider value={{
+            teams,
+            updateTeam,
+            <dyad-problem-report summary="409 problems">
+<problem file="src/context/TeamContext.tsx" line="1187" column="30" code="17008">JSX element 'dyad-write' has no corresponding closing tag.</problem>
+<problem file="src/context/TeamContext.tsx" line="1197" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1197" column="73" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1198" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1198" column="69" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1199" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1199" column="70" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1200" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1200" column="74" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1201" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1201" column="68" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1202" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1202" column="76" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1204" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1204" column="77" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1205" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1205" column="68" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1206" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1206" column="69" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1207" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1207" column="75" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1208" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1208" column="63" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1210" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1210" column="71" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1211" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1211" column="71" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1212" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1212" column="71" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1213" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1213" column="67" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1215" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1215" column="69" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1216" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1216" column="70" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1217" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1217" column="68" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1218" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1218" column="70" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1220" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1220" column="80" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1221" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1221" column="75" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1222" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1222" column="77" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1223" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1223" column="74" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1224" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1224" column="76" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1225" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1225" column="77" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1227" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1227" column="74" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1228" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1228" column="81" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1229" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1229" column="75" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1230" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1230" column="76" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1231" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1231" column="71" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1233" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1233" column="73" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1234" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1234" column="75" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1235" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1235" column="71" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1236" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1236" column="80" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1238" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1238" column="70" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1239" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1239" column="87" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1240" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1240" column="81" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1241" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1241" column="76" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1242" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1242" column="74" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1243" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1243" column="75" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1244" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1244" column="69" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1246" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1246" column="75" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1247" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1247" column="77" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1248" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1248" column="74" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1249" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1249" column="73" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1250" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1250" column="80" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1251" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1251" column="77" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1252" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1252" column="73" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1253" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1253" column="78" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1255" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1255" column="76" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1256" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1256" column="81" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1257" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1257" column="89" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1258" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1258" column="76" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1259" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1259" column="77" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1260" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1260" column="75" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1261" column="11" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1261" column="73" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1265" column="15" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1271" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1273" column="21" code="1005">',' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1273" column="39" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1274" column="30" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1278" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1280" column="64" code="1382">Unexpected token. Did you mean `{'&gt;'}` or `&amp;gt;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1281" column="5" code="1109">Expression expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1281" column="53" code="1382">Unexpected token. Did you mean `{'&gt;'}` or `&amp;gt;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1284" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1286" column="28" code="1005">',' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1286" column="45" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1286" column="72" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1286" column="74" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1287" column="24" code="1382">Unexpected token. Did you mean `{'&gt;'}` or `&amp;gt;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1288" column="5" code="1109">Expression expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1290" column="66" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1291" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1293" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1298" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1308" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1312" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1312" column="131" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1313" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1315" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1317" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1327" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1331" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1331" column="129" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1332" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1334" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1336" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1346" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1350" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1350" column="129" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1351" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1353" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1355" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1365" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1369" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1369" column="129" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1370" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1372" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1375" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1385" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1389" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1389" column="131" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1390" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1392" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1394" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1404" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1408" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1408" column="131" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1409" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1411" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1413" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1423" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1427" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1427" column="131" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1428" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1430" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1432" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1442" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1446" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1446" column="129" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1447" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1449" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1452" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1462" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1466" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1466" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1467" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1469" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1471" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1481" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1485" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1485" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1486" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1488" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1490" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1500" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1504" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1504" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1505" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1507" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1509" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1519" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1523" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1523" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1524" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1526" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1529" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1539" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1543" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1543" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1544" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1546" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1548" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1558" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1562" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1562" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1563" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1565" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1567" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1577" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1581" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1581" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1582" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1584" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1586" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1596" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1600" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1600" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1601" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1603" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1606" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1616" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1620" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1620" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1621" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1623" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1625" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1635" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1639" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1639" column="127" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1640" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1642" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1644" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1654" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1658" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1658" column="127" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1659" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1661" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1663" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1673" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1677" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1677" column="127" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1678" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1680" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1683" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1693" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1697" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1697" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1698" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1700" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1702" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1712" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1716" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1716" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1717" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1719" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1721" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1731" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1735" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1735" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1736" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1738" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1740" column="7" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1750" column="17" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1754" column="34" code="1005">'}' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1754" column="128" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1755" column="5" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1757" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
+<problem file="src/context/TeamContext.tsx" line="1760" column="43" code="1005">'&lt;/' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="75" column="70" code="2355">A function whose declared type is neither 'undefined', 'void', nor 'any' must return a value.</problem>
+<problem file="src/context/TeamContext.tsx" line="721" column="40" code="2367">This comparison appears to be unintentional because the types '&quot;UG Year 1&quot; | &quot;UG Year 2&quot; | &quot;UG Year 3&quot; | &quot;UG Year 4&quot; | &quot;Masters&quot; | &quot;PhD&quot;' and '&quot;Staff&quot;' have no overlap.</problem>
+<problem file="src/context/TeamContext.tsx" line="976" column="13" code="2304">Cannot find name 'markGameAsCompleted'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1187" column="29" code="2339">Property 'dyad-write' does not exist on type 'JSX.IntrinsicElements'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1188" column="10" code="2693">'Team' only refers to a type, but is being used as a value here.</problem>
+<problem file="src/context/TeamContext.tsx" line="1188" column="10" code="2695">Left side of comma operator is unused and has no side effects.</problem>
+<problem file="src/context/TeamContext.tsx" line="1188" column="10" code="2695">Left side of comma operator is unused and has no side effects.</problem>
+<problem file="src/context/TeamContext.tsx" line="1188" column="10" code="2695">Left side of comma operator is unused and has no side effects.</problem>
+<problem file="src/context/TeamContext.tsx" line="1188" column="16" code="2304">Cannot find name 'Lineup'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1188" column="24" code="2304">Cannot find name 'TacticsSelection'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1188" column="42" code="2693">'Player' only refers to a type, but is being used as a value here.</problem>
+<problem file="src/context/TeamContext.tsx" line="1189" column="10" code="2304">Cannot find name 'generateRoster'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1190" column="10" code="2304">Cannot find name 'initialFacilityProjects'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1191" column="10" code="2304">Cannot find name 'teamLogos'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1192" column="10" code="2304">Cannot find name 'getTierName'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1192" column="25" code="2304">Cannot find name 'getNationalsDivision'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1193" column="10" code="2304">Cannot find name 'populateLineup'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1273" column="18" code="2304">Cannot find name 'key'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1286" column="25" code="2304">Cannot find name 'key'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1290" column="9" code="2304">Cannot find name 'organizations'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1290" column="23" code="2304">Cannot find name 'orgName'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1290" column="42" code="2304">Cannot find name 'orgName'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1298" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1308" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1312" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1317" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1327" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1331" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1336" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1346" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1350" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1355" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1365" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1369" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1375" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1385" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1389" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1394" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1404" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1408" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1413" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1423" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1427" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1432" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1442" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1446" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1452" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1462" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1466" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1471" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1481" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1485" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1490" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1500" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1504" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1509" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1519" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1523" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1529" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1539" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1543" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1548" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1558" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1562" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1567" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1577" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1581" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1586" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1596" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1600" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1606" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1616" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1620" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1625" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1635" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1639" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1644" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1654" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1658" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1663" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1673" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1677" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1683" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1693" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1697" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1702" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1712" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1716" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1721" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1731" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1735" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1740" column="5" code="2304">Cannot find name 'id'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1750" column="7" code="2304">Cannot find name 'baseBudget'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1754" column="28" code="2304">Cannot find name 'Travel'.</problem>
+<problem file="src/components/Sidebar.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/components/Layout.tsx" line="4" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Dashboard.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Standings.tsx" line="2" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Standings.tsx" line="53" column="15" code="2322">Type 'unknown' is not assignable to type 'string'.</problem>
+<problem file="src/pages/Standings.tsx" line="59" column="25" code="2322">Type 'unknown' is not assignable to type 'Key'.</problem>
+<problem file="src/pages/Standings.tsx" line="59" column="38" code="2322">Type 'unknown' is not assignable to type 'string'.</problem>
+<problem file="src/pages/Standings.tsx" line="59" column="53" code="2322">Type 'unknown' is not assignable to type 'ReactNode'.</problem>
+<problem file="src/components/roster/PlayerMovement.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Roster.tsx" line="6" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/components/recruitment/ScoutingTable.tsx" line="2" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/components/recruitment/RecruitsTable.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Recruitment.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Recruitment.tsx" line="124" column="61" code="2322">Type 'unknown' is not assignable to type 'Key'.</problem>
+<problem file="src/pages/Recruitment.tsx" line="124" column="69" code="2322">Type 'unknown' is not assignable to type 'string'.</problem>
+<problem file="src/pages/Recruitment.tsx" line="124" column="79" code="2322">Type 'unknown' is not assignable to type 'ReactNode'.</problem>
+<problem file="src/components/finance/BudgetAllocation.tsx" line="2" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Finances.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/components/facilities/FacilityProjectCard.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Facilities.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/PlayerProfile.tsx" line="2" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Lineup.tsx" line="12" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Lineup.tsx" line="83" column="80" code="2345">Argument of type 'unknown' is not assignable to parameter of type 'string'.</problem>
+<problem file="src/pages/Lineup.tsx" line="84" column="79" code="2345">Argument of type 'unknown' is not assignable to parameter of type 'string'.</problem>
+<problem file="src/pages/Lineup.tsx" line="100" column="34" code="2339">Property 'eligibility' does not exist on type 'unknown'.</problem>
+<problem file="src/pages/BuihaOverview.tsx" line="2" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Game.tsx" line="3" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/PlayGame.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Morale.tsx" line="3" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/SeasonOverview.tsx" line="2" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Calendar.tsx" line="2" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Training.tsx" line="3" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/TeamSelection.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/TeamHistory.tsx" line="2" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Nationals.tsx" line="2" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/Alumni.tsx" line="1" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/pages/NationalsGame.tsx" line="3" column="10" code="2305">Module '&quot;@/context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+<problem file="src/App.tsx" line="16" column="24" code="2305">Module '&quot;./context/TeamContext&quot;' has no exported member 'useTeam'.</problem>
+</dyad-problem-report><think>Deciding which files are relevant...
+
+**Analyzing TypeScript Errors**
+
+I'm currently wrestling with 409 TypeScript compile-time errors. It's a mountain of issues! Most of them stem from `src/context/TeamContext.tsx`, with missing closing tags for JSX elements like 'dyad-write' causing quite a few problems. I'm methodically going through the list, focusing on these initial syntax errors before tackling the more complex ones.
+
+
+**Investigating Contextual Issues**
+
+I've narrowed down the problem, shifting focus from raw syntax errors in `TeamContext.tsx` to their root cause: the problematic `dyad-write` elements. It looks like these are placeholders for code that should have been *integrated* rather than literally included. Many errors stem from the compiler's inability to find definitions or types used *inside* these blocks, which confirms the suspicion. I am now working to clarify which parts are placeholders and replace/integrate them.
+
+
+**Tackling Placeholder Code**
+
+Now that I've identified the problematic `dyad-write` directives and their impact, I'm shifting to a strategy of replacing and integrating them as needed. I'm starting to parse the content inside those blocks, identifying the missing variables, and function imports. The 'useTeam' error, a side effect, is now clearly a symptom of the underlying issues, as is the fact that 'TeamContext.tsx' isn't compiling correctly. I will replace/remove the placeholders, resolve the missing exports, and clean up syntax.
+
+
+**Evaluating TeamContext.tsx**
+
+I'm currently diving deep into `TeamContext.tsx`, aiming to understand and resolve its issues. I've identified that the `dyad-write` blocks are disruptive. The goal is to remove them and restructure the file to allow for proper imports and the `useTeam` export. This will require removing the `dyad-write` blocks, restoring syntax correctness, and then integrating the intended logic in a safe, functioning fashion. I'll verify that all required imports are present, and that all functions are correctly defined, so that the file compiles, and the application continues to function.
+
+
+{
+  "complexity": "high",
+  "relevantFiles": [
+    "src/types/index.ts",
+    "src/data/teams.ts",
+    "src/lib/utils.ts",
+    "src/components/buiha/NationalsHistoryTable.tsx",
+    "src/lib/nationalsGenerator.ts",
+    "src/components/nationals/NationalsPlayoffTree.tsx",
+    "src/pages/Nationals.tsx",
+    "src/context/TeamContext.tsx",
+    "src/pages/Alumni.tsx",
+    "src/components/alumni/AlumniTable.tsx",
+    "src/pages/Dashboard.tsx",
+    "src/pages/BuihaOverview.tsx",
+    "src/pages/Roster.tsx",
+    "src/pages/PlayerProfile.tsx"
+  ]
+}</think><dyad-codebase-context files="src/types/index.ts,src/data/teams.ts,src/lib/utils.ts,src/components/buiha/NationalsHistoryTable.tsx,src/lib/nationalsGenerator.ts,src/components/nationals/NationalsPlayoffTree.tsx,src/pages/Nationals.tsx,src/context/TeamContext.tsx,src/pages/Alumni.tsx,src/components/alumni/AlumniTable.tsx,src/pages/Dashboard.tsx,src/pages/BuihaOverview.tsx,src/pages/Roster.tsx,src/pages/PlayerProfile.tsx">Complexity: high</dyad-codebase-context><think>**Considering Error Cascades**
+
+I'm starting with a deep dive into the error list. My hypothesis is that a few fundamental issues are causing this avalanche of problems. Pinpointing the root causes is the key. I will begin with the first error listed, and then I'll be examining dependencies in the error output.
+
+
+**Diagnosing the Core Issue**
+
+I've zeroed in on `TeamContext.tsx` as the source of the majority of the reported issues. The errors cascade from syntax problems within that single file, which in turn break all the imports of `useTeam`. I'll focus on reconstructing this file to fulfill the user's requests.
+
+
+**Prioritizing Reconstruction**
+
+I'm now focusing on the direct consequences of the syntax errors in `TeamContext.tsx`. The key is rebuilding the file. I'm reviewing the prior user requests to generate the complete version, ensuring it satisfies the requirements. I'm specifically working to integrate the updates requested previously into a coherent whole, including the transfer and eligibility updates.
+
+
+**Refining Reconstruction Plans**
+
+I'm now focused on the specifications, making sure the upcoming `TeamContext.tsx` implementation encompasses all of the user's requests. Specifically, I need to reconstruct the transfer functionality and eligibility displays, and I will check the `advanceWeek` function for correct budget resets and history population. I am reviewing all the user's requests to ensure that everything will be included in the updated context file.
+
+
+**Synthesizing a Solution**
+
+I'm now gathering all the necessary information to create a complete, functional version of `TeamContext.tsx`. I've reviewed the user's recent requests, and I am now preparing a final list of the elements to be included in the update, so I can incorporate them into `TeamContext.tsx` and related files. This includes all functionality for the user's requirements.
+
+
+**Outlining Implementation Strategy**
+
+I'm now crafting the complete code for `TeamContext.tsx`, incorporating the comprehensive list of user requests from past turns. The focus is on ensuring all functionality, including transfers, budget resets, the alumni screen updates, and the national tournament advancement, is fully implemented and working correctly. I will then review dependencies.
+
+
+**Constructing TeamContext.tsx**
+
+I'm proceeding with writing the `TeamContext.tsx` file. I'm focusing on meticulously implementing the `advanceWeek` function, integrating all budget reset, graduation, staff retirement, and season history archiving logic. I'll add the transfer modifications. The key is to build a file from scratch, ensuring the user's requests are completely fulfilled, including all function implementations.
+
+
+**Commencing Implementation**
+
+I'm now fully focused on the construction of `TeamContext.tsx`, ensuring it encompasses all recent user requests. Specifically, I will implement the core logic for budget resets, player transfers to recruitment pools, and the integration of the `advanceWeek` function. The entire implementation will be complete.
+
+
+**Committing to Full Solution**
+
+I'm now beginning the comprehensive update, focusing on providing the user with a complete and correct solution. The initial step is the complete regeneration of `TeamContext.tsx`.  I'll follow this with updates to the other files, all built upon the fixed base.
+
+
+**Analyzing Errors and Planning**
+
+I'm now focused on the initial steps of the implementation plan. I am analyzing the specific errors and user requests in order to generate the complete, correct `TeamContext.tsx` file, along with the other required file updates. The goal is to fully implement the transfer logic, ensure budget resets, handle alumni updates, and incorporate the national tournament advancements as defined by the user.
+
+
+</think>My apologies for that catastrophic failure in my last response. It seems the code I generated was incomplete, leading to that massive cascade of errors. Thank you for your patience. I've reviewed your requests and the error list again and have a clear plan to fix everything and implement the features you asked for.
+
+The root of the problem was an incomplete `TeamContext.tsx` file. I will provide the full, corrected version of that file, which will resolve the vast majority of the errors. I will also implement all the gameplay enhancements you requested.
+
+Here is the complete set of changes:
+
+<dyad-write path="src/context/TeamContext.tsx" description="Fixing all errors by providing the complete, correct implementation of the TeamContext, including logic for season rollovers, transfers, alumni, and Nationals simulation.">
+import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, SeasonHistory, TeamSeasonHistory } from '@/types';
+import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
+import { generateRecruits, generatePlayer, calculateStarRating } from '@/lib/playerGenerator';
+import { toast } from 'sonner';
+import { calculateCurrentAbility } from '@/lib/playerGenerator';
+import { trainingFocusesMap } from '@/data/trainingFocuses';
+import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
+import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
+import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
+import { simulateFullGame } from '@/lib/gameEngine';
+import { validateLineup } from '@/lib/lineupValidation';
+import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
+import { NationalsTournament } from '@/types';
+import { isRivalryGame } from '@/lib/rivalries';
+import { rebalanceOrganizationRosters } from '@/lib/aiManager';
+
+const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
+const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
+
+const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['morale'] => {
+    const currentIndex = moraleLevels.indexOf(currentMorale);
+    const newIndex = Math.max(0, Math.min(moraleLevels.length - 1, currentIndex + change));
+    return moraleLevels[newIndex];
+};
+
+interface TeamContextType {
+    teams: Team[];
+    updateTeam: (updatedTeam: Team) => void;
+    userTeam: Team | null;
+    organizationFinancials: Financials | null;
+    organizationFacilities: FacilityProject[] | null;
+    selectTeam: (teamName: string | null) => void;
+    scoutingPool: Player[];
+    recruitedPool: Player[];
+    fairHosted: boolean;
+    generateScoutingPool: () => void;
+    recruitPlayer: (playerId: string) => void;
+    assignPlayerToRoster: (playerId: string) => void;
+    discardRecruit: (playerId: string) => void;
+    updateBudgetAllocations: (newAllocations: BudgetAllocations) => void;
+    runStudentLifeInitiative: () => void;
+    startFacilityProject: (projectId: string) => void;
+    currentDate: GameDate;
+    advanceWeek: () => void;
+    developmentHistory: DevelopmentLog[];
+    updatePlayerTrainingFocus: (playerId: string, focus: TrainingFocus) => void;
+    autoAssignTrainingFocuses: () => void;
+    processGameResults: (userTeam: Team, opponentTeam: Team, gameState: GameState, isNationalsGame?: boolean, nationalsDivision?: string, gameId?: string) => void;
+    movePlayer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
+    requestPlayerTransfer: (playerId: string, fromTeamName: string, toTeamName: string) => void;
+    managedOrganization: string | null;
+    isManagingOrg: boolean;
+    managedTeams: Team[];
+    selectOrganization: (orgName: string | null) => void;
+    setActiveTeam: (teamName: string) => void;
+    schedule: ScheduleEntry[];
+    gameForCurrentWeek: { id: string; opponent: string; date: GameDate; isNationals: boolean; homeTeam: string | { winnerOf: string }; awayTeam: string | { winnerOf: { winnerOf: string } | string }; } | null;
+    nationalsData: { [year: number]: { [division: string]: NationalsTournament } };
+    markGameAsCompleted: (gameId: string, homeScore: number, awayScore: number) => void;
+    seasonRecords: { [key in RecordCategory]?: TeamRecord };
+    careerRecords: { [key in RecordCategory]?: TeamRecord };
+    alumni: Player[];
+    playNationalsRound: (division: string, userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }) => void;
+    autoSimulateUserNationalsGame: (division: string, gameId: string) => void;
+    seasonHistory: SeasonHistory;
+    simulateFullNationalsTournament: (division: string) => void;
+    simulateSingleNationalsGame: (division: string, gameId: string) => void;
+}
+
+const TeamContext = createContext<TeamContextType | undefined>(undefined);
+
+export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element => {
+    const [teams, setTeams] = useState<Team[]>(() => {
+        try {
+            const savedTeams = localStorage.getItem('teams');
+            if (savedTeams) {
+                return JSON.parse(savedTeams);
+            }
+        } catch (error) {
+            console.error("Failed to load teams from localStorage:", error);
+        }
+        localStorage.setItem('teams', JSON.stringify(initialTeams));
+        return initialTeams;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('teams', JSON.stringify(teams));
+    }, [teams]);
+
+    const [alumni, setAlumni] = useState<Player[]>(() => {
+        try {
+            const saved = localStorage.getItem('alumni');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) { return []; }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('alumni', JSON.stringify(alumni));
+    }, [alumni]);
+
+    const [seasonHistory, setSeasonHistory] = useState<SeasonHistory>(() => {
+        try {
+            const saved = localStorage.getItem('seasonHistory');
+            return saved ? JSON.parse(saved) : {};
+        } catch (error) { return {}; }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('seasonHistory', JSON.stringify(seasonHistory));
+    }, [seasonHistory]);
+
+    const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
+    const [managedOrganization, setManagedOrganization] = useState<string | null>(() => localStorage.getItem('managedOrganization') || null);
+    const [isManagingOrg, setIsManagingOrg] = useState<boolean>(() => localStorage.getItem('isManagingOrg') === 'true');
+    
+    const [schedule, setSchedule] = useState<ScheduleEntry[]>(() => {
+        try {
+            const saved = localStorage.getItem('schedule');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) { return []; }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('schedule', JSON.stringify(schedule));
+    }, [schedule]);
+
+    const [nationalsData, setNationalsData] = useState<{ [year: number]: { [division: string]: NationalsTournament } }>(() => {
+        try {
+            const saved = localStorage.getItem('nationalsData');
+            return saved ? JSON.parse(saved) : {};
+        } catch (error) { return {}; }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('nationalsData', JSON.stringify(nationalsData));
+    }, [nationalsData]);
+
+    const [seasonRecords, setSeasonRecords] = useState<{ [key in RecordCategory]?: TeamRecord }>(() => {
+        try { const saved = localStorage.getItem('seasonRecords'); return saved ? JSON.parse(saved) : {}; } catch (error) { return {}; }
+    });
+    const [careerRecords, setCareerRecords] = useState<{ [key in RecordCategory]?: TeamRecord }>(() => {
+        try { const saved = localStorage.getItem('careerRecords'); return saved ? JSON.parse(saved) : {}; } catch (error) { return {}; }
+    });
+
+    useEffect(() => { localStorage.setItem('seasonRecords', JSON.stringify(seasonRecords)); }, [seasonRecords]);
+    useEffect(() => { localStorage.setItem('careerRecords', JSON.stringify(careerRecords)); }, [careerRecords]);
+
+    const managedTeams = useMemo(() => {
+        if (!managedOrganization) return [];
+        const organizations = getTeamOrganizations();
+        const org = organizations.find(o => o.name === managedOrganization);
+        if (!org) return [];
+        const orgTeamNames = org.teams.map(t => t.name);
+        return teams.filter(t => orgTeamNames.includes(t.name));
+    }, [managedOrganization, teams]);
+
+    const userTeam = useMemo(() => {
+        if (!activeTeamName) return null;
+        return teams.find(t => t.name === activeTeamName) || null;
+    }, [activeTeamName, teams]);
+
+    const organizationFinancials = useMemo(() => {
+        if (!managedOrganization || managedTeams.length === 0) return null;
+        return {
+            baseBudget: managedTeams.reduce((sum, t) => sum + t.financials.baseBudget, 0),
+            totalBudget: managedTeams.reduce((sum, t) => sum + t.financials.totalBudget, 0),
+            budgetAllocations: managedTeams.reduce((acc, t) => {
+                (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
+                    acc[key] = Math.round((acc[key] || 0) + t.financials.budgetAllocations[key]);
+                });
+                return acc;
+            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations),
+            iceTimeCostPerGame: managedTeams.reduce((sum, t) => sum + t.financials.iceTimeCostPerGame, 0),
+            equipmentCost: managedTeams.reduce((sum, t) => sum + t.financials.equipmentCost, 0),
+        };
+    }, [managedOrganization, managedTeams]);
+
+    const organizationFacilities = useMemo(() => {
+        if (!managedOrganization || managedTeams.length === 0) return null;
+        const uniqueFacilities = managedTeams.reduce((acc, team) => {
+            team.facilities.forEach(project => {
+                if (!acc.some(p => p.id === project.id)) {
+                    acc.push({ ...project });
+                }
+            });
+            return acc;
+        }, [] as FacilityProject[]);
+
+        return uniqueFacilities.map(project => {
+            const allVersions = managedTeams.flatMap(t => t.facilities).filter(p => p.id === project.id);
+            const completed = allVersions.find(p => p.status === 'Completed');
+            const inProgress = allVersions.find(p => p.status === 'In Progress');
+            
+            const newStatus = (completed?.status || inProgress?.status || 'Not Started') as 'Not Started' | 'In Progress' | 'Completed';
+            return { ...project, status: newStatus };
+        });
+    }, [managedOrganization, managedTeams]);
+
+    const selectTeam = (teamName: string | null) => {
+        if (teamName) {
+            const team = teams.find(t => t.name === teamName);
+            if (team) {
+                const orgName = getOrganizationName(team.name);
+                localStorage.setItem('activeTeamName', teamName);
+                localStorage.setItem('managedOrganization', orgName);
+                localStorage.setItem('isManagingOrg', 'false');
+                setActiveTeamName(teamName);
+                setManagedOrganization(orgName);
+                setIsManagingOrg(false);
+            }
+        } else {
+            localStorage.removeItem('activeTeamName');
+            localStorage.removeItem('managedOrganization');
+            localStorage.removeItem('isManagingOrg');
+            setActiveTeamName(null);
+            setManagedOrganization(null);
+            setIsManagingOrg(false);
+        }
+    };
+
+    const selectOrganization = (orgName: string | null) => {
+        if (orgName) {
+            const organizations = getTeamOrganizations();
+            const org = organizations.find(o => o.name === orgName);
+            if (org && org.teams.length > 0) {
+                const mainTeam = org.teams[0];
+                localStorage.setItem('managedOrganization', orgName);
+                localStorage.setItem('activeTeamName', mainTeam.name);
+                localStorage.setItem('isManagingOrg', 'true');
+                setManagedOrganization(orgName);
+                setActiveTeamName(mainTeam.name);
+                setIsManagingOrg(true);
+            }
+        } else {
+            localStorage.removeItem('managedOrganization');
+            localStorage.removeItem('activeTeamName');
+            localStorage.removeItem('isManagingOrg');
+            setManagedOrganization(null);
+            setActiveTeamName(null);
+            setIsManagingOrg(false);
+        }
+    };
+
+    const setActiveTeam = (teamName: string) => {
+        const teamExistsInOrg = managedTeams.some(t => t.name === teamName);
+        if (managedOrganization && teamExistsInOrg) {
+            localStorage.setItem('activeTeamName', teamName);
+            setActiveTeamName(teamName);
+        }
+    };
+
+    const [scoutingPool, setScoutingPool] = useState<Player[]>(() => {
+        try {
+            const saved = localStorage.getItem('scoutingPool');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) { return []; }
+    });
+
+    const [recruitedPool, setRecruitedPool] = useState<Player[]>(() => {
+        try {
+            const saved = localStorage.getItem('recruitedPool');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) { return []; }
+    });
+
+    const [fairHosted, setFairHosted] = useState<boolean>(() => {
+        try {
+            const saved = localStorage.getItem('fairHosted');
+            return saved ? JSON.parse(saved) : false;
+        } catch (error) { return false; }
+    });
+
+    const [currentDate, setCurrentDate] = useState<GameDate>(() => {
+        try {
+            const saved = localStorage.getItem('currentDate');
+            return saved ? JSON.parse(saved) : { month: 'August', week: 1, year: new Date().getFullYear() };
+        } catch (error) { return { month: 'August', week: 1, year: new Date().getFullYear() }; }
+    });
+
+    const [developmentHistory, setDevelopmentHistory] = useState<DevelopmentLog[]>(() => {
+        try {
+            const saved = localStorage.getItem('developmentHistory');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) { return []; }
+    });
+
+    useEffect(() => { localStorage.setItem('scoutingPool', JSON.stringify(scoutingPool)); }, [scoutingPool]);
+    useEffect(() => { localStorage.setItem('recruitedPool', JSON.stringify(recruitedPool)); }, [recruitedPool]);
+    useEffect(() => { localStorage.setItem('fairHosted', JSON.stringify(fairHosted)); }, [fairHosted]);
+    useEffect(() => { localStorage.setItem('currentDate', JSON.stringify(currentDate)); }, [currentDate]);
+    useEffect(() => { localStorage.setItem('developmentHistory', JSON.stringify(developmentHistory)); }, [developmentHistory]);
+    useEffect(() => {
+        if (managedOrganization) {
+            localStorage.setItem('managedOrganization', managedOrganization);
+        } else {
+            localStorage.removeItem('managedOrganization');
+        }
+    }, [managedOrganization]);
+
+    const gameForCurrentWeek = useMemo(() => {
+        if (!userTeam) return null;
+
+        // Check for Nationals game FIRST
+        const currentYearNationals = nationalsData[currentDate.year];
+        if (currentYearNationals && userTeam.nationalsDivision) {
+            const tournament = currentYearNationals[userTeam.nationalsDivision];
+            if (tournament && (tournament.status === 'group-stage' || tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs')) {
+                const gamesToCheck = tournament.status === 'group-stage' 
+                    ? tournament.groupStageSchedule 
+                    : tournament.playoffSchedule;
+
+                const userGame = gamesToCheck.find(g => {
+                    if (g.status !== 'scheduled') return false;
+                    
+                    const isUserGame = (typeof g.homeTeam === 'string' && g.homeTeam === userTeam.name) || 
+                                     (typeof g.awayTeam === 'string' && g.awayTeam === userTeam.name);
+
+                    if (!isUserGame) return false;
+
+                    if (tournament.status === 'group-stage') {
+                        return g.round === tournament.currentRound;
+                    }
+                    if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
+                        const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
+                        return (g as NationalsPlayoffMatch).round === tournament.currentRound && (g as NationalsPlayoffMatch).bracket === currentBracket;
+                    }
+                    return false;
+                });
+
+                if (userGame) {
+                    const opponentName = (typeof userGame.homeTeam === 'string' && userGame.homeTeam === userTeam.name)
+                        ? (typeof userGame.awayTeam === 'string' ? userGame.awayTeam : 'TBD')
+                        : (typeof userGame.homeTeam === 'string' ? userGame.homeTeam : 'TBD');
+                    
+                    return {
+                        id: userGame.id,
+                        opponent: opponentName,
+                        date: userGame.date,
+                        isNationals: true,
+                        homeTeam: userGame.homeTeam,
+                        awayTeam: userGame.awayTeam as string | { winnerOf: string }, // Ensure type correctness
+                    };
+                }
+            }
+        }
+
+        // If no Nationals game, check for regular season game
+        const regularGame = schedule.find(game =>
+            (game.homeTeam === userTeam.name || game.awayTeam === userTeam.name) &&
+            game.date.month === currentDate.month &&
+            game.date.week === currentDate.week &&
+            game.status === 'scheduled'
+        );
+        if (regularGame) {
+            const opponent = regularGame.homeTeam === userTeam.name ? regularGame.awayTeam : regularGame.homeTeam;
+            return { ...regularGame, opponent, isNationals: false };
+        }
+
+        return null;
+    }, [userTeam, schedule, currentDate, nationalsData]);
+
+    const updateTeam = (updatedTeam: Team) => {
+        setTeams(currentTeams =>
+            currentTeams.map(t => (t.name === updatedTeam.name ? updatedTeam : t))
+        );
+    };
+
+    const advanceWeek = () => {
+        if (gameForCurrentWeek && userTeam) {
+            const validationError = validateLineup(userTeam);
+            if (validationError) {
+                toast.error("Cannot Advance Week", {
+                    description: `Your lineup is invalid: ${validationError}`,
+                });
+                return;
+            }
+        }
+
+        let tempTeams = JSON.parse(JSON.stringify(teams)) as Team[];
+        
+        // AI Organization Roster Rebalancing
+        const allOrgs = getTeamOrganizations();
+        const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
+
+        aiOrgs.forEach(org => {
+            const orgTeamNames = org.teams.map(t => t.name);
+            const teamsForRebalancing = tempTeams.filter(t => orgTeamNames.includes(t.name));
+            if (teamsForRebalancing.length > 1) {
+                const rebalancedTeams = rebalanceOrganizationRosters(teamsForRebalancing);
+                rebalancedTeams.forEach(rebalancedTeam => {
+                    const index = tempTeams.findIndex(t => t.name === rebalancedTeam.name);
+                    if (index !== -1) {
+                        tempTeams[index] = rebalancedTeam;
+                    }
+                });
+            }
+        });
+
+        let tempSchedule = JSON.parse(JSON.stringify(schedule)) as ScheduleEntry[];
+        let newDevelopmentLogs: DevelopmentLog[] = [];
+        const managedTeamNames = managedTeams.map(t => t.name);
+
+        const currentYear = currentDate.year;
+
+        // Declare and initialize temporary variables for records and nationals data
+        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as { [year: number]: { [division: string]: NationalsTournament } };
+        let tempSeasonRecords = JSON.parse(JSON.stringify(seasonRecords)) as { [key in RecordCategory]?: TeamRecord };
+        let tempCareerRecords = JSON.parse(JSON.stringify(careerRecords)) as { [key in RecordCategory]?: TeamRecord };
+
+        if (currentDate.month === 'May' && currentDate.week === 4) {
+            const allTournamentsCompleted = Object.values(tempNationalsData[currentYear] || {}).every(t => t.status === 'completed');
+            if (!allTournamentsCompleted) {
+                toast.error("Nationals In Progress", { description: "You must complete the National Championships before advancing the week." });
+                return;
+            }
+        }
+
+        const updateGameRecords = (homeTeam: Team, awayTeam: Team) => {
+            const allPlayers = [...homeTeam.roster, ...awayTeam.roster];
+            const teamsMap = { [homeTeam.name]: homeTeam, [awayTeam.name]: awayTeam };
+        
+            allPlayers.forEach(player => {
+                const team = teamsMap[player.history[player.history.length - 1]?.team || homeTeam.name];
+                if (!team) return;
+
+                const isSkater = !player.positions.includes('G');
+                const season = `${currentDate.year}-${currentDate.year + 1}`;
+        
+                if (isSkater) {
+                    const stats = player.currentStats[player.currentStats.length - 1];
+                    if (!stats) return;
+                    if ((stats.goals || 0) > (tempSeasonRecords['Goals']?.value || 0)) tempSeasonRecords['Goals'] = { playerName: player.name, teamName: team.name, value: stats.goals || 0, season };
+                    if ((stats.assists || 0) > (tempSeasonRecords['Assists']?.value || 0)) tempSeasonRecords['Assists'] = { playerName: player.name, teamName: team.name, value: stats.assists || 0, season };
+                    if ((stats.points || 0) > (tempSeasonRecords['Points']?.value || 0)) tempSeasonRecords['Points'] = { playerName: player.name, teamName: team.name, value: stats.points || 0, season };
+                    if ((stats.penaltyMinutes || 0) > (tempSeasonRecords['PenaltyMinutes']?.value || 0)) tempSeasonRecords['PenaltyMinutes'] = { playerName: player.name, teamName: team.name, value: stats.penaltyMinutes || 0, season };
+                    
+                    const careerGoals = (player.history?.reduce((acc, s) => acc + (s.goals || 0), 0) || 0) + (stats.goals || 0);
+                    if (careerGoals > (tempCareerRecords['Goals']?.value || 0)) tempCareerRecords['Goals'] = { playerName: player.name, teamName: team.name, value: careerGoals };
+                    const careerAssists = (player.history?.reduce((acc, s) => acc + (s.assists || 0), 0) || 0) + (stats.assists || 0);
+                    if (careerAssists > (tempCareerRecords['Assists']?.value || 0)) tempCareerRecords['Assists'] = { playerName: player.name, teamName: team.name, value: careerAssists };
+                    const careerPoints = (player.history?.reduce((acc, s) => acc + (s.points || 0), 0) || 0) + (stats.points || 0);
+                    if (careerPoints > (tempCareerRecords['Points']?.value || 0)) tempCareerRecords['Points'] = { playerName: player.name, teamName: team.name, value: careerPoints };
+                    const careerPims = (player.history?.reduce((acc, s) => acc + (s.penaltyMinutes || 0), 0) || 0) + (stats.penaltyMinutes || 0);
+                    if (careerPims > (tempCareerRecords['PenaltyMinutes']?.value || 0)) tempCareerRecords['PenaltyMinutes'] = { playerName: player.name, teamName: team.name, value: careerPims };
+
+                } else { // Goalie
+                    const stats = player.currentStats[player.currentStats.length - 1];
+                    if (!stats) return;
+                    if (stats.gamesPlayed >= 5) { // Goalie eligibility for in-season records
+                        if (!tempSeasonRecords['GAA'] || ((stats.goalsAgainstAverage || 99) < tempSeasonRecords['GAA'].value)) tempSeasonRecords['GAA'] = { playerName: player.name, teamName: team.name, value: stats.goalsAgainstAverage || 99, season };
+                        if ((stats.savePercentage || 0) > (tempSeasonRecords['SavePercentage']?.value || 0)) tempSeasonRecords['SavePercentage'] = { playerName: player.name, teamName: team.name, value: stats.savePercentage || 0, season };
+                    }
+                    if ((stats.shutouts || 0) > (tempSeasonRecords['Shutouts']?.value || 0)) tempSeasonRecords['Shutouts'] = { playerName: player.name, teamName: team.name, value: stats.shutouts || 0, season };
+                    
+                    const careerShutouts = (player.history?.reduce((acc, s) => acc + (s.shutouts || 0), 0) || 0) + (stats.shutouts || 0);
+                    if (careerShutouts > (tempCareerRecords['Shutouts']?.value || 0)) tempCareerRecords['Shutouts'] = { playerName: player.name, teamName: team.name, value: careerShutouts };
+                }
+            });
+        };
+
+        const gamesThisWeek = schedule.filter(game =>
+            game.date.month === currentDate.month && game.date.week === currentDate.week && game.status === 'scheduled'
+        );
+
+        if (gamesThisWeek.length > 0) {
+            gamesThisWeek.forEach(game => {
+                if (schedule.find(s => s.id === game.id)?.status === 'completed') return;
+
+                const homeTeamIndex = tempTeams.findIndex(t => t.name === game.homeTeam);
+                const awayTeamIndex = tempTeams.findIndex(t => t.name === game.awayTeam);
+                if (homeTeamIndex === -1 || awayTeamIndex === -1) return;
+
+                const homeTeam = tempTeams[homeTeamIndex];
+                const awayTeam = tempTeams[awayTeamIndex];
+                const isBigGame = isRivalryGame(homeTeam.name, awayTeam.name);
+
+                if (isBigGame && (homeTeam.name === userTeam?.name || awayTeam.name === userTeam?.name)) {
+                    toast.info("It's a Rivalry Game!", { description: `The atmosphere is electric for ${homeTeam.name} vs ${awayTeam.name}. Players' performance may be affected by the pressure!` });
+                }
+
+                const finalGameState = simulateFullGame(homeTeam, awayTeam, isBigGame);
+
+                if (userTeam) {
+                    finalGameState.injuries.forEach(injury => {
+                        if (injury.teamName === userTeam.name) {
+                            const injuredPlayer = userTeam.roster.find(p => p.id === injury.playerId);
+                            if (injuredPlayer) {
+                                toast.warning("Player Injured!", { description: `${injuredPlayer.name} was injured during the game. (${injury.injuryType}, out for ${injury.duration} weeks)` });
+                            }
+                        }
+                    });
+                }
+
+                const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, false);
+                tempTeams[homeTeamIndex] = updatedHomeTeam;
+                tempTeams[awayTeamIndex] = updatedAwayTeam;
+                updateGameRecords(updatedHomeTeam, updatedAwayTeam);
+
+                if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
+                    toast.info("Game Auto-Simulated", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
+                }
+            });
+        }
+
+        tempTeams = tempTeams.map(team => {
+            let newRoster = [...team.roster];
+            let newFacilities = [...team.facilities];
+            const isUserManagedTeam = team.name === userTeam?.name || managedTeamNames.includes(team.name);
+
+            newRoster = newRoster.map(player => {
+                let playerChanged = false;
+                const isSkater = !player.positions.includes('G');
+
+                if (player.injury && player.injury.duration > 0) {
+                    const hasPhysio = team.facilities.some(f => f.id === 'physio_office_1' && f.status === 'Completed');
+                    player.injury.duration -= (hasPhysio ? 2 : 1);
+
+                    const regression = (Math.random() * 0.1) + 0.02; // Defined here
+                    if (Math.random() < regression) {
+                        let attrsToRegress: (keyof SkaterAttributes | keyof GoalieAttributes)[] = isSkater
+                            ? ['speed', 'acceleration', 'agility', 'balance', 'stamina', 'strength']
+                            : ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
+                        
+                        const attrToRegress = getRandomItem(attrsToRegress);
+                        const currentAttrValue = player.attributes[attrToRegress as keyof typeof player.attributes] as number;
+                        
+                        if (currentAttrValue > 1) {
+                            const newAttrValue = Math.max(1, currentAttrValue - regression);
+                            (player.attributes[attrToRegress as keyof typeof player.attributes] as number) = newAttrValue;
+                            playerChanged = true;
+                            if (isUserManagedTeam) {
+                                newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToRegress.toString(), change: -regression, newRating: newAttrValue, date: currentDate });
+                            }
+                        }
+                    }
+
+                    if (player.injury.duration <= 0) {
+                        if (team.name === userTeam?.name) toast.success("Player Recovered", { description: `${player.name} has recovered from their injury.` });
+                        player.injury = null;
+                        player.healthStatus = 'Healthy';
+                    }
+                } else {
+                    // Development for healthy players
+                    const paGap = player.potentialAbility - player.currentAbility;
+                    if (player.age < 33 && paGap > 0 && (player as Player).morale !== 'Angry') {
+                        const devRate = (player.attributes as SkaterAttributes | GoalieAttributes).developmentRate || 10;
+                        const professionalism = (player.attributes as SkaterAttributes | GoalieAttributes).professionalism || 10;
+                        const determination = (player.attributes as SkaterAttributes | GoalieAttributes).determination || 10;
+                        const coachability = (player.attributes as SkaterAttributes | GoalieAttributes).coachability || 10;
+                        const baseDevChance = 0.2;
+                        const paBonus = Math.max(0, paGap / 50);
+                        const workEthicBonus = (professionalism + determination - 20) / 100;
+                        const coachabilityBonus = (coachability - 10) / 100;
+                        const devChance = baseDevChance + paBonus + workEthicBonus + coachabilityBonus;
+                        if (Math.random() < devChance) {
+                            let attributesToDevelop: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
+                            if ((player as Player).trainingFocus && trainingFocusesMap[(player as Player).trainingFocus]) {
+                                attributesToDevelop = trainingFocusesMap[(player as Player).trainingFocus];
+                            } else {
+                                const allAttrs = Object.keys(player.attributes).filter(attr => !['aging', 'injuryProneness', 'passShootTendency', 'mood', 'controversy', 'greed', 'loyalty', 'handleCritics', 'handleFailure', 'handleSuccess', 'sportsmanship', 'ambition', 'bigGames', 'coachability', 'intelligence'].includes(attr)) as (keyof typeof player.attributes)[];
+                                if (allAttrs.length > 0) attributesToDevelop.push(getRandomItem(allAttrs));
+                            }
+                            if (attributesToDevelop.length > 0) {
+                                const attrToImprove = getRandomItem(attributesToDevelop);
+                                const currentAttrValue = player.attributes[attrToImprove as keyof typeof player.attributes] as number;
+                                if (currentAttrValue < 20) {
+                                    let moraleModifier = 1.0;
+                                    if ((player as Player).morale === 'Happy') moraleModifier = 1.2;
+                                    else if ((player as Player).morale === 'Unhappy') moraleModifier = 0.5;
+                                    const improvement = ((Math.random() * 0.2) + (devRate / 100)) * moraleModifier;
+                                    const newAttrValue = Math.min(20, currentAttrValue + improvement);
+                                    (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
+                                    playerChanged = true;
+                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
+                                }
+                            }
+                        }
+                    }
+                    // Age-related decline
+                    if (player.age > 28) {
+                        const baseDeclineChance = 0.05;
+                        const agePenalty = (player.age - 28) / 80;
+                        const declineChance = baseDeclineChance + agePenalty;
+                        if (Math.random() < declineChance) {
+                            let attrsToDecline: (keyof SkaterAttributes | keyof GoalieAttributes)[] = isSkater
+                                ? ['acceleration', 'agility', 'balance', 'speed', 'stamina', 'strength']
+                                : ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
+                            const attrToDecline = getRandomItem(attrsToDecline);
+                            const currentAttrValue = player.attributes[attrToDecline as keyof typeof player.attributes] as number;
+                            if (currentAttrValue > 1) {
+                                const decline = (Math.random() * 0.15) + 0.05;
+                                const newAttrValue = Math.max(1, currentAttrValue - decline);
+                                (player.attributes[attrToDecline as keyof typeof player.attributes] as number) = newAttrValue;
+                                playerChanged = true;
+                                if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToDecline.toString(), change: -decline, newRating: newAttrValue, date: currentDate });
+                            }
+                        }
+                    }
+                }
+
+                if (playerChanged) {
+                    const newCurrentAbility = calculateCurrentAbility(player.attributes, isSkater);
+                    const newStarRating = calculateStarRating(newCurrentAbility, isSkater, team.leagueDivision);
+                    player.currentAbility = newCurrentAbility;
+                    player.starRating = newStarRating;
+                }
+
+                return player;
+            });
+
+            newFacilities = newFacilities.map(project => {
+                if (project.status === 'In Progress' && project.weeksToComplete) {
+                    project.weeksToComplete -= 1;
+                    if (project.weeksToComplete <= 0) {
+                        project.status = 'Completed';
+                        if (team.name === userTeam?.name) toast.info("Facility Project Completed", { description: `${project.name} is now complete.` });
+                        if (project.id === 'locker_room_1') {
+                            newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
+                            if (team.name === userTeam?.name) toast.success("Morale Boost!", { description: "The new locker room has boosted team morale." });
+                        }
+                    }
+                }
+                return project;
+            });
+
+            newRoster = newRoster.map(player => {
+                if (Math.random() < 0.1) {
+                    if ((player as Player).morale === 'Happy') return { ...player, morale: 'Content' as 'Content' };
+                    if ((player as Player).morale === 'Unhappy') return { ...player, morale: 'Content' as 'Content' };
+                }
+                if (isUserManagedTeam) {
+                    const controversyChance = ((player.attributes.controversy || 10) - 10) / 200;
+                    if (Math.random() < controversyChance) {
+                        toast.warning("Team Controversy!", { description: `${player.name} has caused a stir with off-ice antics, slightly affecting team morale.` });
+                        newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, -1) }));
+                    }
+                    const sportsmanship = (player.attributes.sportsmanship || 10);
+                    const controversy = (player.attributes.controversy || 10);
+                    const positiveEventChance = ((sportsmanship - 1) / 200) + ((20 - controversy) / 200);
+                    if (Math.random() < positiveEventChance) {
+                        const positiveDescriptions = [ `${player.name} organized a successful team-building event, boosting team cohesion and morale.`, `${player.name} was recognized for their outstanding sportsmanship, setting a positive example for the team.`, `${player.name}'s positive attitude and professionalism are rubbing off on the team, improving overall morale.`, `${player.name} resolved a minor locker room dispute, fostering a more harmonious team environment.`, `${player.name} led a community initiative, bringing positive attention and good vibes to the team.` ];
+                        toast.success("Team Harmony!", { description: getRandomItem(positiveDescriptions) });
+                        newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
+                    }
+                }
+                return player;
+            });
+
+            return { ...team, roster: newRoster, facilities: newFacilities };
+        });
+
+        const newDate = ((prevDate) => {
+            let { month, week, year } = prevDate;
+            const monthIndex = months.indexOf(month);
+            
+            week += 1; // Always advance by one week
+
+            // Handle month rollover
+            if (week > 4) { // If week exceeds 4, roll over to next month
+                week = 1;
+                let nextMonthIndex = (monthIndex + 1) % months.length;
+                if (month === "July" && months[nextMonthIndex] === "August") {
+                    year += 1;
+                    toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
+                    
+                    // Archive season standings
+                    const seasonToArchive = `${prevDate.year}-${prevDate.year + 1}`;
+                    const standingsForYear: TeamSeasonHistory[] = tempTeams.map(t => ({
+                        teamName: t.name,
+                        leagueDivision: t.leagueDivision,
+                        nationalsDivision: t.nationalsDivision,
+                        wins: t.wins,
+                        losses: t.losses,
+                        draws: t.draws,
+                        points: t.points,
+                        goalsFor: t.goalsFor,
+                        goalsAgainst: t.goalsAgainst,
+                        nationalsResult: tempNationalsData[prevDate.year]?.[t.nationalsDivision]?.winner === t.name ? 'Winner' : tempNationalsData[prevDate.year]?.[t.nationalsDivision]?.playoffSchedule.find(m => m.round === 'Final' && (m.homeTeam === t.name || m.awayTeam === t.name)) ? 'Finalist' : undefined,
+                    }));
+                    setSeasonHistory(prev => ({ ...prev, [seasonToArchive]: standingsForYear }));
+
+                    tempSeasonRecords = {}; // Reset season records
+                    
+                    const newAlumni: Player[] = [];
+                    tempTeams = tempTeams.map(team => {
+                        const unspentBudget = team.financials.totalBudget - Object.values(team.financials.budgetAllocations).reduce((a, b) => a + b, 0);
+                        team.financials.totalBudget = team.financials.baseBudget + (unspentBudget > 0 ? unspentBudget : 0);
+
+                        const graduatingPlayers: Player[] = [];
+                        const remainingPlayers = team.roster.filter(player => {
+                            if (player.eligibility === 'Staff') {
+                                player.yearsAsStaff = (player.yearsAsStaff || 0) + 1;
+                                if (player.yearsAsStaff >= (player.staffCareerLength || 10)) {
+                                    graduatingPlayers.push(player);
+                                    return false;
+                                }
+                                return true;
+                            }
+
+                            const eligibilityMap: { [key in Player['eligibility']]: Player['eligibility'] | null } = {
+                                "UG Year 1": "UG Year 2", "UG Year 2": "UG Year 3", "UG Year 3": "UG Year 4",
+                                "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
+                            };
+                            const nextEligibility = eligibilityMap[player.eligibility];
+                            
+                            if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
+                                player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
+                                if (player.yearsLeftInProgram <= 0) {
+                                    graduatingPlayers.push(player);
+                                    return false;
+                                }
+                            }
+
+                            if (nextEligibility) {
+                                player.eligibility = nextEligibility;
+                                player.age += 1;
+                                return true;
+                            } else if (player.eligibility !== 'Staff') {
+                                graduatingPlayers.push(player);
+                                return false;
+                            }
+                            return true; // Staff remain
+                        });
+
+                        graduatingPlayers.forEach(player => {
+                            const isManaged = managedTeamNames.includes(team.name);
+                            const roll = Math.random();
+                            
+                            if (player.eligibility === 'Staff' || roll < 0.85) { // Retire
+                                if (isManaged) {
+                                    player.alumniStatus = 'Retired';
+                                    newAlumni.push(player);
+                                    toast.info(`${player.name} has retired from university hockey.`);
+                                }
+                            } else if (roll < 0.95) { // Transfer
+                                const otherTeams = tempTeams.filter(t => t.name !== team.name);
+                                if (otherTeams.length > 0) {
+                                    const newTeam = getRandomItem(otherTeams);
+                                    player.eligibility = 'Masters'; // Assume they start a Masters
+                                    newTeam.roster.push(player);
+                                    if (isManaged) {
+                                        player.alumniStatus = 'Active Elsewhere';
+                                        newAlumni.push(player);
+                                        toast.info(`${player.name} has graduated and transferred to ${newTeam.name}.`);
+                                    }
+                                }
+                            } else { // New Degree
+                                player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
+                                player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
+                                player.isContinuingEducation = true;
+                                remainingPlayers.push(player);
+                                toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
+                            }
+                        });
+
+                        team.roster = remainingPlayers;
+                        return team;
+                    });
+
+                    if (newAlumni.length > 0) {
+                        setAlumni(prev => [...prev, ...newAlumni]);
+                    }
+
+                    // AI Recruitment Logic
+                    const allOrgs = getTeamOrganizations();
+                    const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
+                    const allTeamNames = tempTeams.map(t => t.name);
+                    let recruitmentOccurred = false;
+
+                    aiOrgs.forEach(org => {
+                        const orgTeamNames = org.teams.map(t => t.name);
+                        const orgTeams = tempTeams.filter(t => orgTeamNames.includes(t.name));
+                        if (orgTeams.length === 0) return;
+
+                        const targetRosterSize = orgTeams.length * 21; // Standard roster size
+                        const currentRosterSize = orgTeams.reduce((sum, team) => sum + team.roster.length, 0);
+                        const playersToRecruitCount = Math.max(0, targetRosterSize - currentRosterSize);
+
+                        if (playersToRecruitCount > 0) {
+                            recruitmentOccurred = true;
+                            const primaryTeam = orgTeams.sort((a, b) => a.name.localeCompare(b.name))[0];
+                            const prospects = generateRecruits(primaryTeam.leagueDivision, allTeamNames, playersToRecruitCount * 2);
+                            
+                            prospects.sort((a, b) => b.potentialAbility - a.potentialAbility);
+                            const newRecruits = prospects.slice(0, playersToRecruitCount);
+
+                            const lowestTierTeamName = orgTeams.sort((a, b) => b.name.localeCompare(a.name))[0].name;
+                            const lowestTierTeamIndex = tempTeams.findIndex(t => t.name === lowestTierTeamName);
+
+                            if (lowestTierTeamIndex !== -1) {
+                                const teamToUpdate = tempTeams[lowestTierTeamIndex];
+                                const usedJerseyNumbers = new Set(teamToUpdate.roster.map(p => p.jerseyNumber));
+                                
+                                newRecruits.forEach(recruit => {
+                                    let newJerseyNumber = 1;
+                                    while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
+                                    recruit.jerseyNumber = newJerseyNumber;
+                                    usedJerseyNumbers.add(newJerseyNumber);
+                                    const isSkater = recruit.positions[0] !== 'G';
+                                    recruit.starRating = calculateStarRating(recruit.currentAbility, isSkater, teamToUpdate.leagueDivision);
+                                });
+
+                                teamToUpdate.roster.push(...newRecruits);
+                                tempTeams[lowestTierTeamIndex] = teamToUpdate;
+                            }
+                        }
+                    });
+
+                    if (recruitmentOccurred) {
+                        toast.info("AI teams have recruited new players for the upcoming season.");
+                    }
+
+                    tempTeams = tempTeams.map(team => {
+                        const updatedRoster = team.roster.map(player => {
+                            if (player.currentStats.length > 0) {
+                                const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
+                                return { ...player, history: newHistory, currentStats: [] };
+                            }
+                            return player;
+                        });
+                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 };
+                    });
+
+                    setScoutingPool([]);
+                    setRecruitedPool([]);
+                    setFairHosted(false);
+                }
+                month = months[nextMonthIndex];
+            }
+            return { month, week, year };
+        })(currentDate);
+
+        if (newDevelopmentLogs.length > 0) setDevelopmentHistory(prev => [...newDevelopmentLogs, ...prev].slice(0, 200));
+        if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
+            tempSchedule = generateSeasonSchedule(tempTeams, newDate);
+            toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
+        }
+
+        if (newDate.month === 'May' && newDate.week === 1 && !(currentDate.month === 'May' && currentDate.week === 1)) {
+            toast.info("Nationals Draws Being Made", { description: "Groups for the BUIHA National Championships are being generated." });
+            const allNationalsDivisions = [...new Set(tempTeams.map(t => t.nationalsDivision))];
+            const newNationalsDataForYear: { [division: string]: NationalsTournament } = {};
+            allNationalsDivisions.forEach(division => {
+                const teamsInDivision = tempTeams.filter(t => t.nationalsDivision === division);
+                if (teamsInDivision.length >= 2) {
+                    const tournament = createNationalsTournament(division, teamsInDivision, newDate.year, newDate.week);
+                    newNationalsDataForYear[division] = tournament;
+                }
+            });
+            tempNationalsData[newDate.year] = newNationalsDataForYear;
+        }
+        
+        setNationalsData(tempNationalsData);
+        setTeams(tempTeams);
+        setSchedule(tempSchedule);
+        setCurrentDate(newDate);
+        setSeasonRecords(tempSeasonRecords);
+        setCareerRecords(tempCareerRecords);
+    };
+
+    const movePlayer = (playerId: string, fromTeamName: string, toTeamName: string) => {
+        setTeams(currentTeams => {
+            const fromTeam = currentTeams.find(t => t.name === fromTeamName);
+            const toTeam = currentTeams.find(t => t.name === toTeamName);
+            const player = fromTeam?.roster.find(p => p.id === playerId);
+
+            if (!fromTeam || !toTeam || !player) {
+                toast.error("Could not move player. Team or player not found.");
+                return currentTeams;
+            }
+
+            const newFromRoster = fromTeam.roster.filter(p => p.id !== playerId);
+
+            const toTeamJerseyNumbers = new Set(toTeam.roster.map(p => p.jerseyNumber));
+            if (toTeamJerseyNumbers.has(player.jerseyNumber)) {
+                let newJerseyNumber = 1;
+                while (toTeamJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
+                toast.warning(`${player.name}'s jersey #${player.jerseyNumber} was taken.`, {
+                    description: `They have been assigned #${newJerseyNumber}.`
+                });
+                player.jerseyNumber = newJerseyNumber;
+            }
+            
+            const isSkater = player.positions[0] !== 'G';
+            const updatedPlayer = {
+                ...player,
+                starRating: calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision)
+            };
+
+            const newToRoster = [...toTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+
+            const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
+            const updatedToTeam = { ...toTeam, roster: newToRoster };
+
+            return currentTeams.map(t => {
+                if (t.name === fromTeamName) return updatedFromTeam;
+                if (t.name === toTeamName) return updatedToTeam;
+                return t;
+            });
+        });
+    };
+
+    const requestPlayerTransfer = (playerId: string, fromTeamName: string, toTeamName: string) => {
+        const fromTeam = teams.find(t => t.name === fromTeamName);
+        const toTeam = teams.find(t => t.name === toTeamName);
+        const player = fromTeam?.roster.find(p => p.id === playerId);
+
+            if (!fromTeam || !toTeam || !player) {
+                toast.error("Could not request player. Team or player not found.");
+                return;
+            }
+
+        const isInternalTransfer = managedOrganization &&
+            managedTeams.some(t => t.name === fromTeamName) &&
+            managedTeams.some(t => t.name === toTeamName);
+
+        if (isInternalTransfer) {
+            movePlayer(playerId, fromTeamName, toTeamName);
+            toast.success(`${player.name} moved to ${toTeamName}.`);
+            return;
+        }
+
+        const baseSuccessChance = 0.3;
+        const loyaltyModifier = (player.attributes.loyalty - 10) / 25; // +/- 40%
+        const ambitionModifier = (player.attributes.ambition - 10) / 25; // +/- 40%
+        
+        const successChance = baseSuccessChance - loyaltyModifier + ambitionModifier;
+
+        if (Math.random() < successChance) {
+            toast.success("Transfer Approved!", {
+                description: `${player.name} has agreed to the move and their coach has approved the transfer.`
+            });
+            if (toTeam.name === userTeam?.name) {
+                const playerToTransfer = { ...player, source: 'Transfer' as const };
+                setRecruitedPool(prev => [...prev, playerToTransfer]);
+                const newFromRoster = fromTeam.roster.filter(p => p.id !== playerId);
+                updateTeam({ ...fromTeam, roster: newFromRoster });
+                toast.info(`${player.name} is awaiting your contract offer in the Recruitment screen.`);
+            } else {
+                movePlayer(playerId, fromTeamName, toTeamName);
+            }
+        } else {
+            const reasonRoll = Math.random();
+            let reasonText: string;
+            if (reasonRoll < 0.4) reasonText = `The manager of ${fromTeamName} has blocked the transfer, wanting to keep the player.`;
+            else if (reasonRoll < 0.8) reasonText = `${player.name} has declined the offer to move to ${toTeamName}, citing loyalty to their current team.`;
+            else reasonText = `${player.name} is happy where they are and does not wish to move at this time.`;
+            toast.error("Transfer Denied", { description: reasonText });
+        }
+    };
+
+    const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState, isNationalsGame: boolean = false, nationalsDivision?: string, gameId?: string) => {
+        const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(userTeam, opponentTeam, gameState, isNationalsGame);
+        
+        setTeams(currentTeams =>
+            currentTeams.map(t => {
+                if (t.name === updatedUserTeam.name) return updatedUserTeam;
+                if (t.name === updatedOpponentTeam.name) return updatedOpponentTeam;
+                return t;
+            })
+        );
+
+        if (isNationalsGame && nationalsDivision && gameId) {
+            const completedGame = {
+                gameId: gameId, // Changed from 'id' to 'gameId'
+                homeScore: gameState.userScore,
+                awayScore: gameState.opponentScore,
+                homeTeamName: userTeam.name,
+                awayTeamName: opponentTeam.name,
+            };
+            playNationalsRound(nationalsDivision, completedGame);
+        } else if (gameId) { // Handle regular season game completion
+            markGameAsCompleted(gameId, gameState.userScore, gameState.opponentScore);
+        }
+    };
+
+    const playNationalsRound = (division: string, userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }) => {
+        const tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
+        const tournament = tempNationalsData[currentDate.year]?.[division];
+        if (!tournament || tournament.status === 'completed') return;
+
+        let tempTeams = JSON.parse(JSON.stringify(teams));
+        
+        if (tournament.status === 'group-stage') {
+            const gamesToSim = tournament.groupStageSchedule.filter((g: ScheduleEntry) => g.round === tournament.currentRound && g.status === 'scheduled');
+            
+            if (userGameResult) {
+                const userGame = gamesToSim.find(g => g.id === userGameResult.gameId);
+                if (userGame) {
+                    userGame.status = 'completed';
+                    userGame.result = { homeScore: userGameResult.homeScore, awayScore: userGameResult.awayScore };
+                }
+            }
+
+            gamesToSim.forEach((game: ScheduleEntry) => {
+                if (game.status === 'completed') return;
+                const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
+                const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+                if (homeTeam && awayTeam) {
+                    const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+                    const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                    tempTeams = tempTeams.map((t: Team) => {
+                        if (t.name === homeTeam.name) return updatedUserTeam;
+                        if (t.name === awayTeam.name) return updatedOpponentTeam;
+                        return t;
+                    });
+                    game.status = 'completed';
+                    game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                }
+            });
+
+            // Update standings
+            tournament.groups.forEach((group: any) => {
+                group.standings.forEach((standing: any) => {
+                    const teamGames = tournament.groupStageSchedule.filter((g: ScheduleEntry) => (g.homeTeam === standing.teamName || g.awayTeam === standing.teamName) && g.round === tournament.currentRound && g.result);
+                    teamGames.forEach((game: ScheduleEntry) => {
+                        standing.played++;
+                        const isHome = game.homeTeam === standing.teamName;
+                        const homeScore = game.result!.homeScore;
+                        const awayScore = game.result!.awayScore;
+                        standing.goalsFor += isHome ? homeScore : awayScore;
+                        standing.goalsAgainst += isHome ? awayScore : homeScore;
+                        if (homeScore === awayScore) { standing.draws++; standing.points++; }
+                        else if ((isHome && homeScore > awayScore) || (!isHome && awayScore > homeScore)) { standing.wins++; standing.points += 3; }
+                        else { standing.losses++; }
+                    });
+                });
+            });
+
+            tournament.currentRound = (tournament.currentRound as number) + 1;
+            
+            const allGroupGamesPlayed = tournament.groupStageSchedule.every((g: ScheduleEntry) => g.status === 'completed');
+            if (allGroupGamesPlayed) {
+                toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
+                tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date);
+                
+                const silverPlayoffExists = tournament.playoffSchedule.some((m: NationalsPlayoffMatch) => m.bracket === 'Silver');
+
+                if (silverPlayoffExists) {
+                    tournament.status = 'silver-playoffs';
+                    const firstSilverRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Silver')?.round || 'Final';
+                    tournament.currentRound = firstSilverRound;
+                    toast.info(`The ${division} Silver Playoffs will now begin.`);
+                } else {
+                    tournament.status = 'gold-playoffs';
+                    const firstGoldRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Gold')?.round || 'Final';
+                    tournament.currentRound = firstGoldRound;
+                    toast.info(`The ${division} Gold Playoffs will now begin.`);
+                }
+
+                if (tournament.playoffSchedule.length === 0) {
+                    tournament.status = 'completed';
+                    toast.info(`${division} tournament has concluded as no playoffs could be generated.`);
+                }
+            }
+        } else if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
+            const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
+
+            const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
+                if (!match.result) return undefined;
+                if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
+                if (match.result.awayScore > match.result.homeScore) return typeof match.awayTeam === 'string' ? match.awayTeam : undefined;
+                // Random winner on a draw for now to prevent getting stuck.
+                return Math.random() > 0.5 ? (typeof match.homeTeam === 'string' ? match.homeTeam : undefined) : (typeof match.awayTeam === 'string' ? match.awayTeam : undefined);
+            };
+
+            const allPlayoffGames = tournament.playoffSchedule as NationalsPlayoffMatch[];
+            
+            // Resolve teams for the current round first
+            allPlayoffGames.forEach((game: NationalsPlayoffMatch) => {
+                if (game.bracket === currentBracket && game.round === tournament.currentRound && game.status === 'scheduled') {
+                    if (typeof game.homeTeam !== 'string') {
+                        const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
+                        if (feederMatch && feederMatch.status === 'completed') {
+                            game.homeTeam = getWinner(feederMatch) || 'TBD';
+                        }
+                    }
+                    if (typeof game.awayTeam !== 'string') {
+                        const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
+                        if (feederMatch && feederMatch.status === 'completed') {
+                            game.awayTeam = getWinner(feederMatch) || 'TBD';
+                        }
+                    }
+                }
+            });
+
+            const gamesToSim = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.bracket === currentBracket && g.round === tournament.currentRound && g.status === 'scheduled');
+
+            if (userGameResult) {
+                const userGame = gamesToSim.find(g => g.id === userGameResult.gameId);
+                if (userGame) {
+                    userGame.status = 'completed';
+                    userGame.result = { homeScore: userGameResult.homeScore, awayScore: userGameResult.awayScore };
+                    userGame.winner = getWinner(userGame);
+                }
+            }
+
+            gamesToSim.forEach((game: NationalsPlayoffMatch) => {
+                if (game.status === 'completed') return;
+                if (typeof game.homeTeam !== 'string' || typeof game.awayTeam !== 'string' || game.homeTeam === 'TBD' || game.awayTeam === 'TBD') {
+                    return; // Skip games where teams are not yet decided
+                };
+
+                const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
+                const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+
+                if (homeTeam && awayTeam) {
+                    const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+                    const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                    tempTeams = tempTeams.map((t: Team) => {
+                        if (t.name === homeTeam.name) return updatedUserTeam;
+                        if (t.name === awayTeam.name) return updatedOpponentTeam;
+                        return t;
+                    });
+                    game.status = 'completed';
+                    game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                    game.winner = getWinner(game);
+                }
+            });
+
+            const currentRoundGames = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.bracket === currentBracket && g.round === tournament.currentRound);
+            const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
+
+            if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
+                const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
+                
+                if (tournament.currentRound === 'Final') {
+                    if (currentBracket === 'Silver') {
+                        const silverFinal = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Silver');
+                        toast.success(`${silverFinal?.winner || 'The winner'} has won the ${division} Silver Championship!`);
+                        
+                        tournament.status = 'gold-playoffs';
+                        const firstGoldRound = allPlayoffGames.find(m => m.bracket === 'Gold')?.round || 'Final';
+                        tournament.currentRound = firstGoldRound;
+                        toast.info(`The ${division} Gold Playoffs will now begin.`);
+                    } else { // Gold Final
+                        tournament.status = 'completed';
+                        const finalMatch = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Gold');
+                        tournament.winner = finalMatch?.winner;
+                        if (tournament.winner) {
+                            toast.success(`${tournament.winner} has won the ${division} National Championship!`);
+                        } else {
+                            toast.info(`The ${division} National Championship has concluded.`);
+                        }
+                    }
+                } else {
+                    const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
+                    if (nextRound) {
+                        tournament.currentRound = nextRound;
+                        toast.info(`Advancing to the ${nextRound} of the ${division} ${currentBracket} playoffs.`);
+                    }
+                }
+            }
+        }
+
+        setTeams(tempTeams);
+        setNationalsData(tempNationalsData);
+    };
+
+    const simulateFullNationalsTournament = (division: string) => {
+        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
+        let tempTeams = JSON.parse(JSON.stringify(teams));
+        let tournament = tempNationalsData[currentDate.year]?.[division];
+
+        if (!tournament || tournament.status === 'completed') {
+            toast.info("Tournament already completed.");
+            return;
+        }
+
+        let safety = 0;
+        while (tournament.status !== 'completed' && safety < 20) {
+            if (tournament.status === 'group-stage') {
+                const gamesToSim = tournament.groupStageSchedule.filter((g: ScheduleEntry) => g.status === 'scheduled');
                 
                 gamesToSim.forEach((game: ScheduleEntry) => {
                     const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
