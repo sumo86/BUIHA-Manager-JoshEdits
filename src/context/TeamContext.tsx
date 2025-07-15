@@ -990,7 +990,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
                 if (homeTeam && awayTeam) {
                     const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-                    const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
                     tempTeams = tempTeams.map((t: Team) => {
                         if (t.name === homeTeam.name) return updatedUserTeam;
                         if (t.name === awayTeam.name) return updatedOpponentTeam;
@@ -1098,7 +1098,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 if (homeTeam && awayTeam) {
                     const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-                    const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
                     tempTeams = tempTeams.map((t: Team) => {
                         if (t.name === homeTeam.name) return updatedUserTeam;
                         if (t.name === awayTeam.name) return updatedOpponentTeam;
@@ -1316,8 +1316,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                         const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
                                         if (feederMatch && feederMatch.status === 'completed') {
                                             game.homeTeam = getWinner(feederMatch) || 'TBD';
-                                        }
                                     }
+                                }
                                     if (typeof game.awayTeam !== 'string') {
                                         const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
                                         if (feederMatch && feederMatch.status === 'completed') {
@@ -1330,6 +1330,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }
                 }
             }
+            safety++;
         }
 
         setTeams(tempTeams);

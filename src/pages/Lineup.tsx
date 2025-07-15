@@ -53,7 +53,7 @@ const PlayerLineupCard = ({ player, onRoleChange, displayName }: { player: Playe
             <div className="font-bold text-sm truncate">{displayName}</div>
             <div className="text-xs text-muted-foreground">#{player.jerseyNumber}</div>
             <div className="flex justify-center my-1">{renderStars(player.starRating)}</div>
-            <Select value={player.role} onValueChange={onRoleChange}>
+            <Select value={player.role || ''} onValueChange={onRoleChange}>
                 <SelectTrigger className="h-7 text-xs mt-1">
                     <SelectValue placeholder="Select role" />
                 </SelectTrigger>
@@ -139,8 +139,8 @@ const Lineup = () => {
                 if (assignedPlayerIds.has(p.id) && p.id !== currentSelection) {
                     return false;
                 }
-                if (p.eligibility === 'Staff' && staffLimitReached) {
-                    return p.id === currentSelection;
+                if (p.eligibility === 'Staff' && staffLimitReached && p.id !== currentSelection) {
+                    return false;
                 }
                 return true;
             })
@@ -163,9 +163,9 @@ const Lineup = () => {
     ): void {
         const newLineup = JSON.parse(JSON.stringify(team.lineup)) as LineupType;
         if (posType === 'forwards') {
-            newLineup.forwards[pos as keyof LineupType['forwards']][index] = playerId;
+            newLineup.forwards[pos as keyof LineupType['forwards']][index!] = playerId;
         } else {
-            newLineup.defence[pos as keyof LineupType['defence']][index] = playerId;
+            newLineup.defence[pos as keyof LineupType['defence']][index!] = playerId;
         }
         updateTeam({ ...team, lineup: newLineup });
     }
