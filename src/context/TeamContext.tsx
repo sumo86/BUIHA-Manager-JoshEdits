@@ -14,6 +14,7 @@ import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationa
 import { NationalsTournament } from '@/types';
 import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
+import { initialFacilityProjects } from '@/data/facilities';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -77,10 +78,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         try {
             const savedTeams = localStorage.getItem('teams');
             if (savedTeams) {
-                return JSON.parse(savedTeams);
+                const parsedTeams = JSON.parse(savedTeams);
+                if (Array.isArray(parsedTeams)) {
+                    return parsedTeams;
+                }
             }
         } catch (error) {
             console.error("Failed to load teams from localStorage:", error);
+            return initialTeams; // Return initialTeams on error
         }
         localStorage.setItem('teams', JSON.stringify(initialTeams));
         return initialTeams;
@@ -926,6 +931,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
     };
 
+    const markGameAsCompleted = (gameId: string, homeScore: number, awayScore: number) => {
+        setSchedule(prevSchedule =>
+            prevSchedule.map(game =>
+                game.id === gameId
+                    ? { ...game, status: 'completed', result: { homeScore, awayScore } }
+                    : game
+            )
+        );
+    };
+
     const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState, isNationalsGame: boolean = false, nationalsDivision?: string, gameId?: string) => {
         const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(userTeam, opponentTeam, gameState, isNationalsGame);
         
@@ -1125,6 +1140,24 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (nextRound) {
                         tournament.currentRound = nextRound;
                         toast.info(`Advancing to the ${nextRound} of the ${division} ${currentBracket} playoffs.`);
+                        
+                        // Resolve teams for the NEW current round immediately
+                        allPlayoffGames.forEach((game: NationalsPlayoffMatch) => {
+                            if (game.bracket === currentBracket && game.round === tournament.currentRound && game.status === 'scheduled') {
+                                if (typeof game.homeTeam !== 'string') {
+                                    const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
+                                    if (feederMatch && feederMatch.status === 'completed') {
+                                        game.homeTeam = getWinner(feederMatch) || 'TBD';
+                                    }
+                                }
+                                if (typeof game.awayTeam !== 'string') {
+                                    const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
+                                    if (feederMatch && feederMatch.status === 'completed') {
+                                        game.awayTeam = getWinner(feederMatch) || 'TBD';
+                                    }
+                                }
+                            }
+                        });
                     }
                 }
             }
@@ -1230,6 +1263,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (typeof game.homeTeam !== 'string' || typeof game.awayTeam !== 'string' || game.homeTeam === 'TBD' || game.awayTeam === 'TBD') return;
                     const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
                     const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+
                     if (homeTeam && awayTeam) {
                         const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
                         const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
@@ -1243,326 +1277,416 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         game.winner = getWinner(game);
                     }
                 });
-    
+
                 const currentRoundGames = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.bracket === currentBracket && g.round === tournament.currentRound);
                 const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
-    
+
                 if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
                     const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
+                    
                     if (tournament.currentRound === 'Final') {
                         if (currentBracket === 'Silver') {
+                            const silverFinal = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Silver');
+                            toast.success(`${silverFinal?.winner || 'The winner'} has won the ${division} Silver Championship!`);
+                            
                             tournament.status = 'gold-playoffs';
-                            tournament.currentRound = allPlayoffGames.find(m => m.bracket === 'Gold')?.round || 'Final';
-                        } else {
+                            const firstGoldRound = allPlayoffGames.find(m => m.bracket === 'Gold')?.round || 'Final';
+                            tournament.currentRound = firstGoldRound;
+                            toast.info(`The ${division} Gold Playoffs will now begin.`);
+                        } else { // Gold Final
                             tournament.status = 'completed';
                             const finalMatch = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Gold');
                             tournament.winner = finalMatch?.winner;
+                            if (tournament.winner) {
+                                toast.success(`${tournament.winner} has won the ${division} National Championship!`);
+                            } else {
+                                toast.info(`The ${division} National Championship has concluded.`);
+                            }
                         }
                     } else {
                         const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
-                        if (nextRound) tournament.currentRound = nextRound;
+                        if (nextRound) {
+                            tournament.currentRound = nextRound;
+                            toast.info(`Advancing to the ${nextRound} of the ${division} ${currentBracket} playoffs.`);
+                            
+                            // Resolve teams for the NEW current round immediately
+                            allPlayoffGames.forEach((game: NationalsPlayoffMatch) => {
+                                if (game.bracket === currentBracket && game.round === tournament.currentRound && game.status === 'scheduled') {
+                                    if (typeof game.homeTeam !== 'string') {
+                                        const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
+                                        if (feederMatch && feederMatch.status === 'completed') {
+                                            game.homeTeam = getWinner(feederMatch) || 'TBD';
+                                        }
+                                    }
+                                    if (typeof game.awayTeam !== 'string') {
+                                        const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
+                                        if (feederMatch && feederMatch.status === 'completed') {
+                                            game.awayTeam = getWinner(feederMatch) || 'TBD';
+                                        }
+                                    }
+                                }
+                            });
+                        }
                     }
                 }
             }
-            safety++;
         }
 
         setTeams(tempTeams);
         setNationalsData(tempNationalsData);
-        toast.success(`Full tournament for ${division} has been simulated.`);
-    };
-
-    const autoSimulateUserNationalsGame = (division: string, gameId: string) => {
-        const tournament = nationalsData[currentDate.year]?.[division];
-        if (!tournament || !userTeam) return;
-
-        const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
-        const game = allGames.find(g => g.id === gameId);
-        if (!game) return;
-
-        const homeTeamName = typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD';
-        const awayTeamName = typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD';
-
-        const opponentName = homeTeamName === userTeam.name ? awayTeamName : homeTeamName;
-        const opponent = teams.find(t => t.name === opponentName);
-        if (!opponent) return;
-
-        const finalGameState = simulateFullGame(userTeam, opponent, true);
-        processGameResults(userTeam, opponent, finalGameState, true, division, gameId);
     };
 
     const simulateSingleNationalsGame = (division: string, gameId: string) => {
         const tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
         const tournament = tempNationalsData[currentDate.year]?.[division];
-        if (!tournament) return;
-
-        const allGames = tournament.playoffSchedule as NationalsPlayoffMatch[];
-        const game = allGames.find(g => g.id === gameId);
-
-        if (!game || typeof game.homeTeam !== 'string' || typeof game.awayTeam !== 'string') {
-            toast.error("Cannot simulate game", { description: "One of the teams has not been determined yet." });
-            return;
-        }
+        if (!tournament || tournament.status === 'completed') return;
 
         let tempTeams = JSON.parse(JSON.stringify(teams));
-        const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
-        const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+        
+        const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
+        const gameToSim = allGames.find(g => g.id === gameId);
 
-        if (homeTeam && awayTeam) {
-            const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-            const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
-            
-            tempTeams = tempTeams.map((t: Team) => {
-                if (t.name === homeTeam.name) return updatedUserTeam;
-                if (t.name === awayTeam.name) return updatedOpponentTeam;
-                return t;
-            });
+        if (!gameToSim || gameToSim.status === 'completed') return;
 
-            game.status = 'completed';
-            game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
-            
+        let homeTeamName: string | { winnerOf: string } = gameToSim.homeTeam;
+        let awayTeamName: string | { winnerOf: string } = gameToSim.awayTeam;
+
+        // Resolve TBD teams if it's a playoff game
+        if (tournament.status !== 'group-stage') {
+            const playoffGame = gameToSim as NationalsPlayoffMatch;
             const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
                 if (!match.result) return undefined;
                 if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
                 if (match.result.awayScore > match.result.homeScore) return typeof match.awayTeam === 'string' ? match.awayTeam : undefined;
                 return Math.random() > 0.5 ? (typeof match.homeTeam === 'string' ? match.homeTeam : undefined) : (typeof match.awayTeam === 'string' ? match.awayTeam : undefined);
             };
-            game.winner = getWinner(game);
 
-            setTeams(tempTeams);
-            setNationalsData(tempNationalsData);
-            toast.info("Game Simulated", { description: `${game.homeTeam} ${game.result.homeScore} - ${game.awayTeam} ${game.result.awayScore}` });
+            if (typeof playoffGame.homeTeam !== 'string') {
+                const feederMatch = allGames.find(m => m.id === (playoffGame.homeTeam as { winnerOf: string }).winnerOf);
+                if (feederMatch && feederMatch.status === 'completed') {
+                    homeTeamName = getWinner(feederMatch as NationalsPlayoffMatch) || 'TBD';
+                }
+            }
+            if (typeof playoffGame.awayTeam !== 'string') {
+                const feederMatch = allGames.find(m => m.id === (playoffGame.awayTeam as { winnerOf: string }).winnerOf);
+                if (feederMatch && feederMatch.status === 'completed') {
+                    awayTeamName = getWinner(feederMatch as NationalsPlayoffMatch) || 'TBD';
+                }
+            }
         }
-    };
 
-    const runStudentLifeInitiative = () => {
-        if (!userTeam) return;
-        const cost = 500;
-        const budgetCategory = "Student Life";
-        const currentBudget = userTeam.financials.budgetAllocations[budgetCategory];
-
-        if (currentBudget < cost) {
-            toast.error("Insufficient Student Life Budget", {
-                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
-            });
+        if (typeof homeTeamName !== 'string' || typeof awayTeamName !== 'string' || homeTeamName === 'TBD' || awayTeamName === 'TBD') {
+            toast.error("Cannot simulate game", { description: "Teams for this match are not yet determined." });
             return;
         }
 
-        const newBudgetAllocations = {
-            ...userTeam.financials.budgetAllocations,
-            [budgetCategory]: currentBudget - cost,
-        };
+        const homeTeam = tempTeams.find((t: Team) => t.name === homeTeamName);
+        const awayTeam = tempTeams.find((t: Team) => t.name === awayTeamName);
+
+        if (homeTeam && awayTeam) {
+            const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+            const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+            tempTeams = tempTeams.map((t: Team) => {
+                if (t.name === homeTeam.name) return updatedUserTeam;
+                if (t.name === awayTeam.name) return updatedOpponentTeam;
+                return t;
+            });
+            gameToSim.status = 'completed';
+            gameToSim.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+            if (tournament.status !== 'group-stage') {
+                (gameToSim as NationalsPlayoffMatch).winner = (finalGameState.userScore > finalGameState.opponentScore ? homeTeamName : awayTeamName);
+            }
+            toast.info("Nationals Game Simulated", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
+        }
+
+        setTeams(tempTeams);
+        setNationalsData(tempNationalsData);
+    };
+
+    const autoSimulateUserNationalsGame = (division: string, gameId: string) => {
+        const tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
+        const tournament = tempNationalsData[currentDate.year]?.[division];
+        if (!tournament || tournament.status === 'completed') return;
+
+        let tempTeams = JSON.parse(JSON.stringify(teams));
         
-        const newRoster = userTeam.roster.map(player => ({
-            ...player,
-            morale: updateMorale(player.morale, 1)
-        }));
+        const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
+        const gameToSim = allGames.find(g => g.id === gameId);
 
-        updateTeam({ ...userTeam, roster: newRoster, financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations } });
-        toast.success("Student Life Initiative Successful!", {
-            description: `Cost: £${cost.toLocaleString()}.`,
-        });
-    };
+        if (!gameToSim || gameToSim.status === 'completed') return;
 
-    const startFacilityProject = (projectId: string) => {
-        if (!userTeam) return;
-        // Placeholder for now, actual logic to be implemented later
-        toast.info(`Attempting to start facility project: ${projectId}`);
-    };
+        let homeTeamName: string | { winnerOf: string } = gameToSim.homeTeam;
+        let awayTeamName: string | { winnerOf: string } = gameToSim.awayTeam;
 
-    const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
-        if (!userTeam) return;
-        const newRoster = userTeam.roster.map(p => p.id === playerId ? { ...(p as Player), trainingFocus: focus } : p);
-        updateTeam({ ...userTeam, roster: newRoster });
-    };
+        // Resolve TBD teams if it's a playoff game
+        if (tournament.status !== 'group-stage') {
+            const playoffGame = gameToSim as NationalsPlayoffMatch;
+            const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
+                if (!match.result) return undefined;
+                if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
+                if (match.result.awayScore > match.result.homeScore) return typeof match.awayTeam === 'string' ? match.awayTeam : undefined;
+                return Math.random() > 0.5 ? (typeof match.homeTeam === 'string' ? match.homeTeam : undefined) : (typeof match.awayTeam === 'string' ? match.awayTeam : undefined);
+            };
 
-    const autoAssignTrainingFocuses = () => {
-        if (!userTeam) return;
-        const newRoster = userTeam.roster.map(player => {
-            const isSkater = !player.positions.includes('G');
-            const applicableFocuses = isSkater ? skaterFocuses : goalieFocuses;
-            
-            let weakestFocus: TrainingFocus = null;
-            let lowestAverage = Infinity;
-
-            for (const focus of applicableFocuses) {
-                if (!focus) continue;
-                const focusAttributes = trainingFocusesMap[focus];
-                const relevantPlayerAttributes = focusAttributes.filter(attr => player.attributes.hasOwnProperty(attr));
-                if (relevantPlayerAttributes.length === 0) continue;
-                const totalValue = relevantPlayerAttributes.reduce((sum, attr) => sum + (player.attributes[attr as keyof typeof player.attributes] as number), 0);
-                const averageValue = totalValue / relevantPlayerAttributes.length;
-                if (averageValue < lowestAverage) {
-                    lowestAverage = averageValue;
-                    weakestFocus = focus;
+            if (typeof playoffGame.homeTeam !== 'string') {
+                const feederMatch = allGames.find(m => m.id === (playoffGame.homeTeam as { winnerOf: string }).winnerOf);
+                if (feederMatch && feederMatch.status === 'completed') {
+                    homeTeamName = getWinner(feederMatch as NationalsPlayoffMatch) || 'TBD';
                 }
             }
-            return { ...(player as Player), trainingFocus: weakestFocus };
-        });
+            if (typeof playoffGame.awayTeam !== 'string') {
+                const feederMatch = allGames.find(m => m.id === (playoffGame.awayTeam as { winnerOf: string }).winnerOf);
+                if (feederMatch && feederMatch.status === 'completed') {
+                    awayTeamName = getWinner(feederMatch as NationalsPlayoffMatch) || 'TBD';
+                }
+            }
+        }
 
-        updateTeam({ ...userTeam, roster: newRoster });
-        toast.success("Training focuses have been auto-assigned based on players' weakest areas.");
+        if (typeof homeTeamName !== 'string' || typeof awayTeamName !== 'string' || homeTeamName === 'TBD' || awayTeamName === 'TBD') {
+            toast.error("Cannot simulate game", { description: "Teams for this match are not yet determined." });
+            return;
+        }
+
+        const homeTeam = tempTeams.find((t: Team) => t.name === homeTeamName);
+        const awayTeam = tempTeams.find((t: Team) => t.name === awayTeamName);
+
+        if (homeTeam && awayTeam) {
+            const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+            const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+            tempTeams = tempTeams.map((t: Team) => {
+                if (t.name === homeTeam.name) return updatedUserTeam;
+                if (t.name === awayTeam.name) return updatedOpponentTeam;
+                return t;
+            });
+            gameToSim.status = 'completed';
+            gameToSim.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+            if (tournament.status !== 'group-stage') {
+                (gameToSim as NationalsPlayoffMatch).winner = (finalGameState.userScore > finalGameState.opponentScore ? homeTeamName : awayTeamName);
+            }
+            toast.info("Nationals Game Simulated", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
+            playNationalsRound(division, { homeTeamName: homeTeam.name, awayTeamName: awayTeam.name, homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore, gameId: gameId });
+        }
+
+        setTeams(tempTeams);
+        setNationalsData(tempNationalsData);
     };
 
+    // --- Missing Function Implementations ---
+
     const generateScoutingPool = () => {
-        if (!userTeam) return;
-        const allTeamNames = teams.map(t => t.name).filter(name => name !== userTeam.name);
-        const newRecruits = generateRecruits(userTeam.leagueDivision, allTeamNames);
-        setScoutingPool(newRecruits);
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        const newPool = generateRecruits(userTeam.leagueDivision, teams.map(t => t.name));
+        setScoutingPool(newPool);
         setFairHosted(true);
+        toast.success("New scouting pool generated!");
     };
 
     const recruitPlayer = (playerId: string) => {
-        if (!userTeam) return;
-        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
-        if (!playerToRecruit) return;
-
-        const cost = playerToRecruit.recruitmentCost || 0;
-        const currentBudget = userTeam.financials.budgetAllocations.Recruiting;
-
-        if (currentBudget < cost) {
-            toast.error("Insufficient Recruiting Budget", {
-                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
-            });
+        if (!userTeam) {
+            toast.error("No active team selected.");
             return;
         }
-
-        const newBudgetAllocations = {
-            ...userTeam.financials.budgetAllocations,
-            Recruiting: Math.round(currentBudget - cost),
-        };
-        
-        updateBudgetAllocations(newBudgetAllocations);
-        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
-        setRecruitedPool(prev => [...prev, playerToRecruit]);
-        toast.success(`${playerToRecruit.name} recruited!`, {
-            description: `Cost: £${cost.toLocaleString()}. Remaining budget: £${(currentBudget - cost).toLocaleString()}`,
-        });
+        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        if (playerToRecruit) {
+            setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+            setRecruitedPool(prev => [...prev, playerToRecruit]);
+            toast.success(`${playerToRecruit.name} has been recruited!`);
+        } else {
+            toast.error("Player not found in scouting pool.");
+        }
     };
 
     const assignPlayerToRoster = (playerId: string) => {
-        if (!userTeam) return;
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
         const playerToAssign = recruitedPool.find(p => p.id === playerId);
         if (playerToAssign) {
-            const usedJerseyNumbers = new Set(userTeam.roster.map(p => p.jerseyNumber));
-            let newJerseyNumber = 1;
-            while (usedJerseyNumbers.has(newJerseyNumber)) {
-                newJerseyNumber++;
-            }
-            playerToAssign.jerseyNumber = newJerseyNumber;
-
-            const newRoster = [...userTeam.roster, playerToAssign].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
-            updateTeam({ ...userTeam, roster: newRoster });
             setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
-            toast.success(`${playerToAssign.name} has been added to the roster.`);
+            setTeams(currentTeams => currentTeams.map(team => {
+                if (team.name === userTeam.name) {
+                    const usedJerseyNumbers = new Set(team.roster.map(p => p.jerseyNumber));
+                    let newJerseyNumber = 1;
+                    while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
+                    const isSkater = playerToAssign.positions[0] !== 'G';
+                    const updatedPlayer = {
+                        ...playerToAssign,
+                        jerseyNumber: newJerseyNumber,
+                        starRating: calculateStarRating(playerToAssign.currentAbility, isSkater, team.leagueDivision)
+                    };
+                    return { ...team, roster: [...team.roster, updatedPlayer] };
+                }
+                return team;
+            }));
+            toast.success(`${playerToAssign.name} has been assigned to your roster!`);
+        } else {
+            toast.error("Player not found in recruited pool.");
         }
     };
 
     const discardRecruit = (playerId: string) => {
-        const player = recruitedPool.find(p => p.id === playerId);
-        if (player) {
+        const playerToDiscard = recruitedPool.find(p => p.id === playerId);
+        if (playerToDiscard) {
             setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
-            toast.info(`${player.name} has been discarded.`);
+            toast.info(`${playerToDiscard.name} has been discarded.`);
+        } else {
+            toast.error("Player not found in recruited pool.");
         }
     };
 
     const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {
-        if (!userTeam) return;
-
-        if (managedOrganization) {
-            const oldOrgAllocations = managedTeams.reduce((acc, t) => {
-                (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
-                    acc[key] = (acc[key] || 0) + t.financials.budgetAllocations[key];
-                });
-                return acc;
-            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations);
-
-            const newOrgAllocations = Object.keys(newAllocations).reduce((acc, key) => {
-                acc[key as BudgetCategory] = (acc[key as BudgetCategory] || 0) + newAllocations[key as BudgetCategory];
-                return acc;
-            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations);
-
-            // Calculate the difference for each category
-            const allocationDifferences: BudgetAllocations = {
-                Travel: newOrgAllocations.Travel - oldOrgAllocations.Travel,
-                Equipment: newOrgAllocations.Equipment - oldOrgAllocations.Equipment,
-                "Ice Time": newOrgAllocations["Ice Time"] - oldOrgAllocations["Ice Time"],
-                Recruiting: newOrgAllocations.Recruiting - oldOrgAllocations.Recruiting,
-                "Student Life": newOrgAllocations["Student Life"] - oldOrgAllocations["Student Life"],
-                Facilities: newOrgAllocations.Facilities - oldOrgAllocations.Facilities,
-            };
-
-            // Distribute the changes proportionally among managed teams
-            setTeams(currentTeams => currentTeams.map(team => {
-                if (managedTeams.some(mt => mt.name === team.name)) {
-                    const updatedFinancials = { ...team.financials };
-                    (Object.keys(allocationDifferences) as BudgetCategory[]).forEach(key => {
-                        // Simple distribution: divide by number of managed teams
-                        updatedFinancials.budgetAllocations[key] = Math.round(team.financials.budgetAllocations[key] + ((allocationDifferences[key] || 0) / managedTeams.length));
-                    });
-                    return { ...team, financials: updatedFinancials };
-                }
-                return team;
-            }));
-        } else {
-            // Single team mode
-            updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations } });
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
         }
+        setTeams(currentTeams => currentTeams.map(team => {
+            if (team.name === userTeam.name) {
+                return { ...team, financials: { ...team.financials, budgetAllocations: newAllocations } };
+            }
+            return team;
+        }));
+        toast.success("Budget allocations updated!");
     };
 
-    const markGameAsCompleted = (gameId: string, homeScore: number, awayScore: number) => {
-        setSchedule(prevSchedule => prevSchedule.map(game => {
-            if (game.id === gameId) {
-                return { ...game, status: 'completed', result: { homeScore, awayScore } };
+    const runStudentLifeInitiative = () => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        setTeams(currentTeams => currentTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const updatedRoster = team.roster.map(player => ({
+                    ...player,
+                    morale: updateMorale(player.morale, 1)
+                }));
+                toast.success("Student Life Initiative completed!", { description: "Team morale has improved." });
+                return { ...team, roster: updatedRoster };
             }
-            return game;
+            return team;
+        }));
+    };
+
+    const startFacilityProject = (projectId: string) => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        setTeams(currentTeams => currentTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const projectToStart = initialFacilityProjects.find(p => p.id === projectId);
+                if (!projectToStart) {
+                    toast.error("Facility project not found.");
+                    return team;
+                }
+                const existingProject = team.facilities.find(f => f.id === projectId);
+                if (existingProject && existingProject.status !== 'Not Started') {
+                    toast.info("Project already in progress or completed.");
+                    return team;
+                }
+
+                const updatedFacilities = team.facilities.map(p =>
+                    p.id === projectId ? { ...p, status: 'In Progress', weeksToComplete: 4 } : p
+                );
+                if (!updatedFacilities.some(p => p.id === projectId)) {
+                    updatedFacilities.push({ ...projectToStart, status: 'In Progress', weeksToComplete: 4 });
+                }
+                toast.success(`${projectToStart.name} project started!`);
+                return { ...team, facilities: updatedFacilities };
+            }
+            return team;
+        }));
+    };
+
+    const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        setTeams(currentTeams => currentTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const updatedRoster = team.roster.map(player =>
+                    player.id === playerId ? { ...player, trainingFocus: focus } : player
+                );
+                toast.success(`${team.roster.find(p => p.id === playerId)?.name}'s training focus updated to ${focus}.`);
+                return { ...team, roster: updatedRoster };
+            }
+            return team;
+        }));
+    };
+
+    const autoAssignTrainingFocuses = () => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        setTeams(currentTeams => currentTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const updatedRoster = team.roster.map(player => {
+                    if (player.trainingFocus) return player; // Don't change if already set
+                    const isSkater = !player.positions.includes('G');
+                    const availableFocuses = isSkater ? skaterFocuses : goalieFocuses;
+                    if (availableFocuses.length > 0) {
+                        return { ...player, trainingFocus: getRandomItem(availableFocuses) };
+                    }
+                    return player;
+                });
+                toast.success("Training focuses auto-assigned for players without one.");
+                return { ...team, roster: updatedRoster };
+            }
+            return team;
         }));
     };
 
     return (
-        <TeamContext.Provider value={{
-            teams,
-            updateTeam,
-            userTeam,
-            organizationFinancials,
-            organizationFacilities,
-            selectTeam,
-            scoutingPool,
-            recruitedPool,
-            fairHosted,
-            generateScoutingPool,
-            recruitPlayer,
-            assignPlayerToRoster,
-            discardRecruit,
-            updateBudgetAllocations,
-            runStudentLifeInitiative,
-            startFacilityProject,
-            currentDate,
-            advanceWeek,
-            developmentHistory,
-            updatePlayerTrainingFocus,
-            autoAssignTrainingFocuses,
-            processGameResults,
-            movePlayer,
-            requestPlayerTransfer,
-            managedOrganization,
-            isManagingOrg,
-            managedTeams,
-            selectOrganization,
-            setActiveTeam,
-            schedule,
-            gameForCurrentWeek,
-            nationalsData,
-            markGameAsCompleted,
-            seasonRecords,
-            careerRecords,
-            alumni,
-            playNationalsRound,
-            autoSimulateUserNationalsGame,
-            seasonHistory,
-            simulateFullNationalsTournament,
-            simulateSingleNationalsGame,
-        }}>
+        <TeamContext.Provider
+            value={{
+                teams,
+                updateTeam,
+                userTeam,
+                organizationFinancials,
+                organizationFacilities,
+                selectTeam,
+                scoutingPool,
+                recruitedPool,
+                fairHosted,
+                generateScoutingPool,
+                recruitPlayer,
+                assignPlayerToRoster,
+                discardRecruit,
+                updateBudgetAllocations,
+                runStudentLifeInitiative,
+                startFacilityProject,
+                currentDate,
+                advanceWeek,
+                developmentHistory,
+                updatePlayerTrainingFocus,
+                autoAssignTrainingFocuses,
+                processGameResults,
+                movePlayer,
+                requestPlayerTransfer,
+                managedOrganization,
+                isManagingOrg,
+                managedTeams,
+                selectOrganization,
+                setActiveTeam,
+                schedule,
+                gameForCurrentWeek,
+                nationalsData,
+                markGameAsCompleted,
+                seasonRecords,
+                careerRecords,
+                alumni,
+                playNationalsRound,
+                autoSimulateUserNationalsGame,
+                seasonHistory,
+                simulateFullNationalsTournament,
+                simulateSingleNationalsGame,
+            }}
+        >
             {children}
         </TeamContext.Provider>
     );
