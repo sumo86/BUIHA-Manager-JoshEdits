@@ -1162,7 +1162,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
 
             if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
-                const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
+                const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Financial' : 'Semi-Final', 'Semi-Final': 'Final' };
                 
                 if (tournament.currentRound === 'Final') {
                     if (currentBracket === 'Silver') {
@@ -1184,7 +1184,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         }
                     }
                 } else {
-                    const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
+                    const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Financial' | 'Semi-Final'];
                     if (nextRound) {
                         tournament.currentRound = nextRound;
                         toast.info(`Advancing to the ${nextRound} of the ${division} ${currentBracket} playoffs.`);
@@ -1337,7 +1337,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
 
                 if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
-                    const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Final': 'Semi-Final', 'Semi-Final': 'Final' };
+                    const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Financial' | 'Semi-Financial' | 'Final' } = { 'Preliminary': 'Quarter-Financial', 'Quarter-Financial': 'Semi-Financial', 'Semi-Financial': 'Final' };
                     
                     if (tournament.currentRound === 'Final') {
                         if (currentBracket === 'Silver') {
@@ -1359,7 +1359,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             }
                         }
                     } else {
-                        const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
+                        const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Financial' | 'Semi-Financial'];
                         if (nextRound) {
                             tournament.currentRound = nextRound;
                             toast.info(`Advancing to the ${nextRound} of the ${division} ${currentBracket} playoffs.`);
@@ -1571,6 +1571,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
         const playerToAssign = recruitedPool.find(p => p.id === playerId);
         if (playerToAssign) {
+            const recruitmentCost = playerToAssign.recruitmentCost || 0;
+
             setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
             setTeams(currentTeams => currentTeams.map(team => {
                 if (team.name === userTeam.name) {
@@ -1583,11 +1585,24 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         jerseyNumber: newJerseyNumber,
                         starRating: calculateStarRating(playerToAssign.currentAbility, isSkater, team.leagueDivision)
                     };
-                    return { ...team, roster: [...team.roster, updatedPlayer] };
+
+                    const updatedFinancials = {
+                        ...team.financials,
+                        totalBudget: team.financials.totalBudget - recruitmentCost,
+                        budgetAllocations: {
+                            ...team.financials.budgetAllocations,
+                            Recruiting: team.financials.budgetAllocations.Recruiting - recruitmentCost,
+                        },
+                    };
+
+                    return { ...team, roster: [...team.roster, updatedPlayer], financials: updatedFinancials };
                 }
                 return team;
             }));
             toast.success(`${playerToAssign.name} has been assigned to your roster!`);
+            if (recruitmentCost > 0) {
+                toast.info(`Recruitment cost: £${recruitmentCost.toLocaleString()} deducted from budget.`);
+            }
         } else {
             toast.error("Player not found in recruited pool.");
         }
