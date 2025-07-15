@@ -264,15 +264,15 @@ export type DevelopmentLog = {
 };
 
 export type Tactic = {
-  name: string; // Added name property for Tactic
+  tactic: string; // This is the corrected property name
   phase: string;
   category: string;
   description: string;
   bestUsedWith: string;
   strongVs: string;
   weakVs: string;
-  affectedAttributes: string[]; // Added affectedAttributes
-  bestForRoles: string[]; // Added bestForRoles
+  affectedAttributes: string[];
+  bestForRoles: string[];
 };
 
 export type TacticSuitability = {
