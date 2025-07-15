@@ -710,7 +710,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             
                             if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
                                 player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
-                                if (player.yearsLeftInProgram < 0) {
+                                if (player.yearsLeftInProgram <= 0) {
                                     graduatingPlayers.push(player);
                                     return false;
                                 }
@@ -724,22 +724,33 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 graduatingPlayers.push(player);
                                 return false;
                             }
+                            player.age += 1;
                             return true; // Staff remain
                         });
 
                         graduatingPlayers.forEach(player => {
+                            if (player.currentStats.length > 0) {
+                                player.history.push(...player.currentStats);
+                                player.currentStats = [];
+                            }
+
                             const isManaged = managedTeamNames.includes(team.name);
+                            const ambition = player.attributes.ambition || 10;
+                            const loyalty = player.attributes.loyalty || 10;
                             const roll = Math.random();
-                            // 30% retire, 40% transfer, 30% new degree
-                            if (roll < 0.3) { // Retire
+                            const continueChance = 0.15 + (loyalty - 10) / 100;
+                            const transferChance = 0.40 + (ambition - 10) / 100;
+
+                            if (roll < continueChance) {
+                                player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
+                                player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
+                                player.isContinuingEducation = true;
+                                remainingPlayers.push(player);
                                 if (isManaged) {
-                                    player.alumniStatus = 'Retired';
-                                    newAlumni.push(player);
-                                    toast.info(`${player.name} has retired from university hockey.`);
+                                    toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
                                 }
-                            } else if (roll < 0.7) { // Transfer
+                            } else if (roll < continueChance + transferChance) {
                                 const starRating = player.starRating;
-        
                                 let quality: Player['estimatedQuality'];
                                 if (starRating >= 4.5) quality = 'Elite';
                                 else if (starRating >= 3.5) quality = 'Experienced';
@@ -760,25 +771,26 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     jerseyNumber: 0,
                                     morale: 'Content',
                                     eligibility: 'Masters',
+                                    yearsLeftInProgram: 2,
                                     estimatedQuality: quality,
                                     recruitmentCost: cost,
                                     captaincy: null,
                                     currentStats: [],
-                                    history: [...player.history],
+                                    isContinuingEducation: false,
                                 };
                                 newTransferPlayers.push(transferProspect);
                             
+                                player.alumniStatus = 'Active Elsewhere';
+                                newAlumni.push(player);
                                 if (isManaged) {
-                                    player.alumniStatus = 'Active Elsewhere';
-                                    newAlumni.push(player);
                                     toast.info(`${player.name} has graduated and is seeking opportunities at other universities.`);
                                 }
-                            } else { // New Degree
-                                player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
-                                player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
-                                player.isContinuingEducation = true;
-                                remainingPlayers.push(player);
-                                toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
+                            } else {
+                                player.alumniStatus = 'Retired';
+                                newAlumni.push(player);
+                                if (isManaged) {
+                                    toast.info(`${player.name} has retired from university hockey.`);
+                                }
                             }
                         });
 
