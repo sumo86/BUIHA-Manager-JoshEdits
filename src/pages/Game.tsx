@@ -31,7 +31,7 @@ const formatClockTime = (seconds: number) => {
 };
 
 const Game = () => {
-    const { userTeam, teams, updateTeam, processGameResults, gameForCurrentWeek, markGameAsCompleted } = useTeam();
+    const { userTeam, teams, updateTeam, processGameResults, gameForCurrentWeek, markGameAsCompleted, advanceWeek } = useTeam();
     const { opponentName } = useParams<{ opponentName: string }>();
     const opponentTeamFromContext = useMemo(() => teams.find(t => t.name === opponentName), [teams, opponentName]);
     
@@ -212,22 +212,32 @@ const Game = () => {
     };
 
     const handleAbandonGame = () => {
-        if (!gameOpponentTeam) return;
-
-        const updatedUserTeam = {
-            ...userTeam,
-            losses: (userTeam.losses || 0) + 1,
-            goalsAgainst: (userTeam.goalsAgainst || 0) + 5,
+        if (!gameOpponentTeam || !gameForCurrentWeek) return;
+    
+        const abandonedGameState: GameState = {
+            userScore: 0,
+            opponentScore: 5,
+            userShots: 0,
+            opponentShots: 5,
+            period: 3,
+            time: 1200,
+            gameLog: [{ time: "00:00", period: 3, team: "System", description: "Game abandoned by user." }],
+            isGameOver: true,
+            isPaused: true,
+            injuries: [],
+            possessionHolder: null,
+            powerPlayState: { isActive: false, teamOnPowerPlay: null, timeLeft: 0 },
         };
-        updateTeam(updatedUserTeam);
-
-        const updatedOpponentTeam = {
-            ...gameOpponentTeam,
-            wins: (gameOpponentTeam.wins || 0) + 1,
-            goalsFor: (gameOpponentTeam.goalsFor || 0) + 5,
-        };
-        updateTeam(updatedOpponentTeam);
-
+    
+        // The context function handles stat processing and marking the game as complete
+        processGameResults(userTeam, gameOpponentTeam, abandonedGameState, false, undefined, gameForCurrentWeek.id);
+        
+        toast.error("Game Abandoned", { description: "The game has been recorded as a 5-0 loss." });
+    
+        // Automatically advance the week
+        advanceWeek();
+    
+        // Allow navigation to proceed
         blocker.proceed?.();
     };
 

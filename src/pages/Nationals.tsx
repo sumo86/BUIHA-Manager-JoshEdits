@@ -13,7 +13,7 @@ import { validateLineup } from '@/lib/lineupValidation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const NationalsPage = () => {
-  const { nationalsData, currentDate, userTeam, teams, playNationalsRound, autoSimulateUserNationalsGame } = useTeam();
+  const { nationalsData, currentDate, userTeam, teams, playNationalsRound, autoSimulateUserNationalsGame, simulateFullNationalsTournament } = useTeam();
   const [selectedDivision, setSelectedDivision] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -54,6 +54,11 @@ const NationalsPage = () => {
   const handleSimulateRound = () => {
     if (!tournamentToDisplay) return;
     playNationalsRound(tournamentToDisplay.division);
+  };
+
+  const handleSimulateFullTournament = () => {
+    if (!tournamentToDisplay) return;
+    simulateFullNationalsTournament(tournamentToDisplay.division);
   };
 
   const userHasGameThisRound = useMemo(() => {
@@ -98,38 +103,56 @@ const NationalsPage = () => {
               </SelectContent>
             </Select>
             {tournamentToDisplay && tournamentToDisplay.status !== 'completed' && !userHasGameThisRound && (
-                <Button onClick={handleSimulateRound}>Simulate Next Round</Button>
+                <div className="flex gap-2">
+                    <Button onClick={handleSimulateRound}>Simulate Next Round</Button>
+                    <Button onClick={handleSimulateFullTournament} variant="secondary">Sim Full Tournament</Button>
+                </div>
             )}
           </div>
 
           {tournamentToDisplay ? (
             showPlayoffs ? (
-                <Tabs defaultValue="Gold" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="Gold">Gold Bracket</TabsTrigger>
-                        <TabsTrigger value="Silver">Silver Bracket</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="Gold">
-                        <NationalsPlayoffTree 
-                            playoffSchedule={tournamentToDisplay.playoffSchedule.filter(m => m.bracket === 'Gold')}
-                            teams={teams}
-                            userTeamName={userTeam?.name}
-                            onPlayGame={handlePlayGame}
-                            onSimulateGame={handleSimulateUserGame}
-                            bracket="Gold"
-                        />
-                    </TabsContent>
-                    <TabsContent value="Silver">
-                        <NationalsPlayoffTree 
-                            playoffSchedule={tournamentToDisplay.playoffSchedule.filter(m => m.bracket === 'Silver')}
-                            teams={teams}
-                            userTeamName={userTeam?.name}
-                            onPlayGame={handlePlayGame}
-                            onSimulateGame={handleSimulateUserGame}
-                            bracket="Silver"
-                        />
-                    </TabsContent>
-                </Tabs>
+              <Tabs defaultValue="playoffs" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="playoffs">Playoffs</TabsTrigger>
+                    <TabsTrigger value="groups">Group Stage</TabsTrigger>
+                </TabsList>
+                <TabsContent value="playoffs">
+                    <Tabs defaultValue="Gold" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="Gold">Gold Bracket</TabsTrigger>
+                            <TabsTrigger value="Silver">Silver Bracket</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="Gold">
+                            <NationalsPlayoffTree 
+                                playoffSchedule={tournamentToDisplay.playoffSchedule.filter(m => m.bracket === 'Gold')}
+                                teams={teams}
+                                userTeamName={userTeam?.name}
+                                onPlayGame={handlePlayGame}
+                                onSimulateGame={handleSimulateUserGame}
+                                bracket="Gold"
+                            />
+                        </TabsContent>
+                        <TabsContent value="Silver">
+                            <NationalsPlayoffTree 
+                                playoffSchedule={tournamentToDisplay.playoffSchedule.filter(m => m.bracket === 'Silver')}
+                                teams={teams}
+                                userTeamName={userTeam?.name}
+                                onPlayGame={handlePlayGame}
+                                onSimulateGame={handleSimulateUserGame}
+                                bracket="Silver"
+                            />
+                        </TabsContent>
+                    </Tabs>
+                </TabsContent>
+                <TabsContent value="groups">
+                    <div className="grid gap-6 md:grid-cols-2 mt-4">
+                        {tournamentToDisplay.groups.map(group => (
+                            <NationalsGroupCard key={group.name} group={group} />
+                        ))}
+                    </div>
+                </TabsContent>
+              </Tabs>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2">
                     {tournamentToDisplay.groups.map(group => (
