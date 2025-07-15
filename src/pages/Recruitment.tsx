@@ -15,9 +15,9 @@ const Recruitment = () => {
   const recruitingBudget = userTeam.financials.budgetAllocations.Recruiting;
 
   // Filter state
-  const [qualityFilter, setQualityFilter] = useState('All');
-  const [positionFilter, setPositionFilter] = useState('All');
-  const [sourceFilter, setSourceFilter] = useState('All');
+  const [qualityFilter, setQualityFilter] = useState<string>('All');
+  const [positionFilter, setPositionFilter] = useState<string>('All');
+  const [sourceFilter, setSourceFilter] = useState<string>('All');
 
   if (scoutingPool.length === 0 && recruitedPool.length === 0) {
     return (
@@ -94,34 +94,34 @@ const Recruitment = () => {
                 <CardContent className="grid sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="quality-filter">Est. Quality</Label>
-                    <Select value={qualityFilter} onValueChange={setQualityFilter}>
+                    <Select value={qualityFilter} onValueChange={(value: string) => setQualityFilter(value)}>
                       <SelectTrigger id="quality-filter">
                         <SelectValue placeholder="Filter by quality" />
                       </SelectTrigger>
                       <SelectContent>
-                        {uniqueQualities.map(q => q && <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                        {uniqueQualities.map((q: string) => q && <SelectItem key={q} value={q}>{q}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="position-filter">Position</Label>
-                    <Select value={positionFilter} onValueChange={setPositionFilter}>
+                    <Select value={positionFilter} onValueChange={(value: string) => setPositionFilter(value)}>
                       <SelectTrigger id="position-filter">
                         <SelectValue placeholder="Filter by position" />
                       </SelectTrigger>
                       <SelectContent>
-                        {positionCategories.map(pos => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
+                        {positionCategories.map((pos: string) => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="source-filter">Source</Label>
-                    <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <Select value={sourceFilter} onValueChange={(value: string) => setSourceFilter(value)}>
                       <SelectTrigger id="source-filter">
                         <SelectValue placeholder="Filter by source" />
                       </SelectTrigger>
                       <SelectContent>
-                        {uniqueSources.map(s => s && <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        {uniqueSources.map((s: string) => s && <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>

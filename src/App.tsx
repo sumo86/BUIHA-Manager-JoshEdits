@@ -25,6 +25,7 @@ import TeamSelection from "./pages/TeamSelection"; // Added missing import
 import TeamHistory from "./pages/TeamHistory";
 import NationalsPage from "./pages/Nationals";
 import AlumniPage from "./pages/Alumni";
+import NationalsGame from "./pages/NationalsGame";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const router = createBrowserRouter(
       <Route path="/nationals" element={<NationalsPage />} />
       <Route path="/buiha-overview" element={<BuihaOverview />} />
       <Route path="/play-game" element={<PlayGame />} />
+      <Route path="/game/nationals/:division/:gameId" element={<NationalsGame />} />
       <Route path="/game/:opponentName" element={<Game />} />
       <Route path="*" element={<NotFound />} />
     </Route>

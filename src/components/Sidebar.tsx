@@ -1,135 +1,100 @@
-import { useTeam } from "@/context/TeamContext";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Link } from 'react-router-dom';
+import { Home, Users, DollarSign, Building, Calendar, Trophy, BarChart, BookOpen, GraduationCap, Settings, ChevronRight, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useTeam } from '@/context/TeamContext';
 import {
-  LayoutDashboard,
-  Users,
-  ClipboardList,
-  DollarSign,
-  Building,
-  Calendar,
-  BarChart3,
-  Trophy,
-  UserPlus,
-  Swords,
-  ChevronDown,
-  LogOut,
-  Settings,
-  Play,
-  Smile,
-  BookOpen,
-  Swords as NationalsIcon, // Renaming to avoid conflict
-} from "lucide-react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/season-overview", label: "Season Overview", icon: Calendar }, // Added this back
-  { href: "/roster", label: "Roster", icon: Users },
-  { href: "/lineup", label: "Lineup", icon: ClipboardList },
-  { href: "/training", label: "Training", icon: BarChart3 },
-  { href: "/recruitment", label: "Recruitment", icon: UserPlus },
-  { href: "/finances", label: "Finances", icon: DollarSign },
-  { href: "/morale", label: "Morale", icon: Smile },
-  { href: "/facilities", label: "Facilities", icon: Building },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/standings", label: "Standings", icon: Trophy },
-  { href: "/history", label: "History", icon: BookOpen },
-  { href: "/alumni", label: "Alumni", icon: Users },
-  { href: "/nationals", label: "Nationals", icon: NationalsIcon },
-  { href: "/buiha-overview", label: "BUIHA", icon: Swords },
-];
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { useState } from 'react';
 
 const Sidebar = () => {
-  const { userTeam, advanceWeek, selectTeam, managedOrganization, managedTeams, setActiveTeam, selectOrganization, gameForCurrentWeek, isManagingOrg } = useTeam();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { userTeam, managedTeams, isManagingOrg, selectTeam, selectOrganization, setActiveTeam } = useTeam();
+  const [isOrgMenuOpen, setIsOrgMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    selectTeam(null);
-    selectOrganization(null);
-    navigate('/team-selection');
-  };
-
-  const handlePlayGame = () => {
-    if (!gameForCurrentWeek || !userTeam) return;
-    navigate(`/game/${gameForCurrentWeek.opponent}`);
-  };
+  const navItems = [
+    { name: 'Dashboard', icon: Home, path: '/' },
+    { name: 'Season Overview', icon: Calendar, path: '/season-overview' },
+    { name: 'Calendar', icon: Calendar, path: '/calendar' },
+    { name: 'Standings', icon: BarChart, path: '/standings' },
+    { name: 'Roster', icon: Users, path: '/roster' },
+    { name: 'Lineup', icon: Settings, path: '/lineup' },
+    { name: 'Training', icon: BookOpen, path: '/training' },
+    { name: 'Morale', icon: Users, path: '/morale' },
+    { name: 'Recruitment', icon: GraduationCap, path: '/recruitment' },
+    { name: 'Finances', icon: DollarSign, path: '/finances' },
+    { name: 'Facilities', icon: Building, path: '/facilities' },
+    { name: 'Nationals', icon: Trophy, path: '/nationals' },
+    { name: 'Team History', icon: BookOpen, path: '/history' },
+    { name: 'Alumni', icon: GraduationCap, path: '/alumni' },
+  ];
 
   return (
-    <div className="hidden border-r bg-muted/40 md:block w-64">
-      <div className="flex h-full max-h-screen flex-col gap-2">
-        <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <a href="/" className="flex items-center gap-2 font-semibold">
-            {userTeam?.logo && <img src={userTeam.logo} alt={userTeam.name} className="h-6 w-6 object-contain" />}
-            <span className="">{isManagingOrg ? managedOrganization : userTeam?.name}</span>
-          </a>
-        </div>
-        <ScrollArea className="flex-1">
-          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.href}
-                to={item.href}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                    isActive && "text-primary bg-muted"
-                  )
-                }
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-          {isManagingOrg && (
-             <div className="px-4 mt-4">
-                <h3 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-                    Your Teams
-                </h3>
-                <Accordion type="single" collapsible defaultValue={`item-${userTeam?.name}`}>
-                    {managedTeams.map(team => (
-                        <AccordionItem value={`item-${team.name}`} key={team.name}>
-                            <AccordionTrigger 
-                                className={cn("text-sm hover:no-underline", userTeam?.name === team.name && "text-primary")}
-                                onClick={() => setActiveTeam(team.name)}
-                            >
-                                {team.name}
-                            </AccordionTrigger>
-                            <AccordionContent>
-                                <Button variant="link" className="w-full justify-start" onClick={() => navigate('/roster')}>Roster</Button>
-                                <Button variant="link" className="w-full justify-start" onClick={() => navigate('/lineup')}>Lineup</Button>
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
-             </div>
-          )}
-        </ScrollArea>
-        <div className="mt-auto p-4 space-y-2">
-          {gameForCurrentWeek && (
-            <Button className="w-full justify-start" onClick={handlePlayGame}>
-                <Play className="mr-2 h-4 w-4" />
-                Play Game vs {gameForCurrentWeek.opponent}
-            </Button>
-          )}
-          <Button variant="secondary" className="w-full justify-start" onClick={advanceWeek}>
-            <Calendar className="mr-2 h-4 w-4" />
-            Advance Week
+    <div className="w-64 bg-gray-800 text-white h-full flex flex-col">
+      <div className="p-4 text-2xl font-bold border-b border-gray-700">
+        BUIHA Manager
+      </div>
+      <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
+        {userTeam && (
+          <div className="mb-4">
+            {isManagingOrg ? (
+              <Collapsible open={isOrgMenuOpen} onOpenChange={setIsOrgMenuOpen}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-3 text-left text-sm font-medium text-gray-300 hover:bg-gray-700 rounded-md">
+                  <span>{userTeam.organization}</span>
+                  {isOrgMenuOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="ml-4 mt-1 space-y-1">
+                  {managedTeams.map(team => (
+                    <Button
+                      key={team.id}
+                      variant="ghost"
+                      className={`w-full justify-start text-left ${userTeam.name === team.name ? 'bg-gray-700' : ''}`}
+                      onClick={() => setActiveTeam(team.name)}
+                    >
+                      {team.name}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-left text-blue-300 hover:text-blue-100"
+                    onClick={() => selectOrganization(null)}
+                  >
+                    Exit Organization View
+                  </Button>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : (
+              <div className="text-lg font-semibold mb-2">
+                {userTeam.name}
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-left text-blue-300 hover:text-blue-100 mt-2"
+                  onClick={() => selectTeam(null)}
+                >
+                  Change Team
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {navItems.map((item) => (
+          <Button
+            key={item.name}
+            asChild
+            variant="ghost"
+            className="w-full justify-start text-left text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <Link to={item.path}>
+              <item.icon className="mr-3 h-5 w-5" />
+              {item.name}
+            </Link>
           </Button>
-          <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Change Team
-          </Button>
-        </div>
+        ))}
+      </nav>
+      <div className="p-4 border-t border-gray-700 text-sm text-gray-500">
+        © 2024 BUIHA Manager
       </div>
     </div>
   );

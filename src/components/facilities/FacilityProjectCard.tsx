@@ -1,62 +1,73 @@
 import { useTeam } from '@/context/TeamContext';
 import { FacilityProject } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Construction, Circle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
 
 interface FacilityProjectCardProps {
   project: FacilityProject;
-  onStartProject: (projectId: string) => void; // Added this prop
 }
 
-const statusDetails = {
-  'Not Started': { icon: Circle, color: 'text-muted-foreground', badge: 'secondary' },
-  'In Progress': { icon: Construction, color: 'text-yellow-500', badge: 'default' },
-  'Completed': { icon: CheckCircle, color: 'text-green-500', badge: 'outline' },
-};
+export const FacilityProjectCard = ({ project }: FacilityProjectCardProps) => {
+  const { userTeam, updateTeam } = useTeam();
 
-export const FacilityProjectCard = ({ project, onStartProject }: FacilityProjectCardProps) => {
-  const { userTeam, managedOrganization, organizationFinancials } = useTeam();
-  
-  // Determine the correct facilities budget based on whether an organization is managed
-  const facilitiesBudget = managedOrganization 
-    ? (organizationFinancials?.budgetAllocations.Facilities || 0) 
-    : (userTeam?.financials.budgetAllocations.Facilities || 0);
+  const handleStartProject = () => {
+    if (!userTeam) return;
 
-  const canAfford = facilitiesBudget >= project.cost;
-  const isNotStarted = project.status === 'Not Started';
+    const cost = project.cost;
+    const currentBudget = userTeam.financials.budgetAllocations.Facilities;
 
-  const StatusIcon = statusDetails[project.status].icon;
+    if (currentBudget < cost) {
+      toast.error("Insufficient Facilities Budget", {
+        description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+      });
+      return;
+    }
+
+    const newBudgetAllocations = {
+      ...userTeam.financials.budgetAllocations,
+      Facilities: Math.round(currentBudget - cost),
+    };
+
+    const updatedProject = { ...project, status: 'In Progress', weeksToComplete: project.weeksToComplete || 4 };
+    const newFacilities = [...userTeam.facilities, updatedProject];
+
+    updateTeam({ 
+      ...userTeam, 
+      facilities: newFacilities,
+      financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations }
+    });
+    toast.success(`Started ${project.name}!`, {
+      description: `Cost: £${cost.toLocaleString()}. Remaining budget: £${(currentBudget - cost).toLocaleString()}`,
+    });
+  };
+
+  const progressValue = project.weeksToComplete ? ((project.initialWeeksToComplete - project.weeksToComplete) / project.initialWeeksToComplete) * 100 : 0;
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col h-full">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>{project.name}</span>
-          <Badge variant={statusDetails[project.status].badge as any}>{project.status}</Badge>
-        </CardTitle>
-        <CardDescription>{project.description}</CardDescription>
+        <CardTitle>{project.name}</CardTitle>
+        <p className="text-sm text-muted-foreground">{project.description}</p>
       </CardHeader>
-      <CardContent className="flex-grow space-y-4">
+      <CardContent className="flex-grow flex flex-col justify-between">
         <div>
-          <p className="text-sm font-semibold">Benefit</p>
-          <p className="text-sm text-muted-foreground">{project.benefit}</p>
-        </div>
-        <div>
-          <p className="text-sm font-semibold">Cost</p>
-          <p className="text-sm text-muted-foreground">£{project.cost.toLocaleString()}</p>
+          <p className="text-lg font-bold mb-2">Cost: £{project.cost.toLocaleString()}</p>
+          {project.status === 'Not Started' && (
+            <Button onClick={handleStartProject} className="w-full">Start Project</Button>
+          )}
+          {project.status === 'In Progress' && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">In Progress: {project.weeksToComplete} weeks remaining</p>
+              <Progress value={progressValue} />
+            </div>
+          )}
+          {project.status === 'Completed' && (
+            <p className="text-green-600 font-semibold">Completed</p>
+          )}
         </div>
       </CardContent>
-      <CardFooter>
-        <Button 
-          className="w-full"
-          onClick={() => onStartProject(project.id)} // Use the passed prop
-          disabled={!isNotStarted || !canAfford}
-        >
-          {isNotStarted ? (canAfford ? 'Start Project' : 'Insufficient Funds') : 'Project Completed'}
-        </Button>
-      </CardFooter>
     </Card>
   );
 };
