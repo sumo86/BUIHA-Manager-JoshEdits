@@ -7,12 +7,12 @@ import { Player } from '@/types';
 
 const StandingsPage = () => {
   const { teams } = useTeam();
-  const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
-
   const leagues = useMemo(() => {
     const leagueSet = new Set(teams.map(team => team.leagueDivision));
     return Array.from(leagueSet).sort();
   }, [teams]);
+
+  const [selectedLeague, setSelectedLeague] = useState<string | null>(leagues.length > 0 ? leagues[0] : null);
 
   const { displayedTeams, leaguePlayers } = useMemo(() => {
     const leagueToDisplay = selectedLeague || leagues[0];
