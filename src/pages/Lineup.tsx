@@ -28,7 +28,7 @@ const renderStars = (rating: number) => {
       <div className="flex">
         {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} className={`${starClass} text-yellow-400 fill-yellow-400`} />)}
         {halfStar && <StarHalf key="half" className={`${starClass} text-yellow-400 fill-yellow-400`} />}
-        {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} className={`${starClass} text-gray-300`} />)}
+        {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} className={`${starClass} text-gray-300`} />}
       </div>
     );
 };
@@ -323,19 +323,19 @@ const Lineup = () => {
         if (posType === 'forwards') {
             const typedPos = pos as keyof LineupType['forwards'];
             currentId = team.lineup.forwards[typedPos][index!];
-            onValueChangeHandler = (val) => handleLineupChange('forwards', typedPos, index!, val);
+            onValueChangeHandler = (val: string) => handleLineupChange('forwards', typedPos, index!, val === 'empty' ? null : val);
             positionForFilter = pos.toUpperCase() as Position;
             placeholderText = `Select ${pos.toUpperCase()}`;
         } else if (posType === 'defence') {
             const typedPos = pos as keyof LineupType['defence'];
             currentId = team.lineup.defence[typedPos][index!];
-            onValueChangeHandler = (val) => handleLineupChange('defence', typedPos, index!, val);
+            onValueChangeHandler = (val: string) => handleLineupChange('defence', typedPos, index!, val === 'empty' ? null : val);
             positionForFilter = pos.toUpperCase() as Position;
             placeholderText = `Select ${pos.toUpperCase()}`;
         } else { // goalies
             const typedPos = pos as keyof LineupType['goalies'];
             currentId = team.lineup.goalies[typedPos];
-            onValueChangeHandler = (val) => handleGoalieChange(typedPos, val);
+            onValueChangeHandler = (val: string) => handleGoalieChange(typedPos, val === 'empty' ? null : val);
             positionForFilter = 'G';
             placeholderText = `Select ${pos.toUpperCase()}`;
         }
@@ -351,13 +351,13 @@ const Lineup = () => {
                         onRoleChange={(newRole) => handleRoleChange(player.id, newRole)} 
                         displayName={playerDisplayNames.get(player.id) || player.name.split(' ').pop()?.toUpperCase() || ''}
                     />
-                    <Button variant="link" className="h-auto p-0 text-xs" onClick={() => onValueChangeHandler(null)}>Remove</Button>
+                    <Button variant="link" className="h-auto p-0 text-xs" onClick={() => onValueChangeHandler('empty')}>Remove</Button>
                 </div>
             );
         }
 
         return (
-            <Select value={currentId || 'empty'} onValueChange={(val: string) => onValueChangeHandler(val === 'empty' ? null : val)}>
+            <Select value={currentId || 'empty'} onValueChange={(val: string) => onValueChangeHandler(val)}>
                 <SelectTrigger className="w-full h-full min-h-[118px] bg-muted/50 border-dashed">
                     <SelectValue placeholder={placeholderText} />
                 </SelectTrigger>
