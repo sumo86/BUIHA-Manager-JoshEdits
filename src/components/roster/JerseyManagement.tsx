@@ -55,13 +55,13 @@ export const JerseyManagement = () => {
                 <CardTitle>Jersey Number Assignments</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
                     {numbers.map(number => {
                         const player = playerByNumber[number];
                         return (
                             <div key={number} className="flex items-center gap-2 p-2 border rounded-md">
                                 <div className="font-bold text-lg w-8 text-center">{number}</div>
-                                <div className="flex-1">
+                                <div>
                                     <Select
                                         value={player?.id || "available"}
                                         onValueChange={(value) => {
@@ -70,7 +70,7 @@ export const JerseyManagement = () => {
                                             }
                                         }}
                                     >
-                                        <SelectTrigger className="truncate">
+                                        <SelectTrigger className="w-[150px] truncate">
                                             <SelectValue placeholder="Assign Player" />
                                         </SelectTrigger>
                                         <SelectContent>
