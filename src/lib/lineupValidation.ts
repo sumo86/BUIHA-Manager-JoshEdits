@@ -8,13 +8,6 @@ export const validateLineup = (team: Team): string | null => {
 
   const getPlayerById = (id: string | null) => id ? roster.find(p => p.id === id) : undefined;
 
-  const allAssignedPlayerIds = [
-    ...Object.values(lineup.forwards).flat(),
-    ...Object.values(lineup.defence).flat(),
-    lineup.goalies.starter,
-    lineup.goalies.backup,
-  ];
-
   // Check a player and update counts
   const checkAndAddPlayer = (playerId: string | null) => {
     if (playerId) {
@@ -31,7 +24,13 @@ export const validateLineup = (team: Team): string | null => {
   };
 
   // Check all lineup positions
-  allAssignedPlayerIds.forEach(checkAndAddPlayer);
+  lineup.forwards.lw.forEach(checkAndAddPlayer);
+  lineup.forwards.c.forEach(checkAndAddPlayer);
+  lineup.forwards.rw.forEach(checkAndAddPlayer);
+  lineup.defence.ld.forEach(checkAndAddPlayer);
+  lineup.defence.rd.forEach(checkAndAddPlayer);
+  checkAndAddPlayer(lineup.goalies.starter);
+  checkAndAddPlayer(lineup.goalies.backup);
 
   // Check for injured players first
   if (injuredPlayerNames.length > 0) {
@@ -44,11 +43,14 @@ export const validateLineup = (team: Team): string | null => {
   }
 
   // Check for incomplete lineup
-  const assignedForwards = Object.values(lineup.forwards).flat().filter(Boolean).length;
-  const assignedDefense = Object.values(lineup.defence).flat().filter(Boolean).length;
+  const assignedForwards = lineup.forwards.lw.filter(Boolean).length +
+                           lineup.forwards.c.filter(Boolean).length +
+                           lineup.forwards.rw.filter(Boolean).length;
+  const assignedDefense = lineup.defence.ld.filter(Boolean).length +
+                            lineup.defence.rd.filter(Boolean).length;
   const assignedGoalies = (lineup.goalies.starter ? 1 : 0) + (lineup.goalies.backup ? 1 : 0);
 
-  if (assignedForwards < 12) missingPlayers.push('12 Forwards');
+  if (assignedForwards < 9) missingPlayers.push('9 Forwards');
   if (assignedDefense < 6) missingPlayers.push('6 Defensemen');
   if (assignedGoalies < 2) missingPlayers.push('2 Goalies');
 

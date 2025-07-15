@@ -6,58 +6,46 @@ import { Player, Lineup, Position } from "@/types";
  */
 export const populateLineup = (roster: Player[]): Lineup => {
     const lineup: Lineup = {
-        forwards: { line1: [null, null, null], line2: [null, null, null], line3: [null, null, null], line4: [null, null, null] },
-        defence: { pair1: [null, null], pair2: [null, null], pair3: [null, null] },
+        forwards: { lw: Array(3).fill(null), c: Array(3).fill(null), rw: Array(3).fill(null) },
+        defence: { ld: Array(3).fill(null), rd: Array(3).fill(null) },
         goalies: { starter: null, backup: null },
     };
 
-    const healthyRoster = roster.filter(p => p.healthStatus === 'Healthy');
-    
-    const forwards = healthyRoster.filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
-    const defencemen = healthyRoster.filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
-    const goalies = healthyRoster.filter(p => p.positions.includes('G')).sort((a, b) => b.starRating - a.starRating);
+    // Create a mutable copy of the roster to draw players from
+    const playerPool = [...roster];
 
-    const assigned = new Set<string>();
-
-    // Assign Goalies
-    if (goalies[0]) {
-        lineup.goalies.starter = goalies[0].id;
-        assigned.add(goalies[0].id);
-    }
-    if (goalies[1]) {
-        lineup.goalies.backup = goalies[1].id;
-        assigned.add(goalies[1].id);
-    }
-
-    // Assign Forwards
-    let forwardIndex = 0;
-    for (const lineKey of Object.keys(lineup.forwards) as Array<keyof Lineup['forwards']>) {
-        for (let i = 0; i < lineup.forwards[lineKey].length; i++) {
-            while (forwardIndex < forwards.length && assigned.has(forwards[forwardIndex].id)) {
-                forwardIndex++;
-            }
-            if (forwardIndex < forwards.length) {
-                lineup.forwards[lineKey][i] = forwards[forwardIndex].id;
-                assigned.add(forwards[forwardIndex].id);
-                forwardIndex++;
-            }
+    const assignPlayer = (position: Position): string | null => {
+        // Prioritize players whose primary position matches
+        let bestPlayerIndex = playerPool.findIndex(p => p.positions[0] === position);
+        
+        // If none, find a player who can play the position as a secondary role
+        if (bestPlayerIndex === -1) {
+            bestPlayerIndex = playerPool.findIndex(p => p.positions.includes(position));
         }
-    }
 
-    // Assign Defencemen
-    let defenceIndex = 0;
-    for (const pairKey of Object.keys(lineup.defence) as Array<keyof Lineup['defence']>) {
-        for (let i = 0; i < lineup.defence[pairKey].length; i++) {
-            while (defenceIndex < defencemen.length && assigned.has(defencemen[defenceIndex].id)) {
-                defenceIndex++;
-            }
-            if (defenceIndex < defencemen.length) {
-                lineup.defence[pairKey][i] = defencemen[defenceIndex].id;
-                assigned.add(defencemen[defenceIndex].id);
-                defenceIndex++;
-            }
+        // If a player is found, remove them from the pool and return their ID
+        if (bestPlayerIndex !== -1) {
+            return playerPool.splice(bestPlayerIndex, 1)[0].id;
         }
+
+        // If no suitable player is found in the entire pool
+        return null;
+    };
+
+    // Populate forward lines
+    for (let i = 0; i < 3; i++) {
+        lineup.forwards.lw[i] = assignPlayer('LW');
+        lineup.forwards.c[i] = assignPlayer('C');
+        lineup.forwards.rw[i] = assignPlayer('RW');
     }
+    // Populate defence pairings
+    for (let i = 0; i < 3; i++) {
+        lineup.defence.ld[i] = assignPlayer('LD');
+        lineup.defence.rd[i] = assignPlayer('RD');
+    }
+    // Populate goalies
+    lineup.goalies.starter = assignPlayer('G');
+    lineup.goalies.backup = assignPlayer('G');
 
     return lineup;
 };

@@ -148,15 +148,13 @@ export type Player = {
 
 export type Lineup = {
   forwards: {
-    line1: (string | null)[];
-    line2: (string | null)[];
-    line3: (string | null)[];
-    line4: (string | null)[];
+    lw: (string | null)[];
+    c: (string | null)[];
+    rw: (string | null)[];
   };
   defence: {
-    pair1: (string | null)[];
-    pair2: (string | null)[];
-    pair3: (string | null)[];
+    ld: (string | null)[];
+    rd: (string | null)[];
   };
   goalies: {
     starter: string | null;
@@ -264,15 +262,13 @@ export type DevelopmentLog = {
 };
 
 export type Tactic = {
-  tactic: string; // This is the corrected property name
   phase: string;
   category: string;
+  tactic: string;
   description: string;
   bestUsedWith: string;
   strongVs: string;
   weakVs: string;
-  affectedAttributes: string[];
-  bestForRoles: string[];
 };
 
 export type TacticSuitability = {
