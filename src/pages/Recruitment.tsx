@@ -121,7 +121,7 @@ const Recruitment = () => {
                         <SelectValue placeholder="Filter by source" />
                       </SelectTrigger>
                       <SelectContent>
-                        {uniqueSources.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        {uniqueSources.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>

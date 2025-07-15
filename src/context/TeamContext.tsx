@@ -1296,7 +1296,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (homeTeamName && awayTeamName) {
                 return Math.random() > 0.5 ? homeTeamName : awayTeamName;
             }
-            return undefined; // Should not happen if teams are resolved
+            return undefined;
         };
 
         // Simulate group stage if not completed
@@ -1682,7 +1682,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (teamProject) {
                         return {
                             ...team,
-                            facilities: team.facilities.map(f => f.id === projectId ? { ...f, status: 'In Progress', weeksToComplete } : f),
+                            facilities: team.facilities.map(f => f.id === projectId ? { ...f, status: 'In Progress' as "In Progress", weeksToComplete } : f),
                             financials: {
                                 ...team.financials,
                                 budgetAllocations: {
@@ -1699,7 +1699,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         } else {
             updateTeam({
                 ...userTeam,
-                facilities: userTeam.facilities.map(f => f.id === projectId ? { ...f, status: 'In Progress', weeksToComplete } : f),
+                facilities: userTeam.facilities.map(f => f.id === projectId ? { ...f, status: 'In Progress' as "In Progress", weeksToComplete } : f),
                 financials: {
                     ...userTeam.financials,
                     budgetAllocations: {
