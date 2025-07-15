@@ -992,8 +992,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
                     const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
                     tempTeams = tempTeams.map((t: Team) => {
-                        if (t.name === homeTeam.name) return updatedUserTeam;
-                        if (t.name === awayTeam.name) return updatedOpponentTeam;
+                        if (t.name === homeTeam.name) return updatedHomeTeam;
+                        if (t.name === awayTeam.name) return updatedAwayTeam;
                         return t;
                     });
                     game.status = 'completed';
@@ -1100,8 +1100,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
                     const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
                     tempTeams = tempTeams.map((t: Team) => {
-                        if (t.name === homeTeam.name) return updatedUserTeam;
-                        if (t.name === awayTeam.name) return updatedOpponentTeam;
+                        if (t.name === homeTeam.name) return updatedHomeTeam;
+                        if (t.name === awayTeam.name) return updatedAwayTeam;
                         return t;
                     });
                     game.status = 'completed';
@@ -1187,10 +1187,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
                     if (homeTeam && awayTeam) {
                         const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-                        const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                        const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
                         tempTeams = tempTeams.map((t: Team) => {
-                            if (t.name === homeTeam.name) return updatedUserTeam;
-                            if (t.name === awayTeam.name) return updatedOpponentTeam;
+                            if (t.name === homeTeam.name) return updatedHomeTeam;
+                            if (t.name === awayTeam.name) return updatedAwayTeam;
                             return t;
                         });
                         game.status = 'completed';
@@ -1266,10 +1266,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     if (homeTeam && awayTeam) {
                         const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-                        const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                        const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
                         tempTeams = tempTeams.map((t: Team) => {
-                            if (t.name === homeTeam.name) return updatedUserTeam;
-                            if (t.name === awayTeam.name) return updatedOpponentTeam;
+                            if (t.name === homeTeam.name) return updatedHomeTeam;
+                            if (t.name === awayTeam.name) return updatedAwayTeam;
                             return t;
                         });
                         game.status = 'completed';
@@ -1316,8 +1316,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                         const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
                                         if (feederMatch && feederMatch.status === 'completed') {
                                             game.homeTeam = getWinner(feederMatch) || 'TBD';
+                                        }
                                     }
-                                }
                                     if (typeof game.awayTeam !== 'string') {
                                         const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
                                         if (feederMatch && feederMatch.status === 'completed') {
@@ -1386,10 +1386,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         if (homeTeam && awayTeam) {
             const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-            const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+            const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
             tempTeams = tempTeams.map((t: Team) => {
-                if (t.name === homeTeam.name) return updatedUserTeam;
-                if (t.name === awayTeam.name) return updatedOpponentTeam;
+                if (t.name === homeTeam.name) return updatedHomeTeam;
+                if (t.name === awayTeam.name) return updatedAwayTeam;
                 return t;
             });
             gameToSim.status = 'completed';
@@ -1453,10 +1453,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         if (homeTeam && awayTeam) {
             const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-            const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+            const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
             tempTeams = tempTeams.map((t: Team) => {
-                if (t.name === homeTeam.name) return updatedUserTeam;
-                if (t.name === awayTeam.name) return updatedOpponentTeam;
+                if (t.name === homeTeam.name) return updatedHomeTeam;
+                if (t.name === awayTeam.name) return updatedAwayTeam;
                 return t;
             });
             gameToSim.status = 'completed';
@@ -1578,7 +1578,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
         setTeams(currentTeams => currentTeams.map(team => {
             if (team.name === userTeam.name) {
-                const projectToStart = initialFacilityProjects.find(p => p.id === projectId);
+                const projectToStart = initialFacilityProjects.find(p => p.id === projectId) as FacilityProject | undefined;
                 if (!projectToStart) {
                     toast.error("Facility project not found.");
                     return team;
@@ -1589,11 +1589,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     return team;
                 }
 
-                const updatedFacilities = team.facilities.map(p =>
-                    p.id === projectId ? { ...p, status: 'In Progress', weeksToComplete: 4 } : p
-                );
+                const updatedFacilities = team.facilities.map(p => {
+                    if (p.id === projectId) {
+                        return { ...p, status: 'In Progress' as 'In Progress', weeksToComplete: 4 };
+                    }
+                    return p;
+                });
                 if (!updatedFacilities.some(p => p.id === projectId)) {
-                    updatedFacilities.push({ ...projectToStart, status: 'In Progress', weeksToComplete: 4 });
+                    updatedFacilities.push({ ...projectToStart, status: 'In Progress' as 'In Progress', weeksToComplete: 4 });
                 }
                 toast.success(`${projectToStart.name} project started!`);
                 return { ...team, facilities: updatedFacilities };
