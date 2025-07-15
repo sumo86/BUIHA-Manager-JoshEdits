@@ -12,7 +12,7 @@ import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
 import { NationalsTournament } from '@/types';
-import { isRivalryGame } => '@/lib/rivalries';
+import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
