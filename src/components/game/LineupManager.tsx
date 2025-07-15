@@ -77,12 +77,12 @@ export const LineupManager = ({ lineup, roster, onLineupChange, onRoleChange }: 
 
     return (
       <div className="p-2 border rounded-md bg-muted/30 space-y-2">
-        <Select value={value || 'empty'} onValueChange={(val) => handlePlayerChange(group, lineKey, index, val === 'empty' ? null : val)}>
+        <Select value={value || 'none'} onValueChange={(val) => handlePlayerChange(group, lineKey, index, val === 'none' ? null : val)}>
           <SelectTrigger>
             <SelectValue placeholder="Empty" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="empty">Empty</SelectItem>
+            <SelectItem value="none">Empty</SelectItem>
             {currentPlayer && <SelectItem value={currentPlayer.id}>{currentPlayer.name}</SelectItem>}
             {availablePlayers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>

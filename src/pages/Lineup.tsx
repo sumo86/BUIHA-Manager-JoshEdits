@@ -307,8 +307,8 @@ const Lineup = () => {
                                             return (
                                                 <Select
                                                     key={`${lineKey}-${playerIndex}`}
-                                                    value={playerId || ''}
-                                                    onValueChange={(newPlayerId) => handleLineupChange('forwards', lineKey as keyof LineupType['forwards'], playerIndex, newPlayerId)}
+                                                    value={playerId || 'remove'}
+                                                    onValueChange={(newPlayerId) => handleLineupChange('forwards', lineKey as keyof LineupType['forwards'], playerIndex, newPlayerId === 'remove' ? null : newPlayerId)}
                                                 >
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select Player">
@@ -330,7 +330,7 @@ const Lineup = () => {
                                                                 </div>
                                                             </SelectItem>
                                                         ))}
-                                                        {playerId && <SelectItem value="">Remove Player</SelectItem>}
+                                                        {playerId && <SelectItem value="remove">Remove Player</SelectItem>}
                                                     </SelectContent>
                                                 </Select>
                                             );
@@ -356,8 +356,8 @@ const Lineup = () => {
                                             return (
                                                 <Select
                                                     key={`${pairKey}-${playerIndex}`}
-                                                    value={playerId || ''}
-                                                    onValueChange={(newPlayerId) => handleLineupChange('defence', pairKey as keyof LineupType['defence'], playerIndex, newPlayerId)}
+                                                    value={playerId || 'remove'}
+                                                    onValueChange={(newPlayerId) => handleLineupChange('defence', pairKey as keyof LineupType['defence'], playerIndex, newPlayerId === 'remove' ? null : newPlayerId)}
                                                 >
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select Player">
@@ -379,7 +379,7 @@ const Lineup = () => {
                                                                 </div>
                                                             </SelectItem>
                                                         ))}
-                                                        {playerId && <SelectItem value="">Remove Player</SelectItem>}
+                                                        {playerId && <SelectItem value="remove">Remove Player</SelectItem>}
                                                     </SelectContent>
                                                 </Select>
                                             );
@@ -399,8 +399,8 @@ const Lineup = () => {
                                 <div>
                                     <h3 className="text-lg font-semibold mb-2">Starter</h3>
                                     <Select
-                                        value={team.lineup.goalies.starter || ''}
-                                        onValueChange={(newPlayerId) => handleGoalieChange('starter', newPlayerId)}
+                                        value={team.lineup.goalies.starter || 'remove'}
+                                        onValueChange={(newPlayerId) => handleGoalieChange('starter', newPlayerId === 'remove' ? null : newPlayerId)}
                                     >
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select Starter">
@@ -422,15 +422,15 @@ const Lineup = () => {
                                                     </div>
                                                 </SelectItem>
                                             ))}
-                                            {team.lineup.goalies.starter && <SelectItem value="">Remove Player</SelectItem>}
+                                            {team.lineup.goalies.starter && <SelectItem value="remove">Remove Player</SelectItem>}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-semibold mb-2">Backup</h3>
                                     <Select
-                                        value={team.lineup.goalies.backup || ''}
-                                        onValueChange={(newPlayerId) => handleGoalieChange('backup', newPlayerId)}
+                                        value={team.lineup.goalies.backup || 'remove'}
+                                        onValueChange={(newPlayerId) => handleGoalieChange('backup', newPlayerId === 'remove' ? null : newPlayerId)}
                                     >
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select Backup">
@@ -452,7 +452,7 @@ const Lineup = () => {
                                                     </div>
                                                 </SelectItem>
                                             ))}
-                                            {team.lineup.goalies.backup && <SelectItem value="">Remove Player</SelectItem>}
+                                            {team.lineup.goalies.backup && <SelectItem value="remove">Remove Player</SelectItem>}
                                         </SelectContent>
                                     </Select>
                                 </div>
