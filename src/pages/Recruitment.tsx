@@ -99,7 +99,7 @@ const Recruitment = () => {
                         <SelectValue placeholder="Filter by quality" />
                       </SelectTrigger>
                       <SelectContent>
-                        {uniqueQualities.map(q => q && <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                        {uniqueQualities.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -121,7 +121,7 @@ const Recruitment = () => {
                         <SelectValue placeholder="Filter by source" />
                       </SelectTrigger>
                       <SelectContent>
-                        {uniqueSources.map(s => s && <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        {uniqueSources.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>

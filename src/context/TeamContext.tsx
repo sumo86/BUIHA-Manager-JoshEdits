@@ -459,7 +459,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             });
         };
 
-        const gamesThisWeek = tempSchedule.filter(game =>
+        const gamesThisWeek = schedule.filter(game =>
             game.date.month === currentDate.month && game.date.week === currentDate.week && game.status === 'scheduled'
         );
 
@@ -497,12 +497,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 tempTeams[awayTeamIndex] = updatedAwayTeam;
                 updateGameRecords(updatedHomeTeam, updatedAwayTeam);
 
-                const scheduleGameIndex = tempSchedule.findIndex(g => g.id === game.id);
-                if (scheduleGameIndex !== -1) {
-                    tempSchedule[scheduleGameIndex].status = 'completed';
-                    tempSchedule[scheduleGameIndex].result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
-                }
-                
                 if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
                     toast.info("Game Auto-Simulated", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
                 }
@@ -1191,8 +1185,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 
                 const allGroupGamesPlayed = tournament.groupStageSchedule.every((g: ScheduleEntry) => g.status === 'completed');
                 if (allGroupGamesPlayed) {
+                    toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
                     tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date);
                     const silverPlayoffExists = tournament.playoffSchedule.some((m: NationalsPlayoffMatch) => m.bracket === 'Silver');
+
                     if (silverPlayoffExists) {
                         tournament.status = 'silver-playoffs';
                         tournament.currentRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Silver')?.round || 'Final';
@@ -1200,10 +1196,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         tournament.status = 'gold-playoffs';
                         tournament.currentRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Gold')?.round || 'Final';
                     }
+
                     if (tournament.playoffSchedule.length === 0) tournament.status = 'completed';
                 }
             } else if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
                 const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
+
                 const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
                     if (!match.result) return undefined;
                     if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
