@@ -1,66 +1,79 @@
 import { useTeam } from '@/context/TeamContext';
+import { Player } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Player } from '@/types';
-import { calculateStarRating } from '@/lib/playerGenerator';
-import { useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { PlayerScoutingReport } from '@/components/player/PlayerScoutingReport';
+import { Star, StarHalf } from 'lucide-react';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+
+const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 !== 0;
+    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+    const starClass = "h-4 w-4";
+    
+    return (
+      <div className="flex">
+        {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} className={`${starClass} text-yellow-400 fill-yellow-400`} />)}
+        {halfStar && <StarHalf key="half" className={`${starClass} text-yellow-400 fill-yellow-400`} />}
+        {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} className={`${starClass} text-gray-300`} />)}
+      </div>
+    );
+};
 
 export const RecruitsTable = () => {
-  const { recruitedPool, assignPlayerToRoster, discardRecruit, userTeam } = useTeam();
+    const { recruitedPool, assignPlayerToRoster, discardRecruit } = useTeam();
+    const navigate = useNavigate();
 
-  const playersWithStarRating = useMemo(() => {
-    if (!userTeam) return [];
-    return recruitedPool.map(player => {
-      const isSkater = !player.positions.includes('G');
-      const starRating = calculateStarRating(player.currentAbility, isSkater, userTeam.leagueDivision);
-      return { ...player, starRating };
-    }).sort((a, b) => b.starRating - a.starRating);
-  }, [recruitedPool, userTeam]);
+    const handleAssign = (player: Player) => {
+        assignPlayerToRoster(player.id);
+        toast.success(`${player.name} has been assigned to your roster.`);
+    };
 
-  if (playersWithStarRating.length === 0) {
-    return <p className="text-muted-foreground">No players have been recruited yet.</p>;
-  }
+    const handleDiscard = (player: Player) => {
+        discardRecruit(player.id);
+        toast.info(`${player.name} has been discarded.`);
+    };
 
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Position</TableHead>
-          <TableHead>Age</TableHead>
-          <TableHead>Star Rating</TableHead>
-          <TableHead>Recruitment Cost</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {playersWithStarRating.map((player: Player) => (
-          <TableRow key={player.id}>
-            <TableCell className="font-medium">{player.name}</TableCell>
-            <TableCell>{player.positions.join(', ')}</TableCell>
-            <TableCell>{player.age}</TableCell>
-            <TableCell>{player.starRating.toFixed(1)} ⭐</TableCell>
-            <TableCell>£{player.recruitmentCost?.toLocaleString() || 'N/A'}</TableCell>
-            <TableCell className="text-right space-x-2">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">View Report</Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl">
-                  <DialogHeader>
-                    <DialogTitle>Scouting Report: {player.name}</DialogTitle>
-                  </DialogHeader>
-                  <PlayerScoutingReport player={player} team={userTeam} />
-                </DialogContent>
-              </Dialog>
-              <Button onClick={() => assignPlayerToRoster(player.id)} size="sm">Assign to Roster</Button>
-              <Button variant="destructive" onClick={() => discardRecruit(player.id)} size="sm">Discard</Button>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
+    return (
+        <div className="rounded-md border">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Rating</TableHead>
+                        <TableHead>Position(s)</TableHead>
+                        <TableHead>Age</TableHead>
+                        <TableHead>Nationality</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {recruitedPool.length > 0 ? (
+                        recruitedPool.map(player => (
+                            <TableRow key={player.id}>
+                                <TableCell className="font-medium hover:underline cursor-pointer" onClick={() => navigate(`/player/${player.id}`)}>
+                                    {player.name}
+                                </TableCell>
+                                <TableCell>{renderStars(player.starRating)}</TableCell>
+                                <TableCell>{player.positions.join(', ')}</TableCell>
+                                <TableCell>{player.age}</TableCell>
+                                <TableCell>{player.nationality}</TableCell>
+                                <TableCell className="text-right space-x-2">
+                                    <Button size="sm" variant="outline" onClick={() => handleAssign(player)}>Assign to Roster</Button>
+                                    <Button size="sm" variant="destructive" onClick={() => handleDiscard(player)}>Discard</Button>
+                                </TableCell>
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={6} className="h-24 text-center">
+                                You have no recruited players.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    );
 };

@@ -120,7 +120,7 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
             playoffs.push({ id: sf1Id, round: 'Semi-Final', bracket: 'Gold', homeTeam: a1, awayTeam: { winnerOf: qf2Id }, status: 'scheduled', date });
             playoffs.push({ id: sf2Id, round: 'Semi-Final', bracket: 'Gold', homeTeam: b1, awayTeam: { winnerOf: qf1Id }, status: 'scheduled', date });
             playoffs.push({ id: crypto.randomUUID(), round: 'Final', bracket: 'Gold', homeTeam: { winnerOf: sf1Id }, awayTeam: { winnerOf: sf2Id }, status: 'scheduled', date });
-        } else { // 12 teams or less
+        } else {
             const [a1, a2] = goldQualifiersA;
             const [b1, b2] = goldQualifiersB;
             const sf1Id = crypto.randomUUID();
@@ -149,11 +149,13 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
             const roundMatches: NationalsPlayoffMatch[] = [];
             const numTeamsInRound = silverTeams.length;
             
+            // Give byes if not a power of 2
             const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(numTeamsInRound)));
             const numByes = nextPowerOf2 - numTeamsInRound;
             const teamsWithByes = silverTeams.slice(0, numByes);
             const teamsInMatches = silverTeams.slice(numByes);
 
+            // Create matches
             while (teamsInMatches.length > 0) {
                 const home = teamsInMatches.shift()!;
                 const away = teamsInMatches.pop()!;
@@ -163,6 +165,7 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
             
             playoffs.push(...roundMatches);
             
+            // Prepare teams for next round
             silverTeams = [...teamsWithByes, ...roundMatches.map(m => ({ winnerOf: m.id }))];
             
             if (round === 'Final' || silverTeams.length < 2) break;

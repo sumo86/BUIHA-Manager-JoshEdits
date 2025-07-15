@@ -36,7 +36,7 @@ const NationalsPage = () => {
   }, [selectedDivision, currentYearTournaments, availableDivisions]);
 
   const handlePlayGame = (gameId: string) => {
-    if (!userTeam || !tournamentToDisplay) return;
+    if (!userTeam) return;
     const validationError = validateLineup(userTeam);
     if (validationError) {
       toast.error("Lineup Error", { description: validationError });
