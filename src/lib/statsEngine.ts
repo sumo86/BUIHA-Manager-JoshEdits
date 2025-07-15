@@ -49,24 +49,6 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
     const updatedOpponentTeam = JSON.parse(JSON.stringify(opponentTeam));
     const season = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
 
-    // Only update regular season stats if it's not a nationals game
-    if (!isNationalsGame) {
-        if (gameState.userScore > gameState.opponentScore) {
-            updatedUserTeam.wins += 1;
-            updatedOpponentTeam.losses += 1;
-        } else if (gameState.opponentScore > gameState.userScore) {
-            updatedOpponentTeam.wins += 1;
-            updatedUserTeam.losses += 1;
-        } else {
-            updatedUserTeam.draws += 1;
-            updatedOpponentTeam.draws += 1;
-        }
-        updatedUserTeam.goalsFor += gameState.userScore;
-        updatedUserTeam.goalsAgainst += gameState.opponentScore;
-        updatedOpponentTeam.goalsFor += gameState.opponentScore;
-        updatedOpponentTeam.goalsAgainst += gameState.userScore;
-    }
-
     const processPlayerStats = (team: Team, opponent: Team, teamScore: number, opponentScore: number, teamShots: number) => {
         const participatingIds = getParticipatingPlayerIds(team);
         const allPlayersMap = new Map([...updatedUserTeam.roster, ...updatedOpponentTeam.roster].map(p => [p.name, p]));
@@ -129,8 +111,26 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
         }
     };
 
-    processPlayerStats(updatedUserTeam, updatedOpponentTeam, gameState.userScore, gameState.opponentScore, gameState.opponentShots);
-    processPlayerStats(updatedOpponentTeam, updatedUserTeam, gameState.opponentScore, gameState.userScore, gameState.userShots);
+    // Only update regular season stats if it's not a nationals game
+    if (!isNationalsGame) {
+        if (gameState.userScore > gameState.opponentScore) {
+            updatedUserTeam.wins += 1;
+            updatedOpponentTeam.losses += 1;
+        } else if (gameState.opponentScore > gameState.userScore) {
+            updatedOpponentTeam.wins += 1;
+            updatedUserTeam.losses += 1;
+        } else {
+            updatedUserTeam.draws += 1;
+            updatedOpponentTeam.draws += 1;
+        }
+        updatedUserTeam.goalsFor += gameState.userScore;
+        updatedUserTeam.goalsAgainst += gameState.opponentScore;
+        updatedOpponentTeam.goalsFor += gameState.opponentScore;
+        updatedOpponentTeam.goalsAgainst += gameState.userScore;
+
+        processPlayerStats(updatedUserTeam, updatedOpponentTeam, gameState.userScore, gameState.opponentScore, gameState.opponentShots);
+        processPlayerStats(updatedOpponentTeam, updatedUserTeam, gameState.opponentScore, gameState.userScore, gameState.userShots);
+    }
 
     gameState.injuries.forEach(injuryInfo => {
         const teamToUpdate = injuryInfo.teamName === userTeam.name ? updatedUserTeam : updatedOpponentTeam;
