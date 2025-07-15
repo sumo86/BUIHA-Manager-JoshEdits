@@ -12,7 +12,7 @@ import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
 import { NationalsTournament } from '@/types';
-import { isRivalryGame } from '@/lib/rivalries';
+import { isRivalryGame } => '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
@@ -299,18 +299,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const gameForCurrentWeek = useMemo(() => {
         if (!userTeam) return null;
-        const regularGame = schedule.find(game =>
-            (game.homeTeam === userTeam.name || game.awayTeam === userTeam.name) &&
-            game.date.month === currentDate.month &&
-            game.date.week === currentDate.week &&
-            game.status === 'scheduled'
-        );
-        if (regularGame) {
-            const opponent = regularGame.homeTeam === userTeam.name ? regularGame.awayTeam : regularGame.homeTeam;
-            return { ...regularGame, opponent, isNationals: false };
-        }
 
-        // Check for Nationals game
+        // Check for Nationals game FIRST
         const currentYearNationals = nationalsData[currentDate.year];
         if (currentYearNationals && userTeam.nationalsDivision) {
             const tournament = currentYearNationals[userTeam.nationalsDivision];
@@ -352,6 +342,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     };
                 }
             }
+        }
+
+        // If no Nationals game, check for regular season game
+        const regularGame = schedule.find(game =>
+            (game.homeTeam === userTeam.name || game.awayTeam === userTeam.name) &&
+            game.date.month === currentDate.month &&
+            game.date.week === currentDate.week &&
+            game.status === 'scheduled'
+        );
+        if (regularGame) {
+            const opponent = regularGame.homeTeam === userTeam.name ? regularGame.awayTeam : regularGame.homeTeam;
+            return { ...regularGame, opponent, isNationals: false };
         }
 
         return null;
@@ -1184,6 +1186,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         });
     };
 
+    const startFacilityProject = (projectId: string) => {
+        if (!userTeam) return;
+        // Placeholder for now, actual logic to be implemented later
+        toast.info(`Attempting to start facility project: ${projectId}`);
+    };
+
     const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
         if (!userTeam) return;
         const newRoster = userTeam.roster.map(p => p.id === playerId ? { ...(p as Player), trainingFocus: focus } : p);
@@ -1291,134 +1299,89 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 return acc;
             }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations);
 
-            const allocationChanges: Partial<BudgetAllocations> = {};
-            (Object.keys(newAllocations) as (keyof BudgetAllocations)[]).forEach(key => {
-                allocationChanges[key] = newAllocations[key] - oldOrgAllocations[key];
-            });
+            const newOrgAllocations = Object.keys(newAllocations).reduce((acc, key) => {
+                acc[key as BudgetCategory] = (acc[key as BudgetCategory] || 0) + newAllocations[key as BudgetCategory];
+                return acc;
+            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations);
 
-            setTeams(currentTeams => {
-                const primaryTeam = managedTeams[0];
-                const teamIndex = currentTeams.findIndex(t => t.name === primaryTeam.name);
-                if (teamIndex === -1) return currentTeams;
-
-                const newTeams = [...currentTeams];
-                const teamToUpdate = { ...newTeams[teamIndex] };
-                const updatedAllocations = { ...teamToUpdate.financials.budgetAllocations };
-
-                (Object.keys(allocationChanges) as (keyof BudgetAllocations)[]).forEach(key => {
-                    updatedAllocations[key] = Math.round(updatedAllocations[key] + allocationChanges[key]!);
-                });
-
-                teamToUpdate.financials = { ...teamToUpdate.financials, budgetAllocations: updatedAllocations };
-                newTeams[teamIndex] = teamToUpdate;
-                return newTeams;
-            });
-        } else {
-            const updatedTeam = { ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations } };
-            const roundedNewAllocations: BudgetAllocations = Object.fromEntries(
-                Object.entries(newAllocations).map(([key, value]) => [key, Math.round(value)])
-            ) as unknown as BudgetAllocations;
-
-            updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: roundedNewAllocations } });
-        }
-    };
-
-    const startFacilityProject = (projectId: string) => {
-        if (!userTeam) return;
-
-        if (managedOrganization) {
-            const project = userTeam.facilities.find(p => p.id === projectId);
-            if (!project) return;
-
-            const cost = project.cost;
-            const currentBudget = organizationFinancials?.budgetAllocations.Facilities || 0;
-
-            if (currentBudget < cost) {
-                toast.error("Insufficient Facilities Budget", {
-                    description: `You need £${cost.toLocaleString()} but only have £${(currentBudget).toLocaleString()} available in the organization's budget.`,
-                });
-                return;
-            }
-
-            const newBudgetAllocations = {
-                ...(organizationFinancials?.budgetAllocations || {}),
-                Facilities: Math.round(currentBudget - cost),
-            } as BudgetAllocations;
-            updateBudgetAllocations(newBudgetAllocations);
-
-            setTeams(currentTeams => {
-                return currentTeams.map(team => {
-                    if (managedTeams.some(mt => mt.name === team.name)) {
-                        const newFacilities = team.facilities.map(p => 
-                            p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress', weeksToComplete: 12 } : p
-                        );
-                        return { ...team, facilities: newFacilities };
-                    }
-                    return team;
-                });
-            });
-
-            toast.success(`${project.name} project has started!`, {
-                description: `Cost: £${cost.toLocaleString()}.`,
-            });
-
-        } else {
-            const project = userTeam.facilities.find(p => p.id === projectId);
-            if (!project) return;
-
-            const cost = project.cost;
-            const currentBudget = userTeam.financials.budgetAllocations.Facilities;
-
-            if (currentBudget < cost) {
-                toast.error("Insufficient Facilities Budget", {
-                    description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
-                });
-                return;
-            }
-
-            const newBudgetAllocations = {
-                ...userTeam.financials.budgetAllocations,
-                Facilities: Math.round(currentBudget - cost),
+            // Calculate the difference for each category
+            const allocationDifferences: BudgetAllocations = {
+                Travel: newOrgAllocations.Travel - oldOrgAllocations.Travel,
+                Equipment: newOrgAllocations.Equipment - oldOrgAllocations.Equipment,
+                "Ice Time": newOrgAllocations["Ice Time"] - oldOrgAllocations["Ice Time"],
+                Recruiting: newOrgAllocations.Recruiting - oldOrgAllocations.Recruiting,
+                "Student Life": newOrgAllocations["Student Life"] - oldOrgAllocations["Student Life"],
+                Facilities: newOrgAllocations.Facilities - oldOrgAllocations.Facilities,
             };
-            const newFacilities = userTeam.facilities.map(p =>
-                p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress', weeksToComplete: 12 } : p
-            );
-            const updatedTeam = {
-                ...userTeam,
-                financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations },
-                facilities: newFacilities,
-            };
-            updateTeam(updatedTeam);
-            toast.success(`${project.name} project has started!`, {
-                description: `Cost: £${cost.toLocaleString()}.`,
-            });
+
+            // Distribute the changes proportionally among managed teams
+            setTeams(currentTeams => currentTeams.map(team => {
+                if (managedTeams.some(mt => mt.name === team.name)) {
+                    const updatedFinancials = { ...team.financials };
+                    (Object.keys(allocationDifferences) as BudgetCategory[]).forEach(key => {
+                        // Simple distribution: divide by number of managed teams
+                        updatedFinancials.budgetAllocations[key] = Math.round(team.financials.budgetAllocations[key] + (allocationDifferences[key] / managedTeams.length));
+                    });
+                    return { ...team, financials: updatedFinancials };
+                }
+                return team;
+            }));
+        } else {
+            // Single team mode
+            updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations } });
         }
     };
 
     const markGameAsCompleted = (gameId: string, homeScore: number, awayScore: number) => {
-        setSchedule(prevSchedule =>
-            prevSchedule.map(entry =>
-                entry.id === gameId
-                    ? { ...entry, status: 'completed', result: { homeScore, awayScore } }
-                    : entry
-            )
-        );
+        setSchedule(prevSchedule => prevSchedule.map(game => {
+            if (game.id === gameId) {
+                return { ...game, status: 'completed', result: { homeScore, awayScore } };
+            }
+            return game;
+        }));
     };
 
     return (
-        <TeamContext.Provider value={{ 
-            teams, updateTeam, userTeam, 
-            organizationFinancials, organizationFacilities,
-            selectTeam, scoutingPool, recruitedPool, fairHosted,
-            generateScoutingPool, recruitPlayer, assignPlayerToRoster, discardRecruit,
-            updateBudgetAllocations, runStudentLifeInitiative, startFacilityProject,
-            currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus,
-            autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
-            managedOrganization, isManagingOrg, managedTeams, selectOrganization, setActiveTeam,
-            schedule, gameForCurrentWeek, nationalsData,
-            markGameAsCompleted, seasonRecords, careerRecords, alumni,
-            playNationalsRound, autoSimulateUserNationalsGame,
-            seasonHistory
+        <TeamContext.Provider value={{
+            teams,
+            updateTeam,
+            userTeam,
+            organizationFinancials,
+            organizationFacilities,
+            selectTeam,
+            scoutingPool,
+            recruitedPool,
+            fairHosted,
+            generateScoutingPool,
+            recruitPlayer,
+            assignPlayerToRoster,
+            discardRecruit,
+            updateBudgetAllocations,
+            runStudentLifeInitiative,
+            startFacilityProject,
+            currentDate,
+            advanceWeek,
+            developmentHistory,
+            updatePlayerTrainingFocus,
+            autoAssignTrainingFocuses,
+            processGameResults,
+            movePlayer,
+            requestPlayerTransfer,
+            managedOrganization,
+            isManagingOrg,
+            managedTeams,
+            selectOrganization,
+            setActiveTeam,
+            schedule,
+            gameForCurrentWeek,
+            nationalsData,
+            markGameAsCompleted,
+            seasonRecords,
+            careerRecords,
+            alumni,
+            playNationalsRound,
+            autoSimulateUserNationalsGame,
+            seasonHistory,
         }}>
             {children}
         </TeamContext.Provider>

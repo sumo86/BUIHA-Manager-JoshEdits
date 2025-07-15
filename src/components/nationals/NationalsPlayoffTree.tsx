@@ -8,6 +8,7 @@ interface NationalsPlayoffTreeProps {
   userTeamName: string | undefined;
   onPlayGame: (gameId: string) => void;
   onSimulateGame: (gameId: string) => void;
+  bracket: 'Gold' | 'Silver';
 }
 
 const TeamBox = ({ team, score, isWinner }: { team: string | { winnerOf: string }, score?: number, isWinner?: boolean }) => {
@@ -44,13 +45,22 @@ const Matchup = ({ match, children, onPlayGame, onSimulateGame, userTeamName }: 
   );
 };
 
-const NationalsPlayoffTree = ({ playoffSchedule, userTeamName, onPlayGame, onSimulateGame }: NationalsPlayoffTreeProps) => {
+const NationalsPlayoffTree = ({ playoffSchedule, userTeamName, onPlayGame, onSimulateGame, bracket }: NationalsPlayoffTreeProps) => {
   const semiFinals = playoffSchedule.filter(m => m.round === 'Semi-Final');
   const final = playoffSchedule.find(m => m.round === 'Final');
 
+  if (playoffSchedule.length === 0) {
+    return (
+        <div className="text-center py-10">
+            <h3 className="text-2xl font-bold">{bracket} Bracket</h3>
+            <p className="text-muted-foreground mt-2">No teams qualified for this bracket.</p>
+        </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center p-4 space-y-8">
-      <h3 className="text-2xl font-bold">Playoff Bracket</h3>
+      <h3 className="text-2xl font-bold">{bracket} Playoff Bracket</h3>
       <div className="flex items-center">
         {/* Semi-Finals Column */}
         <div className="flex flex-col gap-16">

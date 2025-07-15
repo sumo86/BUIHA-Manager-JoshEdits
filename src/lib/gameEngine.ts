@@ -3,6 +3,7 @@ import { tactics } from '@/data/tactics';
 import { roles, Role } from '@/data/roles';
 import { calculateTacticSuitability } from '@/lib/tactics';
 import { aiMakeAdjustments } from '@/lib/aiManager';
+import { populateLineup } from '@/lib/lineupUtils';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -407,6 +408,10 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
 
     let currentHomeTeam = JSON.parse(JSON.stringify(homeTeam));
     let currentAwayTeam = JSON.parse(JSON.stringify(awayTeam));
+
+    // Ensure lineups are populated
+    currentHomeTeam.lineup = populateLineup(currentHomeTeam.roster);
+    currentAwayTeam.lineup = populateLineup(currentAwayTeam.roster);
 
     for (let p = 1; p <= 3; p++) {
         gameState.period = p;

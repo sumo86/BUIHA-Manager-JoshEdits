@@ -1,8 +1,9 @@
-import { Team, Lineup, TacticsSelection, Player, Position } from "@/types";
+import { Team, Lineup, TacticsSelection, Player } from "@/types";
 import { generateRoster } from "@/lib/playerGenerator";
 import { initialFacilityProjects } from './facilities';
 import { teamLogos } from './logos';
 import { getTierName as getNationalsDivision } from '@/lib/leagueUtils';
+import { populateLineup } from '@/lib/lineupUtils';
 
 const teamData = [
     // Checking 1 - North
@@ -80,41 +81,6 @@ const defaultTactics: TacticsSelection = {
     "Forechecking": "1-2-2",
     "Neutral Zone Coverage": "1-2-2 Retreat",
     "Defensive Zone Coverage": "Strict Zonal",
-};
-
-const populateLineup = (roster: Player[]): Lineup => {
-    const lineup: Lineup = {
-        forwards: { lw: Array(3).fill(null), c: Array(3).fill(null), rw: Array(3).fill(null) },
-        defence: { ld: Array(3).fill(null), rd: Array(3).fill(null) },
-        goalies: { starter: null, backup: null },
-    };
-
-    const playerPool = [...roster];
-
-    const assignPlayer = (position: Position) => {
-        let bestPlayerIndex = playerPool.findIndex(p => p.positions[0] === position);
-        if (bestPlayerIndex === -1) {
-            bestPlayerIndex = playerPool.findIndex(p => p.positions.includes(position));
-        }
-        if (bestPlayerIndex !== -1) {
-            return playerPool.splice(bestPlayerIndex, 1)[0].id;
-        }
-        return null;
-    };
-
-    for (let i = 0; i < 3; i++) {
-        lineup.forwards.lw[i] = assignPlayer('LW');
-        lineup.forwards.c[i] = assignPlayer('C');
-        lineup.forwards.rw[i] = assignPlayer('RW');
-    }
-    for (let i = 0; i < 3; i++) {
-        lineup.defence.ld[i] = assignPlayer('LD');
-        lineup.defence.rd[i] = assignPlayer('RD');
-    }
-    lineup.goalies.starter = assignPlayer('G');
-    lineup.goalies.backup = assignPlayer('G');
-
-    return lineup;
 };
 
 const orgMap: { [key: string]: string } = {

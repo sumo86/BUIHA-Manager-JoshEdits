@@ -273,7 +273,7 @@ const Lineup = () => {
 
         Object.values(team.lineup.forwards).flat().forEach(playerId => {
             if (!playerId) return;
-            const player = rosterMap.get(playerId);
+            const player = rosterMap.get(playerId) as Player;
             if (player) {
                 const bestRole = findBestRole(player, forwardRoles);
                 if (bestRole) player.role = bestRole;
@@ -282,7 +282,7 @@ const Lineup = () => {
 
         Object.values(team.lineup.defence).flat().forEach(playerId => {
             if (!playerId) return;
-            const player = rosterMap.get(playerId);
+            const player = rosterMap.get(playerId) as Player;
             if (player) {
                 const bestRole = findBestRole(player, defenceRoles);
                 if (bestRole) player.role = bestRole;
@@ -341,7 +341,7 @@ const Lineup = () => {
         }
 
         players = getAvailablePlayers(positionForFilter, currentId);
-        const player = currentId ? playerMap.get(currentId) : undefined;
+        const player = currentId ? playerMap.get(currentId) as Player : undefined;
 
         if (player) {
             return (
