@@ -13,7 +13,7 @@ import { validateLineup } from '@/lib/lineupValidation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const NationalsPage = () => {
-  const { nationalsData, currentDate, userTeam, teams, playNationalsRound, autoSimulateUserNationalsGame, simulateFullNationalsTournament } = useTeam();
+  const { nationalsData, currentDate, userTeam, teams, playNationalsRound, autoSimulateUserNationalsGame, simulateFullNationalsTournament, simulateSingleNationalsGame } = useTeam();
   const [selectedDivision, setSelectedDivision] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -61,6 +61,11 @@ const NationalsPage = () => {
     simulateFullNationalsTournament(tournamentToDisplay.division);
   };
 
+  const handleSimulateSingleGame = (gameId: string) => {
+    if (!tournamentToDisplay) return;
+    simulateSingleNationalsGame(tournamentToDisplay.division, gameId);
+  };
+
   const userHasGameThisRound = useMemo(() => {
     if (!tournamentToDisplay || !userTeam) return false;
     const schedule = (tournamentToDisplay.status === 'silver-playoffs' || tournamentToDisplay.status === 'gold-playoffs') ? tournamentToDisplay.playoffSchedule : tournamentToDisplay.groupStageSchedule;
@@ -102,12 +107,14 @@ const NationalsPage = () => {
                 ))}
               </SelectContent>
             </Select>
-            {tournamentToDisplay && tournamentToDisplay.status !== 'completed' && !userHasGameThisRound && (
-                <div className="flex gap-2">
+            <div className="flex gap-2">
+                {tournamentToDisplay && tournamentToDisplay.status !== 'completed' && !userHasGameThisRound && (
                     <Button onClick={handleSimulateRound}>Simulate Next Round</Button>
+                )}
+                {tournamentToDisplay && tournamentToDisplay.status !== 'completed' && (
                     <Button onClick={handleSimulateFullTournament} variant="secondary">Sim Full Tournament</Button>
-                </div>
-            )}
+                )}
+            </div>
           </div>
 
           {tournamentToDisplay ? (
@@ -130,6 +137,7 @@ const NationalsPage = () => {
                                 userTeamName={userTeam?.name}
                                 onPlayGame={handlePlayGame}
                                 onSimulateGame={handleSimulateUserGame}
+                                onSimulateSingleGame={handleSimulateSingleGame}
                                 bracket="Gold"
                             />
                         </TabsContent>
@@ -140,6 +148,7 @@ const NationalsPage = () => {
                                 userTeamName={userTeam?.name}
                                 onPlayGame={handlePlayGame}
                                 onSimulateGame={handleSimulateUserGame}
+                                onSimulateSingleGame={handleSimulateSingleGame}
                                 bracket="Silver"
                             />
                         </TabsContent>

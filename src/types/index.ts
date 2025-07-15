@@ -314,7 +314,7 @@ export type NationalsGroup = {
 
 export type NationalsPlayoffMatch = {
   id: string;
-  round: 'Quarter-Final' | 'Semi-Final' | 'Final';
+  round: 'Quarter-Final' | 'Semi-Final' | 'Final' | 'Preliminary';
   bracket: 'Gold' | 'Silver';
   homeTeam: string | { winnerOf: string };
   awayTeam: string | { winnerOf: string };

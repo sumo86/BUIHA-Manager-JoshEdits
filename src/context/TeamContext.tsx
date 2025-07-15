@@ -67,6 +67,7 @@ interface TeamContextType {
     autoSimulateUserNationalsGame: (division: string, gameId: string) => void;
     seasonHistory: SeasonHistory;
     simulateFullNationalsTournament: (division: string) => void;
+    simulateSingleNationalsGame: (division: string, gameId: string) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -1290,6 +1291,50 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         processGameResults(userTeam, opponent, finalGameState, true, division, gameId);
     };
 
+    const simulateSingleNationalsGame = (division: string, gameId: string) => {
+        const tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
+        const tournament = tempNationalsData[currentDate.year]?.[division];
+        if (!tournament) return;
+
+        const allGames = tournament.playoffSchedule as NationalsPlayoffMatch[];
+        const game = allGames.find(g => g.id === gameId);
+
+        if (!game || typeof game.homeTeam !== 'string' || typeof game.awayTeam !== 'string') {
+            toast.error("Cannot simulate game", { description: "One of the teams has not been determined yet." });
+            return;
+        }
+
+        let tempTeams = JSON.parse(JSON.stringify(teams));
+        const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
+        const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+
+        if (homeTeam && awayTeam) {
+            const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+            const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+            
+            tempTeams = tempTeams.map((t: Team) => {
+                if (t.name === homeTeam.name) return updatedUserTeam;
+                if (t.name === awayTeam.name) return updatedOpponentTeam;
+                return t;
+            });
+
+            game.status = 'completed';
+            game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+            
+            const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
+                if (!match.result) return undefined;
+                if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
+                if (match.result.awayScore > match.result.homeScore) return typeof match.awayTeam === 'string' ? match.awayTeam : undefined;
+                return Math.random() > 0.5 ? (typeof match.homeTeam === 'string' ? match.homeTeam : undefined) : (typeof match.awayTeam === 'string' ? match.awayTeam : undefined);
+            };
+            game.winner = getWinner(game);
+
+            setTeams(tempTeams);
+            setNationalsData(tempNationalsData);
+            toast.info("Game Simulated", { description: `${game.homeTeam} ${game.result.homeScore} - ${game.awayTeam} ${game.result.awayScore}` });
+        }
+    };
+
     const runStudentLifeInitiative = () => {
         if (!userTeam) return;
         const cost = 500;
@@ -1453,7 +1498,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const updatedFinancials = { ...team.financials };
                     (Object.keys(allocationDifferences) as BudgetCategory[]).forEach(key => {
                         // Simple distribution: divide by number of managed teams
-                        updatedFinancials.budgetAllocations[key] = Math.round(team.financials.budgetAllocations[key] + (allocationDifferences[key] / managedTeams.length));
+                        updatedFinancials.budgetAllocations[key] = Math.round(team.financials.budgetAllocations[key] + ((allocationDifferences[key] || 0) / managedTeams.length));
                     });
                     return { ...team, financials: updatedFinancials };
                 }
@@ -1516,6 +1561,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             autoSimulateUserNationalsGame,
             seasonHistory,
             simulateFullNationalsTournament,
+            simulateSingleNationalsGame,
         }}>
             {children}
         </TeamContext.Provider>

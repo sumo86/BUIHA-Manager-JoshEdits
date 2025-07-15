@@ -8,6 +8,7 @@ interface NationalsPlayoffTreeProps {
   userTeamName: string | undefined;
   onPlayGame: (gameId: string) => void;
   onSimulateGame: (gameId: string) => void;
+  onSimulateSingleGame: (gameId: string) => void;
   bracket: 'Gold' | 'Silver';
 }
 
@@ -21,7 +22,7 @@ const TeamBox = ({ team, score, isWinner }: { team: string | { winnerOf: string 
   );
 };
 
-const Matchup = ({ match, children, onPlayGame, onSimulateGame, userTeamName }: { match: NationalsPlayoffMatch, children?: React.ReactNode, onPlayGame: (gameId: string) => void, onSimulateGame: (gameId: string) => void, userTeamName: string | undefined }) => {
+const Matchup = ({ match, children, onPlayGame, onSimulateGame, onSimulateSingleGame, userTeamName }: { match: NationalsPlayoffMatch, children?: React.ReactNode, onPlayGame: (gameId: string) => void, onSimulateGame: (gameId: string) => void, onSimulateSingleGame: (gameId: string) => void, userTeamName: string | undefined }) => {
   const isUserGame = userTeamName && (
     (typeof match.homeTeam === 'string' && match.homeTeam === userTeamName) ||
     (typeof match.awayTeam === 'string' && match.awayTeam === userTeamName)
@@ -39,13 +40,18 @@ const Matchup = ({ match, children, onPlayGame, onSimulateGame, userTeamName }: 
             <Button size="sm" variant="secondary" className="w-full" onClick={() => onSimulateGame(match.id)}>Auto-Sim</Button>
           </div>
         )}
+        {match.status === 'scheduled' && !isUserGame && typeof match.homeTeam === 'string' && typeof match.awayTeam === 'string' && (
+            <div className="flex gap-2 pt-2">
+                <Button size="sm" variant="secondary" className="w-full" onClick={() => onSimulateSingleGame(match.id)}>Simulate Game</Button>
+            </div>
+        )}
       </div>
       {children && <div className="flex justify-center w-full mt-4">{children}</div>}
     </div>
   );
 };
 
-const NationalsPlayoffTree = ({ playoffSchedule, userTeamName, onPlayGame, onSimulateGame, bracket }: NationalsPlayoffTreeProps) => {
+const NationalsPlayoffTree = ({ playoffSchedule, userTeamName, onPlayGame, onSimulateGame, onSimulateSingleGame, bracket }: NationalsPlayoffTreeProps) => {
   const semiFinals = playoffSchedule.filter(m => m.round === 'Semi-Final');
   const final = playoffSchedule.find(m => m.round === 'Final');
 
@@ -65,7 +71,7 @@ const NationalsPlayoffTree = ({ playoffSchedule, userTeamName, onPlayGame, onSim
         {/* Semi-Finals Column */}
         <div className="flex flex-col gap-16">
           {semiFinals.map(match => (
-            <Matchup key={match.id} match={match} onPlayGame={onPlayGame} onSimulateGame={onSimulateGame} userTeamName={userTeamName} />
+            <Matchup key={match.id} match={match} onPlayGame={onPlayGame} onSimulateGame={onSimulateGame} onSimulateSingleGame={onSimulateSingleGame} userTeamName={userTeamName} />
           ))}
         </div>
 
@@ -78,7 +84,7 @@ const NationalsPlayoffTree = ({ playoffSchedule, userTeamName, onPlayGame, onSim
                 <div className="w-px bg-border h-1/4"></div>
             </div>
             <div className="flex items-center">
-              <Matchup match={final} onPlayGame={onPlayGame} onSimulateGame={onSimulateGame} userTeamName={userTeamName} />
+              <Matchup match={final} onPlayGame={onPlayGame} onSimulateGame={onSimulateGame} onSimulateSingleGame={onSimulateSingleGame} userTeamName={userTeamName} />
             </div>
           </>
         )}

@@ -140,35 +140,34 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
     let silverTeams: (string | { winnerOf: string })[] = sortedSilverStandings.map(s => s.teamName);
 
     if (silverTeams.length >= 2) {
-        const bracketRounds: ('Quarter-Final' | 'Semi-Final' | 'Final')[] = [];
-        if (silverTeams.length > 4) bracketRounds.push('Quarter-Final');
-        if (silverTeams.length > 2) bracketRounds.push('Semi-Final');
-        bracketRounds.push('Final');
-
-        for (const round of bracketRounds) {
-            const roundMatches: NationalsPlayoffMatch[] = [];
+        let roundCount = 0;
+        while (silverTeams.length > 1) {
+            roundCount++;
             const numTeamsInRound = silverTeams.length;
+            let roundName: 'Quarter-Final' | 'Semi-Final' | 'Final' | 'Preliminary' = 'Final';
+            if (numTeamsInRound > 4) roundName = 'Quarter-Final';
+            else if (numTeamsInRound > 2) roundName = 'Semi-Final';
             
-            // Give byes if not a power of 2
+            if (roundCount === 1 && numTeamsInRound > 8) roundName = 'Preliminary';
+
+
             const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(numTeamsInRound)));
             const numByes = nextPowerOf2 - numTeamsInRound;
+            
             const teamsWithByes = silverTeams.slice(0, numByes);
             const teamsInMatches = silverTeams.slice(numByes);
-
-            // Create matches
+            
+            const roundMatches: NationalsPlayoffMatch[] = [];
             while (teamsInMatches.length > 0) {
                 const home = teamsInMatches.shift()!;
                 const away = teamsInMatches.pop()!;
                 const matchId = crypto.randomUUID();
-                roundMatches.push({ id: matchId, round, bracket: 'Silver', homeTeam: home, awayTeam: away, status: 'scheduled', date });
+                roundMatches.push({ id: matchId, round: roundName, bracket: 'Silver', homeTeam: home, awayTeam: away, status: 'scheduled', date });
             }
             
             playoffs.push(...roundMatches);
             
-            // Prepare teams for next round
             silverTeams = [...teamsWithByes, ...roundMatches.map(m => ({ winnerOf: m.id }))];
-            
-            if (round === 'Final' || silverTeams.length < 2) break;
         }
     }
 
