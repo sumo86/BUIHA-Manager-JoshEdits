@@ -127,10 +127,10 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
         updatedUserTeam.goalsAgainst += gameState.opponentScore;
         updatedOpponentTeam.goalsFor += gameState.opponentScore;
         updatedOpponentTeam.goalsAgainst += gameState.userScore;
-    }
 
-    processPlayerStats(updatedUserTeam, updatedOpponentTeam, gameState.userScore, gameState.opponentScore, gameState.opponentShots);
-    processPlayerStats(updatedOpponentTeam, updatedUserTeam, gameState.opponentScore, gameState.userScore, gameState.userShots);
+        processPlayerStats(updatedUserTeam, updatedOpponentTeam, gameState.userScore, gameState.opponentScore, gameState.opponentShots);
+        processPlayerStats(updatedOpponentTeam, updatedUserTeam, gameState.opponentScore, gameState.userScore, gameState.userShots);
+    }
 
     gameState.injuries.forEach(injuryInfo => {
         const teamToUpdate = injuryInfo.teamName === userTeam.name ? updatedUserTeam : updatedOpponentTeam;

@@ -3,17 +3,15 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 
 const Dashboard = () => {
-  const { userTeam, generateScoutingPool, fairHosted, currentDate } = useTeam();
+  const { userTeam, generateScoutingPool, scoutingPool, recruitedPool, fairHosted } = useTeam();
 
   const handleHostFair = () => {
     generateScoutingPool();
   };
 
-  const showRecruitmentDrive = !fairHosted && currentDate.month === 'August';
-
   return (
     <div>
-      {showRecruitmentDrive && (
+      {scoutingPool.length === 0 && recruitedPool.length === 0 && !fairHosted && (
         <Card className="mb-6 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
           <CardHeader>
             <CardTitle>New Season Recruitment Drive!</CardTitle>

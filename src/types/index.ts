@@ -144,8 +144,6 @@ export type Player = {
   recruitmentCost?: number;
   alumniStatus?: 'Retired' | 'Active Elsewhere';
   isContinuingEducation?: boolean;
-  staffCareerLength?: number;
-  yearsAsStaff?: number;
 };
 
 export type Lineup = {
@@ -175,7 +173,6 @@ export type BudgetAllocations = {
 };
 
 export type Financials = {
-  baseBudget: number;
   totalBudget: number;
   iceTimeCostPerGame: number;
   equipmentCost: number;
@@ -349,7 +346,6 @@ export type TeamSeasonHistory = {
   points: number;
   goalsFor: number;
   goalsAgainst: number;
-  nationalsResult?: string;
 };
 
 export type SeasonHistory = {

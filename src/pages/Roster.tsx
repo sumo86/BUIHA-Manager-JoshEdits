@@ -31,7 +31,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerMovement } from "@/components/roster/PlayerMovement";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getAggregatedCurrentStats } from "@/lib/statsUtils";
-import { formatPlayerEligibility } from "@/lib/utils";
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -129,7 +128,11 @@ const Roster = () => {
   }, [roleTypeOrder]);
 
   const renderEligibility = (player: Player) => {
-    return formatPlayerEligibility(player);
+    if ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && player.yearsLeftInProgram !== undefined) {
+        const yearsText = player.yearsLeftInProgram === 1 ? '1 year left' : `${player.yearsLeftInProgram} years left`;
+        return `${player.eligibility} (${yearsText})`;
+    }
+    return player.eligibility;
   };
 
   const uniqueEligibilities = ['All', ...Array.from(new Set(team.roster.map(p => p.eligibility)))];

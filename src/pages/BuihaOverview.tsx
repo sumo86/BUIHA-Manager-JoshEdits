@@ -10,8 +10,6 @@ import { ArrowUpDown, Star, StarHalf } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeasonHistoryTable } from '@/components/buiha/SeasonHistoryTable';
-import { formatPlayerEligibility } from '@/lib/utils';
-import { NationalsHistoryTable } from '@/components/buiha/NationalsHistoryTable';
 
 type PlayerWithTeamInfo = Player & {
   teamName: string;
@@ -40,6 +38,14 @@ const renderStars = (rating: number) => {
         ))}
       </div>
     );
+};
+
+const renderEligibility = (player: Player) => {
+    if ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && player.yearsLeftInProgram !== undefined) {
+        const yearsText = player.yearsLeftInProgram === 1 ? '1 year left' : `${player.yearsLeftInProgram} years left`;
+        return `${player.eligibility} (${yearsText})`;
+    }
+    return player.eligibility;
 };
 
 const PlayerOverview = () => {
@@ -152,7 +158,7 @@ const PlayerOverview = () => {
                 <TableCell>{renderStars(player.starRating)}</TableCell>
                 <TableCell>{player.age}</TableCell>
                 <TableCell>{player.positions.join(', ')}</TableCell>
-                <TableCell>{formatPlayerEligibility(player)}</TableCell>
+                <TableCell>{renderEligibility(player)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -180,16 +186,6 @@ const SeasonsHistory = () => {
     return seasonHistory[selectedSeason] || [];
   }, [seasonHistory, selectedSeason]);
 
-  const nationalsForSelectedSeason = useMemo(() => {
-    const seasonYear = selectedSeason.split('-')[0];
-    if (!seasonYear) return [];
-    
-    const historyForSeason = seasonHistory[selectedSeason];
-    if (!historyForSeason) return [];
-
-    return historyForSeason.filter(t => t.nationalsResult);
-  }, [seasonHistory, selectedSeason]);
-
   return (
     <div className="space-y-4">
       <Select value={selectedSeason} onValueChange={setSelectedSeason}>
@@ -203,10 +199,7 @@ const SeasonsHistory = () => {
         </SelectContent>
       </Select>
       {standingsForSelectedSeason.length > 0 ? (
-        <div className="grid md:grid-cols-2 gap-6">
-          <SeasonHistoryTable standings={standingsForSelectedSeason} />
-          <NationalsHistoryTable standings={nationalsForSelectedSeason} />
-        </div>
+        <SeasonHistoryTable standings={standingsForSelectedSeason} />
       ) : (
         <p>No historical data for the selected season.</p>
       )}

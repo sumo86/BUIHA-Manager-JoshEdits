@@ -1,15 +1,13 @@
 import { Player } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useNavigate } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 
 interface AlumniTableProps {
   alumni: Player[];
 }
 
 export const AlumniTable = ({ alumni }: AlumniTableProps) => {
-  const navigate = useNavigate();
-
   if (!alumni || alumni.length === 0) {
     return (
       <Card>
@@ -39,18 +37,21 @@ export const AlumniTable = ({ alumni }: AlumniTableProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {alumni.map(player => (
-              <TableRow key={player.id}>
-                <TableCell 
-                  className="font-medium cursor-pointer hover:underline"
-                  onClick={() => navigate(`/player/${player.id}`)}
-                >
-                  {player.name}
-                </TableCell>
-                <TableCell>{player.alumniStatus}</TableCell>
-                <TableCell>{player.history[player.history.length - 1]?.team || 'N/A'}</TableCell>
-              </TableRow>
-            ))}
+            {alumni.map(player => {
+              const careerPoints = player.history.reduce((sum, season) => sum + (season.points || 0), 0);
+              return (
+                <TableRow key={player.id}>
+                  <TableCell className="font-medium">{player.name}</TableCell>
+                  <TableCell>{player.history[player.history.length - 1]?.team || 'N/A'}</TableCell>
+                  <TableCell>
+                    <Badge variant={player.alumniStatus === 'Retired' ? 'destructive' : 'secondary'}>
+                      {player.alumniStatus}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-bold">{careerPoints}</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </CardContent>
