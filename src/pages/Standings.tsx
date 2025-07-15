@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,15 +7,21 @@ import { Player } from '@/types';
 
 const StandingsPage = () => {
   const { teams } = useTeam();
-  const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
+  const [selectedLeague, setSelectedLeague] = useState<string>('');
 
   const leagues = useMemo(() => {
     const leagueSet = new Set(teams.map(team => team.leagueDivision));
     return Array.from(leagueSet).sort();
   }, [teams]);
 
+  useEffect(() => {
+    if (leagues.length > 0 && !selectedLeague) {
+      setSelectedLeague(leagues[0]);
+    }
+  }, [leagues, selectedLeague]);
+
   const { displayedTeams, leaguePlayers } = useMemo(() => {
-    const leagueToDisplay = selectedLeague || leagues[0];
+    const leagueToDisplay = selectedLeague || (leagues.length > 0 ? leagues[0] : '');
     if (!leagueToDisplay) return { displayedTeams: [], leaguePlayers: [] };
 
     const filteredTeams = teams.filter(team => team.leagueDivision === leagueToDisplay);
@@ -50,7 +56,7 @@ const StandingsPage = () => {
         <h1 className="text-3xl font-bold">League Standings</h1>
         <p className="text-muted-foreground">View team standings and player leaderboards.</p>
       </div>
-      <Select value={selectedLeague || leagues[0]} onValueChange={setSelectedLeague}>
+      <Select value={selectedLeague} onValueChange={setSelectedLeague}>
         <SelectTrigger className="w-[280px]">
           <SelectValue placeholder="Select a league" />
         </SelectTrigger>

@@ -2,12 +2,19 @@ import { Player } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 
 interface AlumniTableProps {
   alumni: Player[];
 }
 
 export const AlumniTable = ({ alumni }: AlumniTableProps) => {
+  const navigate = useNavigate();
+
+  const handlePlayerClick = (playerId: string) => {
+    navigate(`/player/${playerId}`);
+  };
+
   if (!alumni || alumni.length === 0) {
     return (
       <Card>
@@ -40,7 +47,7 @@ export const AlumniTable = ({ alumni }: AlumniTableProps) => {
             {alumni.map(player => {
               const careerPoints = player.history.reduce((sum, season) => sum + (season.points || 0), 0);
               return (
-                <TableRow key={player.id}>
+                <TableRow key={player.id} onClick={() => handlePlayerClick(player.id)} className="cursor-pointer hover:bg-muted/50">
                   <TableCell className="font-medium">{player.name}</TableCell>
                   <TableCell>{player.history[player.history.length - 1]?.team || 'N/A'}</TableCell>
                   <TableCell>
