@@ -55,7 +55,7 @@ const StandingsPage = () => {
           <SelectValue placeholder="Select a league" />
         </SelectTrigger>
         <SelectContent>
-          {leagues.map((league: string) => (
+          {leagues.map(league => (
             <SelectItem key={league} value={league}>{league}</SelectItem>
           ))}
         </SelectContent>

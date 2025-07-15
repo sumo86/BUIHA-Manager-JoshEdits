@@ -310,14 +310,16 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
     const recruits: Player[] = [];
     const usedJerseyNumbers = new Set<number>();
     const numRecruits = count || (30 + Math.floor(Math.random() * 21));
+    const teamDivisionMap = new Map(allTeamsData.map(team => [team.name, team.leagueDivision]));
 
     for (let i = 0; i < numRecruits; i++) {
         const sourceRoll = Math.random();
-        const source: Player['source'] = sourceRoll < 0.7 ? 'Local' : 'International';
-
-        const eligibility = Math.random() < 0.85 
-            ? "UG Year 1" 
-            : getRandomItem(["UG Year 2", "Masters"] as const);
+        const source: Player['source'] = sourceRoll < 0.6 ? 'Local' : (sourceRoll < 0.9 ? 'International' : 'Transfer');
+        const eligibility = source === 'Transfer' 
+            ? getRandomItem(["UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD"] as const) 
+            : (Math.random() < 0.85 
+                ? "UG Year 1" 
+                : getRandomItem(["UG Year 2", "Masters"] as const));
         
         const qualityRoll = Math.random();
         let estimatedQuality: Player['estimatedQuality'];
@@ -347,6 +349,14 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         player.estimatedQuality = estimatedQuality;
         player.jerseyNumber = 0;
         player.morale = "Content";
+
+        if (source === 'Transfer' && eligibility !== 'UG Year 1') {
+            const otherTeamName = getRandomItem(allTeamNames);
+            const otherTeamLeagueDivision = teamDivisionMap.get(otherTeamName) || userLeagueDivision;
+            const numPriorSeasons = eligibility === "UG Year 2" ? 1 : getRandomValueInRange(1, 2);
+            let lastSeasonCaptaincy: 'C' | 'A' | null = null;
+            for (let j = 0; j < numPriorSeasons; j++) { const seasonStats = generateRandomSeasonStats(isSkater, otherTeamName, otherTeamLeagueDivision, new Date().getFullYear() - (numPriorSeasons - j), lastSeasonCaptaincy, player.attributes); player.history.push(seasonStats); lastSeasonCaptaincy = seasonStats.captaincy; }
+        }
 
         recruits.push(player);
     }

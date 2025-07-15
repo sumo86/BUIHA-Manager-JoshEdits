@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { HistoryRecords } from '@/components/history/HistoryRecords';
-import { RecordCategory } from '@/types';
+import { RecordCategory, Player } from '@/types';
 import { calculateRecords } from '@/lib/historyUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CareerStatsTable } from '@/components/history/CareerStatsTable';
 
 const TeamHistoryPage = () => {
   const { userTeam, managedTeams, teams, schedule } = useTeam();
@@ -63,7 +62,6 @@ const TeamHistoryPage = () => {
         <HistoryRecords title="Single Season Records (Goalies)" records={seasonRecords} categories={goalieSeasonCategories} showSeason />
         <HistoryRecords title="Career Records" records={careerRecords} categories={careerCategories} />
       </div>
-      <CareerStatsTable players={playersToDisplay} />
     </div>
   );
 };

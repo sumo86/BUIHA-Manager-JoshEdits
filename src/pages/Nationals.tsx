@@ -13,7 +13,7 @@ import { validateLineup } from '@/lib/lineupValidation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const NationalsPage = () => {
-  const { nationalsData, currentDate, userTeam, teams, playNationalsRound, autoSimulateUserNationalsGame, simulateFullNationalsTournament, simulateSingleNationalsGame, simulateAllNationalsTournaments } = useTeam();
+  const { nationalsData, currentDate, userTeam, teams, playNationalsRound, autoSimulateUserNationalsGame, simulateFullNationalsTournament, simulateSingleNationalsGame } = useTeam();
   const [selectedDivision, setSelectedDivision] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -35,10 +35,6 @@ const NationalsPage = () => {
     }
     return null;
   }, [selectedDivision, currentYearTournaments, availableDivisions]);
-
-  const hasActiveTournaments = useMemo(() => {
-    return Object.values(currentYearTournaments).some(t => t.status !== 'completed');
-  }, [currentYearTournaments]);
 
   const handlePlayGame = (gameId: string) => {
     if (!userTeam || !tournamentToDisplay) return;
@@ -93,12 +89,7 @@ const NationalsPage = () => {
             View tournament groups, schedules, and results.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-            {hasActiveTournaments && (
-                <Button onClick={simulateAllNationalsTournaments} variant="destructive">Sim All Tournaments</Button>
-            )}
-            <Swords className="h-10 w-10 text-primary" />
-        </div>
+        <Swords className="h-10 w-10 text-primary" />
       </div>
 
       {availableDivisions.length > 0 ? (
