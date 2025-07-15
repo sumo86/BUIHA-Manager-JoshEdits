@@ -20,6 +20,7 @@ const months = ["August", "September", "October", "November", "December", "Janua
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['morale'] => {
     const currentIndex = moraleLevels.indexOf(currentMorale);
@@ -277,6 +278,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         } catch (error) { return false; }
     });
 
+    const [transferPool, setTransferPool] = useState<Player[]>(() => {
+        try {
+            const saved = localStorage.getItem('transferPool');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) { return []; }
+    });
+
     const [currentDate, setCurrentDate] = useState<GameDate>(() => {
         try {
             const saved = localStorage.getItem('currentDate');
@@ -294,6 +302,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => { localStorage.setItem('scoutingPool', JSON.stringify(scoutingPool)); }, [scoutingPool]);
     useEffect(() => { localStorage.setItem('recruitedPool', JSON.stringify(recruitedPool)); }, [recruitedPool]);
     useEffect(() => { localStorage.setItem('fairHosted', JSON.stringify(fairHosted)); }, [fairHosted]);
+    useEffect(() => { localStorage.setItem('transferPool', JSON.stringify(transferPool)); }, [transferPool]);
     useEffect(() => { localStorage.setItem('currentDate', JSON.stringify(currentDate)); }, [currentDate]);
     useEffect(() => { localStorage.setItem('developmentHistory', JSON.stringify(developmentHistory)); }, [developmentHistory]);
     useEffect(() => {
@@ -688,6 +697,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     tempSeasonRecords = {}; // Reset season records
                     
                     const newAlumni: Player[] = [];
+                    const newTransferPlayers: Player[] = [];
+
                     tempTeams = tempTeams.map(team => {
                         const graduatingPlayers: Player[] = [];
                         const remainingPlayers = team.roster.filter(player => {
@@ -727,16 +738,40 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     toast.info(`${player.name} has retired from university hockey.`);
                                 }
                             } else if (roll < 0.7) { // Transfer
-                                const otherTeams = tempTeams.filter(t => t.name !== team.name);
-                                if (otherTeams.length > 0) {
-                                    const newTeam = getRandomItem(otherTeams);
-                                    player.eligibility = 'Masters'; // Assume they start a Masters
-                                    newTeam.roster.push(player);
-                                    if (isManaged) {
-                                        player.alumniStatus = 'Active Elsewhere';
-                                        newAlumni.push(player);
-                                        toast.info(`${player.name} has graduated and transferred to ${newTeam.name}.`);
-                                    }
+                                const starRating = player.starRating;
+        
+                                let quality: Player['estimatedQuality'];
+                                if (starRating >= 4.5) quality = 'Elite';
+                                else if (starRating >= 3.5) quality = 'Experienced';
+                                else if (starRating >= 2.5) quality = 'Intermediate';
+                                else if (starRating >= 1.5) quality = 'Moderate';
+                                else quality = 'Beginner';
+                            
+                                let cost: number;
+                                if (quality === 'Beginner') cost = getRandomValueInRange(75, 150);
+                                else if (quality === 'Moderate') cost = getRandomValueInRange(150, 300);
+                                else if (quality === 'Intermediate') cost = getRandomValueInRange(300, 500);
+                                else if (quality === 'Experienced') cost = getRandomValueInRange(500, 750);
+                                else cost = getRandomValueInRange(750, 1500);
+    
+                                const transferProspect: Player = {
+                                    ...player,
+                                    source: 'Transfer',
+                                    jerseyNumber: 0,
+                                    morale: 'Content',
+                                    eligibility: 'Masters',
+                                    estimatedQuality: quality,
+                                    recruitmentCost: cost,
+                                    captaincy: null,
+                                    currentStats: [],
+                                    history: [...player.history],
+                                };
+                                newTransferPlayers.push(transferProspect);
+                            
+                                if (isManaged) {
+                                    player.alumniStatus = 'Active Elsewhere';
+                                    newAlumni.push(player);
+                                    toast.info(`${player.name} has graduated and is seeking opportunities at other universities.`);
                                 }
                             } else { // New Degree
                                 player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
@@ -754,6 +789,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (newAlumni.length > 0) {
                         setAlumni(prev => [...prev, ...newAlumni]);
                     }
+                    setTransferPool(newTransferPlayers);
+                    setScoutingPool([]);
+                    setRecruitedPool([]);
+                    setFairHosted(false);
 
                     // AI Recruitment Logic
                     const allOrgs = getTeamOrganizations();
@@ -1495,10 +1534,19 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.error("No active team selected.");
             return;
         }
-        const newPool = generateRecruits(userTeam.leagueDivision, teams.map(t => t.name));
-        setScoutingPool(newPool);
+        const newRecruits = generateRecruits(userTeam.leagueDivision, teams.map(t => t.name));
+        
+        const finalPool = [...newRecruits, ...transferPool];
+        // simple shuffle
+        for (let i = finalPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [finalPool[i], finalPool[j]] = [finalPool[j], finalPool[i]];
+        }
+
+        setScoutingPool(finalPool);
         setFairHosted(true);
-        toast.success("New scouting pool generated!");
+        setTransferPool([]); // Clear the transfer pool after use
+        toast.success("New scouting pool generated!", { description: "You've found new prospects from your student fair and the transfer market."});
     };
 
     const recruitPlayer = (playerId: string) => {
