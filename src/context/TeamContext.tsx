@@ -1019,10 +1019,19 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 });
             });
 
-            tournament.currentRound = (tournament.currentRound as number) + 1;
+            // Check if all games in the *current* round are completed
+            const allGamesInCurrentRoundCompleted = tournament.groupStageSchedule
+                .filter(g => g.round === tournament.currentRound)
+                .every(g => g.status === 'completed');
+
+            if (allGamesInCurrentRoundCompleted) {
+                tournament.currentRound = (tournament.currentRound as number) + 1;
+                toast.info(`Round ${tournament.currentRound - 1} of group stage completed for ${division}. Advancing to Round ${tournament.currentRound}.`);
+            }
             
-            const allGroupGamesPlayed = tournament.groupStageSchedule.every((g: ScheduleEntry) => g.status === 'completed');
-            if (allGroupGamesPlayed) {
+            // Check if *all* group stage games are completed (for transition to playoffs)
+            const allGroupGamesCompletedOverall = tournament.groupStageSchedule.every((g: ScheduleEntry) => g.status === 'completed');
+            if (allGroupGamesCompletedOverall) {
                 toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
                 tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date);
                 
@@ -1215,11 +1224,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     });
                 });
     
-                tournament.currentRound = (tournament.currentRound as number) + 1;
+                // Check if all games in the *current* round are completed
+                const allGamesInCurrentRoundCompleted = tournament.groupStageSchedule
+                    .filter(g => g.round === tournament.currentRound)
+                    .every(g => g.status === 'completed');
+
+                if (allGamesInCurrentRoundCompleted) {
+                    tournament.currentRound = (tournament.currentRound as number) + 1;
+                }
                 
                 const allGroupGamesPlayed = tournament.groupStageSchedule.every((g: ScheduleEntry) => g.status === 'completed');
                 if (allGroupGamesPlayed) {
-                    toast.success(`Group stage for ${division} has concluded!`, { description: "Playoff matchups will now be generated." });
+                    // No toast here, as it's a full simulation
                     tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date);
                     const silverPlayoffExists = tournament.playoffSchedule.some((m: NationalsPlayoffMatch) => m.bracket === 'Silver');
 
