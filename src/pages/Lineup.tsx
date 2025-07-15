@@ -299,8 +299,8 @@ const Lineup = () => {
                                             <div key={`${pos}-${lineIndex}`} className="flex items-center gap-2">
                                                 <span className="w-8 text-right text-sm text-muted-foreground">{pos.toUpperCase()}:</span>
                                                 <Select
-                                                    value={playerId || ''}
-                                                    onValueChange={(value: string) => handleLineupChange('forwards', pos as keyof LineupType['forwards'], lineIndex, value || null)}
+                                                    value={playerId || 'null-player'}
+                                                    onValueChange={(value: string) => handleLineupChange('forwards', pos as keyof LineupType['forwards'], lineIndex, value === 'null-player' ? null : value)}
                                                 >
                                                     <SelectTrigger className="flex-1 h-9">
                                                         <SelectValue placeholder={`Select ${pos.toUpperCase()}`} />
@@ -312,7 +312,7 @@ const Lineup = () => {
                                                                 {p.name} ({p.starRating}★)
                                                             </SelectItem>
                                                         ))}
-                                                        {playerId && <SelectItem value="">(Empty)</SelectItem>}
+                                                        {playerId && <SelectItem value="null-player">(Empty)</SelectItem>}
                                                     </SelectContent>
                                                 </Select>
                                                 {player && (
@@ -345,8 +345,8 @@ const Lineup = () => {
                                             <div key={`${pos}-${pairIndex}`} className="flex items-center gap-2">
                                                 <span className="w-8 text-right text-sm text-muted-foreground">{pos.toUpperCase()}:</span>
                                                 <Select
-                                                    value={playerId || ''}
-                                                    onValueChange={(value: string) => handleLineupChange('defence', pos as keyof LineupType['defence'], pairIndex, value || null)}
+                                                    value={playerId || 'null-player'}
+                                                    onValueChange={(value: string) => handleLineupChange('defence', pos as keyof LineupType['defence'], pairIndex, value === 'null-player' ? null : value)}
                                                 >
                                                     <SelectTrigger className="flex-1 h-9">
                                                         <SelectValue placeholder={`Select ${pos.toUpperCase()}`} />
@@ -358,7 +358,7 @@ const Lineup = () => {
                                                                 {p.name} ({p.starRating}★)
                                                             </SelectItem>
                                                         ))}
-                                                        {playerId && <SelectItem value="">(Empty)</SelectItem>}
+                                                        {playerId && <SelectItem value="null-player">(Empty)</SelectItem>}
                                                     </SelectContent>
                                                 </Select>
                                                 {player && (
@@ -386,8 +386,8 @@ const Lineup = () => {
                                 <div className="flex items-center gap-2">
                                     <span className="w-8 text-right text-sm text-muted-foreground">G:</span>
                                     <Select
-                                        value={team.lineup.goalies.starter || ''}
-                                        onValueChange={(value: string) => handleGoalieChange('starter', value || null)}
+                                        value={team.lineup.goalies.starter || 'null-player'}
+                                        onValueChange={(value: string) => handleGoalieChange('starter', value === 'null-player' ? null : value)}
                                     >
                                         <SelectTrigger className="flex-1 h-9">
                                             <SelectValue placeholder="Select Starter" />
@@ -399,7 +399,7 @@ const Lineup = () => {
                                                     {p.name} ({p.starRating}★)
                                                 </SelectItem>
                                             ))}
-                                            {team.lineup.goalies.starter && <SelectItem value="">(Empty)</SelectItem>}
+                                            {team.lineup.goalies.starter && <SelectItem value="null-player">(Empty)</SelectItem>}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -409,8 +409,8 @@ const Lineup = () => {
                                 <div className="flex items-center gap-2">
                                     <span className="w-8 text-right text-sm text-muted-foreground">G:</span>
                                     <Select
-                                        value={team.lineup.goalies.backup || ''}
-                                        onValueChange={(value: string) => handleGoalieChange('backup', value || null)}
+                                        value={team.lineup.goalies.backup || 'null-player'}
+                                        onValueChange={(value: string) => handleGoalieChange('backup', value === 'null-player' ? null : value)}
                                     >
                                         <SelectTrigger className="flex-1 h-9">
                                             <SelectValue placeholder="Select Backup" />
@@ -422,7 +422,7 @@ const Lineup = () => {
                                                     {p.name} ({p.starRating}★)
                                                 </SelectItem>
                                             ))}
-                                            {team.lineup.goalies.backup && <SelectItem value="">(Empty)</SelectItem>}
+                                            {team.lineup.goalies.backup && <SelectItem value="null-player">(Empty)</SelectItem>}
                                         </SelectContent>
                                     </Select>
                                 </div>
