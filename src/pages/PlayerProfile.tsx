@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
-  const { userTeam, developmentHistory, updateTeam } = useTeam();
+  const { userTeam, developmentHistory, updateTeam, teams } = useTeam(); // Destructure 'teams' here
 
   const player = useMemo(() => {
     return userTeam?.roster.find(p => p.id === playerId);
@@ -60,7 +60,8 @@ const PlayerProfile = () => {
             <DialogHeader>
               <DialogTitle>Edit {player.name}</DialogTitle>
             </DialogHeader>
-            <PlayerEditForm player={player} onSave={handleSavePlayer} allUsedJerseyNumbers={allUsedJerseyNumbers} />
+            {/* Fix 1: Convert Set to Array */}
+            <PlayerEditForm player={player} onSave={handleSavePlayer} allUsedJerseyNumbers={Array.from(allUsedJerseyNumbers)} />
           </DialogContent>
         </Dialog>
       </div>
@@ -108,7 +109,8 @@ const PlayerProfile = () => {
         <Card className="mt-2">
           <CardContent className="p-4">
             <TabsContent value="stats">
-              <PlayerHistoryTable history={player.history} currentStats={player.currentStats} />
+              {/* Fix 2: Pass missing props */}
+              <PlayerHistoryTable history={player.history} currentStats={player.currentStats} isSkater={isSkater} teams={teams} />
             </TabsContent>
             <TabsContent value="development">
               <ScrollArea className="h-[400px] w-full">

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Player } from '@/types';
 import { calculateStarRating } from '@/lib/playerGenerator';
 import { useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } => '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { PlayerScoutingReport } from '@/components/player/PlayerScoutingReport';
 
 export const RecruitsTable = () => {
