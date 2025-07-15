@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, SeasonHistory, TeamSeasonHistory } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, SeasonHistory, TeamSeasonHistory, NationalsTournament } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
 import { generateRecruits, generatePlayer, calculateStarRating } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
@@ -259,7 +259,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         try {
             const saved = localStorage.getItem('recruitedPool');
             return saved ? JSON.parse(saved) : [];
-        } catch (error) { return false; } // Fixed: Should return []
+        } catch (error) { return []; }
     });
 
     const [fairHosted, setFairHosted] = useState<boolean>(() => {
@@ -1334,6 +1334,40 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
     };
 
+    const startFacilityProject = (projectId: string) => {
+        if (!userTeam) return;
+        const project = userTeam.facilities.find(p => p.id === projectId);
+        if (!project) return;
+
+        const cost = project.cost;
+        const currentBudget = userTeam.financials.budgetAllocations.Facilities;
+
+        if (currentBudget < cost) {
+            toast.error("Insufficient Facilities Budget", {
+                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+            });
+            return;
+        }
+
+        const newBudgetAllocations = {
+            ...userTeam.financials.budgetAllocations,
+            Facilities: Math.round(currentBudget - cost),
+        };
+
+        const weeks = project.weeksToComplete || 4;
+        const updatedProject: FacilityProject = { ...project, status: 'In Progress', weeksToComplete: weeks, initialWeeksToComplete: weeks };
+        const newFacilities = userTeam.facilities.map(p => p.id === project.id ? updatedProject : p);
+
+        updateTeam({ 
+            ...userTeam, 
+            facilities: newFacilities,
+            financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations }
+        });
+        toast.success(`Started ${project.name}!`, {
+            description: `Cost: £${cost.toLocaleString()}. Remaining budget: £${(currentBudget - cost).toLocaleString()}`,
+        });
+    };
+
     return (
         <TeamContext.Provider
             value={{
@@ -1352,7 +1386,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 discardRecruit,
                 updateBudgetAllocations,
                 runStudentLifeInitiative,
-                startFacilityProject: () => {}, // Placeholder for now
+                startFacilityProject,
                 currentDate,
                 advanceWeek,
                 developmentHistory,

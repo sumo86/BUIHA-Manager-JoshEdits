@@ -13,10 +13,12 @@ import { PlayerScoutingReport } from '@/components/player/PlayerScoutingReport';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMemo } from 'react';
+import { Player } from '@/types';
+import { toast } from 'sonner';
 
 const PlayerProfile = () => {
   const { playerId } = useParams<{ playerId: string }>();
-  const { userTeam, developmentHistory } = useTeam();
+  const { userTeam, developmentHistory, updateTeam } = useTeam();
 
   const player = useMemo(() => {
     return userTeam?.roster.find(p => p.id === playerId);
@@ -25,6 +27,15 @@ const PlayerProfile = () => {
   const playerDevelopmentLogs = useMemo(() => {
     return developmentHistory.filter(log => log.playerId === playerId);
   }, [developmentHistory, playerId]);
+
+  const allUsedJerseyNumbers = useMemo(() => new Set(userTeam?.roster.map(p => p.jerseyNumber)), [userTeam?.roster]);
+
+  const handleSavePlayer = (updatedPlayer: Player) => {
+    if (!userTeam) return;
+    const newRoster = userTeam.roster.map(p => p.id === updatedPlayer.id ? updatedPlayer : p);
+    updateTeam({ ...userTeam, roster: newRoster });
+    toast.success(`${updatedPlayer.name} has been updated.`);
+  };
 
   if (!userTeam || !player) {
     return <div>Player not found.</div>;
@@ -49,7 +60,7 @@ const PlayerProfile = () => {
             <DialogHeader>
               <DialogTitle>Edit {player.name}</DialogTitle>
             </DialogHeader>
-            <PlayerEditForm player={player} />
+            <PlayerEditForm player={player} onSave={handleSavePlayer} allUsedJerseyNumbers={allUsedJerseyNumbers} />
           </DialogContent>
         </Dialog>
       </div>
@@ -97,7 +108,7 @@ const PlayerProfile = () => {
         <Card className="mt-2">
           <CardContent className="p-4">
             <TabsContent value="stats">
-              <PlayerHistoryTable player={player} />
+              <PlayerHistoryTable history={player.history} currentStats={player.currentStats} />
             </TabsContent>
             <TabsContent value="development">
               <ScrollArea className="h-[400px] w-full">
@@ -105,7 +116,7 @@ const PlayerProfile = () => {
               </ScrollArea>
             </TabsContent>
             <TabsContent value="scouting">
-              <PlayerScoutingReport player={player} />
+              <PlayerScoutingReport player={player} team={userTeam} />
             </TabsContent>
           </CardContent>
         </Card>

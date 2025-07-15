@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const Dashboard = () => {
-  const { userTeam, advanceWeek, generateScoutingPool, fairHosted, gameForCurrentWeek, teams, autoSimulateUserNationalsGame } = useTeam();
+  const { userTeam, advanceWeek, generateScoutingPool, fairHosted, gameForCurrentWeek, teams, autoSimulateUserNationalsGame, currentDate } = useTeam();
   const navigate = useNavigate();
 
   if (!userTeam) {
@@ -66,7 +66,7 @@ const Dashboard = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Welcome, {userTeam.name} Manager!</h1>
-          <p className="text-muted-foreground">Current Date: {userTeam.currentDate.month} Week {userTeam.currentDate.week}, {userTeam.currentDate.year}</p>
+          <p className="text-muted-foreground">Current Date: {currentDate.month} Week {currentDate.week}, {currentDate.year}</p>
         </div>
         <Button size="lg" onClick={handleAdvanceWeek}>Advance Week</Button>
       </div>
@@ -92,8 +92,8 @@ const Dashboard = () => {
             {gameForCurrentWeek ? (
               <>
                 <p className="text-lg font-semibold">
-                  {gameForCurrentWeek.homeTeam === userTeam.name ? userTeam.name : gameForCurrentWeek.opponent} vs{' '}
-                  {gameForCurrentWeek.awayTeam === userTeam.name ? userTeam.name : gameForCurrentWeek.opponent}
+                  {typeof gameForCurrentWeek.homeTeam === 'string' ? gameForCurrentWeek.homeTeam : gameForCurrentWeek.opponent} vs{' '}
+                  {typeof gameForCurrentWeek.awayTeam === 'string' ? gameForCurrentWeek.awayTeam : gameForCurrentWeek.opponent}
                 </p>
                 <p className="text-muted-foreground">
                   {gameForCurrentWeek.isNationals ? 'Nationals Game' : 'Regular Season Game'}

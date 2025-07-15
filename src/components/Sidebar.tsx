@@ -10,7 +10,7 @@ import {
 import { useState } from 'react';
 
 const Sidebar = () => {
-  const { userTeam, managedTeams, isManagingOrg, selectTeam, selectOrganization, setActiveTeam } = useTeam();
+  const { userTeam, managedTeams, isManagingOrg, selectTeam, selectOrganization, setActiveTeam, managedOrganization } = useTeam();
   const [isOrgMenuOpen, setIsOrgMenuOpen] = useState(false);
 
   const navItems = [
@@ -41,7 +41,7 @@ const Sidebar = () => {
             {isManagingOrg ? (
               <Collapsible open={isOrgMenuOpen} onOpenChange={setIsOrgMenuOpen}>
                 <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-3 text-left text-sm font-medium text-gray-300 hover:bg-gray-700 rounded-md">
-                  <span>{userTeam.organization}</span>
+                  <span>{managedOrganization}</span>
                   {isOrgMenuOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </CollapsibleTrigger>
                 <CollapsibleContent className="ml-4 mt-1 space-y-1">

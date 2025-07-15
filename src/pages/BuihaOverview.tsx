@@ -67,7 +67,7 @@ const BuihaOverview = () => {
               {sortedSeasonYears.map(year => (
                 <div key={year}>
                   <h3 className="text-xl font-semibold mb-2">Season {year}</h3>
-                  <SeasonHistoryTable data={seasonHistory[year]} />
+                  <SeasonHistoryTable standings={seasonHistory[year]} />
                 </div>
               ))}
             </div>

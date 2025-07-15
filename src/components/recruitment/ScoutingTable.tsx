@@ -46,7 +46,7 @@ export const ScoutingTable = ({ data }: ScoutingTableProps) => {
                   <DialogHeader>
                     <DialogTitle>Scouting Report: {player.name}</DialogTitle>
                   </DialogHeader>
-                  <PlayerScoutingReport player={player} />
+                  <PlayerScoutingReport player={player} team={userTeam} />
                 </DialogContent>
               </Dialog>
               <Button 

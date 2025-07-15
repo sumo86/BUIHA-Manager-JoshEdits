@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
-import { Player } from '@/types';
+import { Player, Position } from '@/types';
 
 const Roster = () => {
   const { userTeam } = useTeam();
@@ -34,7 +34,7 @@ const Roster = () => {
     if (!userTeam) return [];
     return userTeam.roster.filter(player => {
       const matchesSearch = player.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesPosition = positionFilter === 'All' || player.positions.includes(positionFilter);
+      const matchesPosition = positionFilter === 'All' || player.positions.includes(positionFilter as Position);
       const matchesEligibility = eligibilityFilter === 'All' || player.eligibility === eligibilityFilter;
       const matchesHealth = healthFilter === 'All' || player.healthStatus === healthFilter;
       return matchesSearch && matchesPosition && matchesEligibility && matchesHealth;
@@ -113,7 +113,6 @@ const Roster = () => {
           {filteredRoster.map((player: Player) => (
             <TableRow key={player.id}>
               <TableCell>{player.jerseyNumber}</TableCell>
-              <TableCell className="font-medium">{player.name}</TableCell>
               <TableCell>{player.positions.join(', ')}</TableCell>
               <TableCell>{player.age}</TableCell>
               <TableCell>{player.eligibility}</TableCell>

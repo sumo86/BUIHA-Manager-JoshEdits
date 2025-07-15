@@ -30,8 +30,9 @@ export const FacilityProjectCard = ({ project }: FacilityProjectCardProps) => {
       Facilities: Math.round(currentBudget - cost),
     };
 
-    const updatedProject = { ...project, status: 'In Progress', weeksToComplete: project.weeksToComplete || 4 };
-    const newFacilities = [...userTeam.facilities, updatedProject];
+    const weeks = project.weeksToComplete || 4;
+    const updatedProject: FacilityProject = { ...project, status: 'In Progress', weeksToComplete: weeks, initialWeeksToComplete: weeks };
+    const newFacilities = userTeam.facilities.map(p => p.id === project.id ? updatedProject : p);
 
     updateTeam({ 
       ...userTeam, 
@@ -43,7 +44,9 @@ export const FacilityProjectCard = ({ project }: FacilityProjectCardProps) => {
     });
   };
 
-  const progressValue = project.weeksToComplete ? ((project.initialWeeksToComplete - project.weeksToComplete) / project.initialWeeksToComplete) * 100 : 0;
+  const progressValue = (project.status === 'In Progress' && project.initialWeeksToComplete && project.weeksToComplete) 
+    ? ((project.initialWeeksToComplete - project.weeksToComplete) / project.initialWeeksToComplete) * 100 
+    : 0;
 
   return (
     <Card className="flex flex-col h-full">
