@@ -11,11 +11,14 @@ import { calculateTacticSuitability } from '@/lib/tactics';
 import { Star, StarHalf } from 'lucide-react';
 import { useTeam } from '@/context/TeamContext';
 import { toast } from 'sonner';
+import { populateLineup } from '@/lib/lineupUtils';
 
 const getAttributeColorClass = (value: number) => {
     if (value >= 17) return "text-green-700";
     if (value >= 13) return "text-green-500";
-    return "text-yellow-500"; // Default for average
+    if (value >= 9) return "text-yellow-500";
+    if (value >= 5) return "text-orange-500";
+    return "text-red-500";
 };
 
 const renderStars = (rating: number) => {
@@ -25,52 +28,11 @@ const renderStars = (rating: number) => {
     const starClass = "h-4 w-4";
     
     return (
-      <div className="flex">
+      <div className="flex items-center">
         {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} className={`${starClass} text-yellow-400 fill-yellow-400`} />)}
         {halfStar && <StarHalf key="half" className={`${starClass} text-yellow-400 fill-yellow-400`} />}
         {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} className={`${starClass} text-gray-300`} />)}
       </div>
-    );
-};
-
-const PlayerLineupCard = ({ player, onRoleChange, displayName }: { player: Player, onRoleChange: (newRole: string) => void, displayName: string }) => {
-    const getApplicableRoles = (p: Player): Role[] => {
-        if (p.positions.includes('G')) return [];
-        const isF = ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position));
-        const isD = ['LD', 'RD'].some(pos => p.positions.includes(pos as Position));
-        if (isF && isD) return roles;
-        if (isF) return roles.filter(r => r.positions.includes('Forward'));
-        return roles.filter(r => r.positions.includes('Defenceman'));
-    };
-    const applicableRoles = getApplicableRoles(player);
-
-    const cardClasses = `border rounded-lg p-2 text-center w-full ${
-        player.healthStatus === 'Injured' ? 'border-red-500 bg-red-50/50' : 'bg-card'
-    }`;
-
-    return (
-        <div className={cardClasses}>
-            <div className="font-bold text-sm truncate">{displayName}</div>
-            <div className="text-xs text-muted-foreground">#{player.jerseyNumber}</div>
-            <div className="flex justify-center my-1">{renderStars(player.starRating)}</div>
-            <Select value={player.role || ''} onValueChange={onRoleChange}>
-                <SelectTrigger className="h-7 text-xs mt-1">
-                    <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                    {applicableRoles.map(role => (
-                        <SelectItem key={role.name} value={role.name}>
-                            <div className="flex justify-between w-full pr-2 text-xs">
-                                <span>{role.name}</span>
-                                <span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>
-                                    {player.roleSuitability[role.name]}/20
-                                </span>
-                            </div>
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
     );
 };
 
@@ -98,80 +60,17 @@ const Lineup = () => {
         return ids;
     }, [team.lineup]);
 
-    const staffInLineupCount = useMemo(() => {
-        const lineupPlayerIds = [
-            ...Object.values(team.lineup.forwards).flat(),
-            ...Object.values(team.lineup.defence).flat(),
-            team.lineup.goalies.starter,
-            team.lineup.goalies.backup,
-        ].filter((id): id is string => id !== null);
-
-        return lineupPlayerIds.reduce((count, id) => {
-            const player = playerMap.get(id);
-            if (player && player.eligibility === 'Staff') {
-                return count + 1;
-            }
-            return count;
-        }, 0);
-    }, [team.lineup, playerMap]);
-
-    const playerDisplayNames = useMemo(() => {
-        const lineupPlayerIds = Array.from(assignedPlayerIds);
-        const lineupPlayers = lineupPlayerIds.map(id => playerMap.get(id)).filter((p): p is Player => !!p);
-    
-        const surnameCounts = lineupPlayers.reduce((acc, player) => {
-            const surname = player.name.split(' ').pop() || '';
-            acc[surname] = (acc[surname] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-    
-        const displayNames = new Map<string, string>();
-        lineupPlayers.forEach(player => {
-            const surname = player.name.split(' ').pop() || '';
-            if (surnameCounts[surname] > 1) {
-                const initial = player.name.charAt(0);
-                displayNames.set(player.id, `${initial}. ${surname.toUpperCase()}`);
-            } else {
-                displayNames.set(player.id, surname.toUpperCase());
-            }
-        });
-    
-        return displayNames;
-    }, [assignedPlayerIds, playerMap]);
-
-    const getAvailablePlayers = (position: Position, currentSelection: string | null): Player[] => {
-        const skaters = team.roster.filter(p => !p.positions.includes('G'));
-        const goalies = team.roster.filter(p => p.positions.includes('G'));
-        const players = position === 'G' ? goalies : skaters;
-        const staffLimitReached = staffInLineupCount >= 2;
+    const getAvailablePlayers = (isGoalie: boolean, currentSelection: string | null): Player[] => {
+        const players = isGoalie 
+            ? team.roster.filter(p => p.positions.includes('G'))
+            : team.roster.filter(p => !p.positions.includes('G'));
 
         return players
-            .filter(p => {
-                if (assignedPlayerIds.has(p.id) && p.id !== currentSelection) {
-                    return false;
-                }
-                if (p.eligibility === 'Staff' && staffLimitReached && p.id !== currentSelection) {
-                    return false;
-                }
-                return true;
-            })
-            .sort((a, b) => {
-                const aIsNatural = a.positions.includes(position);
-                const bIsNatural = b.positions.includes(position);
-                if (aIsNatural && !bIsNatural) return -1;
-                if (!aIsNatural && bIsNatural) return 1;
-                return b.starRating - a.starRating;
-            });
+            .filter(p => !assignedPlayerIds.has(p.id) || p.id === currentSelection)
+            .sort((a, b) => b.starRating - a.starRating);
     };
 
-    function handleLineupChange(posType: 'forwards', pos: keyof LineupType['forwards'], index: number, playerId: string | null): void;
-    function handleLineupChange(posType: 'defence', pos: keyof LineupType['defence'], index: number, playerId: string | null): void;
-    function handleLineupChange(
-        posType: 'forwards' | 'defence',
-        pos: keyof LineupType['forwards'] | keyof LineupType['defence'],
-        index: number,
-        playerId: string | null
-    ): void {
+    function handleLineupChange(posType: 'forwards' | 'defence', pos: keyof LineupType['forwards'] | keyof LineupType['defence'], index: number, playerId: string | null): void {
         const newLineup = JSON.parse(JSON.stringify(team.lineup)) as LineupType;
         if (posType === 'forwards') {
             newLineup.forwards[pos as keyof LineupType['forwards']][index!] = playerId;
@@ -197,78 +96,18 @@ const Lineup = () => {
     };
 
     const autoFillLines = () => {
-        const healthyRoster = team.roster.filter(p => p.healthStatus === 'Healthy');
-    
-        const forwards = healthyRoster.filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
-        const defencemen = healthyRoster.filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
-        const goalies = healthyRoster.filter(p => p.positions.includes('G')).sort((a, b) => b.starRating - a.starRating);
-    
-        const assigned = new Set<string>();
-        const newForwards: LineupType['forwards'] = {
-            line1: [null, null, null],
-            line2: [null, null, null],
-            line3: [null, null, null],
-            line4: [null, null, null],
-        };
-        const newDefence: LineupType['defence'] = {
-            pair1: [null, null],
-            pair2: [null, null],
-            pair3: [null, null],
-        };
-        const newGoalies: LineupType['goalies'] = {
-            starter: null,
-            backup: null,
-        };
-    
-        // Assign Goalies
-        if (goalies[0]) {
-            newGoalies.starter = goalies[0].id;
-            assigned.add(goalies[0].id);
-        }
-        if (goalies[1]) {
-            newGoalies.backup = goalies[1].id;
-            assigned.add(goalies[1].id);
-        }
-    
-        // Assign Forwards
-        let forwardIndex = 0;
-        for (const lineKey of Object.keys(newForwards) as Array<keyof LineupType['forwards']>) {
-            for (let i = 0; i < newForwards[lineKey].length; i++) {
-                while (forwardIndex < forwards.length && assigned.has(forwards[forwardIndex].id)) {
-                    forwardIndex++;
-                }
-                if (forwardIndex < forwards.length) {
-                    newForwards[lineKey][i] = forwards[forwardIndex].id;
-                    assigned.add(forwards[forwardIndex].id);
-                    forwardIndex++;
-                }
-            }
-        }
-    
-        // Assign Defencemen
-        let defenceIndex = 0;
-        for (const pairKey of Object.keys(newDefence) as Array<keyof LineupType['defence']>) {
-            for (let i = 0; i < newDefence[pairKey].length; i++) {
-                while (defenceIndex < defencemen.length && assigned.has(defencemen[defenceIndex].id)) {
-                    defenceIndex++;
-                }
-                if (defenceIndex < defencemen.length) {
-                    newDefence[pairKey][i] = defencemen[defenceIndex].id;
-                    assigned.add(defencemen[defenceIndex].id);
-                    defenceIndex++;
-                }
-            }
-        }
-    
-        updateTeam({
-            ...team,
-            lineup: {
-                forwards: newForwards,
-                defence: newDefence,
-                goalies: newGoalies,
-            },
-        });
-        toast.success("Lines auto-filled!");
+        const newLineup = populateLineup(team.roster);
+        updateTeam({ ...team, lineup: newLineup });
+        toast.success("Lines auto-filled based on best available players!");
+    };
+
+    const getApplicableRoles = (player: Player): Role[] => {
+        if (player.positions.includes('G')) return [];
+        const isF = ['C', 'LW', 'RW'].some(pos => player.positions.includes(pos as Position));
+        const isD = ['LD', 'RD'].some(pos => player.positions.includes(pos as Position));
+        if (isF && isD) return roles;
+        if (isF) return roles.filter(r => r.positions.includes('Forward'));
+        return roles.filter(r => r.positions.includes('Defenceman'));
     };
 
     if (!team) {
@@ -291,170 +130,141 @@ const Lineup = () => {
                 </TabsList>
 
                 <TabsContent value="lines" className="mt-4">
-                    <Card className="mb-6">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-2xl font-bold">Forwards</CardTitle>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle>Manage Lines</CardTitle>
                             <Button onClick={autoFillLines}>Auto-Fill Lines</Button>
                         </CardHeader>
-                        <CardContent>
-                            {Object.keys(team.lineup.forwards).map((lineKey, lineIndex) => (
-                                <div key={lineKey} className="mb-4">
-                                    <h3 className="text-lg font-semibold mb-2 capitalize">{lineKey.replace('line', 'Line ')}</h3>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        {team.lineup.forwards[lineKey as keyof LineupType['forwards']].map((playerId, playerIndex) => {
-                                            const player = playerId ? playerMap.get(playerId) : null;
-                                            const availablePlayers = getAvailablePlayers('C', playerId); // Using 'C' as a generic forward position for filtering
-                                            return (
-                                                <Select
-                                                    key={`${lineKey}-${playerIndex}`}
-                                                    value={playerId || 'remove'}
-                                                    onValueChange={(newPlayerId) => handleLineupChange('forwards', lineKey as keyof LineupType['forwards'], playerIndex, newPlayerId === 'remove' ? null : newPlayerId)}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select Player">
-                                                            {player ? (
-                                                                <PlayerLineupCard
-                                                                    player={player}
-                                                                    onRoleChange={(newRole) => handleRoleChange(player.id, newRole)}
-                                                                    displayName={playerDisplayNames.get(player.id) || player.name}
-                                                                />
-                                                            ) : 'Empty Slot'}
-                                                        </SelectValue>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {availablePlayers.map(p => (
-                                                            <SelectItem key={p.id} value={p.id}>
-                                                                <div className="flex items-center justify-between w-full">
-                                                                    <span>{p.name} (#{p.jerseyNumber})</span>
-                                                                    {renderStars(p.starRating)}
+                        <CardContent className="space-y-6">
+                            {/* Forwards */}
+                            <div>
+                                <h3 className="text-xl font-semibold mb-2">Forwards</h3>
+                                <div className="space-y-4">
+                                    {Object.entries(team.lineup.forwards).map(([lineKey, players]) => (
+                                        <div key={lineKey} className="p-4 border rounded-lg">
+                                            <h4 className="font-semibold capitalize mb-2">{lineKey.replace('line', 'Line ')}</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                {players.map((playerId, index) => {
+                                                    const player = playerId ? playerMap.get(playerId) : null;
+                                                    const availablePlayers = getAvailablePlayers(false, playerId);
+                                                    const applicableRoles = player ? getApplicableRoles(player) : [];
+                                                    return (
+                                                        <div key={index} className="space-y-2 p-2 bg-muted/50 rounded-md">
+                                                            <Select value={playerId || 'none'} onValueChange={(val) => handleLineupChange('forwards', lineKey as keyof LineupType['forwards'], index, val === 'none' ? null : val)}>
+                                                                <SelectTrigger><SelectValue placeholder="Empty Slot" /></SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="none">Empty Slot</SelectItem>
+                                                                    {player && <SelectItem value={player.id}>{player.name}</SelectItem>}
+                                                                    {availablePlayers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            {player && (
+                                                                <div className="space-y-1 text-xs">
+                                                                    <div className="flex justify-between"><span>{player.positions.join(', ')}</span>{renderStars(player.starRating)}</div>
+                                                                    {applicableRoles.length > 0 && (
+                                                                        <Select value={player.role || ''} onValueChange={(newRole) => handleRoleChange(player.id, newRole)}>
+                                                                            <SelectTrigger className="h-7"><SelectValue placeholder="Select role" /></SelectTrigger>
+                                                                            <SelectContent>
+                                                                                {applicableRoles.map(role => (
+                                                                                    <SelectItem key={role.name} value={role.name}>
+                                                                                        <div className="flex justify-between w-full pr-2">
+                                                                                            <span>{role.name}</span>
+                                                                                            <span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>{player.roleSuitability[role.name]}/20</span>
+                                                                                        </div>
+                                                                                    </SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    )}
                                                                 </div>
-                                                            </SelectItem>
-                                                        ))}
-                                                        {playerId && <SelectItem value="remove">Remove Player</SelectItem>}
-                                                    </SelectContent>
-                                                </Select>
-                                            );
-                                        })}
-                                    </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-
-                    <Card className="mb-6">
-                        <CardHeader>
-                            <CardTitle className="text-2xl font-bold">Defence</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {Object.keys(team.lineup.defence).map((pairKey, pairIndex) => (
-                                <div key={pairKey} className="mb-4">
-                                    <h3 className="text-lg font-semibold mb-2 capitalize">{pairKey.replace('pair', 'Pair ')}</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {team.lineup.defence[pairKey as keyof LineupType['defence']].map((playerId, playerIndex) => {
-                                            const player = playerId ? playerMap.get(playerId) : null;
-                                            const availablePlayers = getAvailablePlayers('LD', playerId); // Using 'LD' as a generic defence position for filtering
-                                            return (
-                                                <Select
-                                                    key={`${pairKey}-${playerIndex}`}
-                                                    value={playerId || 'remove'}
-                                                    onValueChange={(newPlayerId) => handleLineupChange('defence', pairKey as keyof LineupType['defence'], playerIndex, newPlayerId === 'remove' ? null : newPlayerId)}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select Player">
-                                                            {player ? (
-                                                                <PlayerLineupCard
-                                                                    player={player}
-                                                                    onRoleChange={(newRole) => handleRoleChange(player.id, newRole)}
-                                                                    displayName={playerDisplayNames.get(player.id) || player.name}
-                                                                />
-                                                            ) : 'Empty Slot'}
-                                                        </SelectValue>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {availablePlayers.map(p => (
-                                                            <SelectItem key={p.id} value={p.id}>
-                                                                <div className="flex items-center justify-between w-full">
-                                                                    <span>{p.name} (#{p.jerseyNumber})</span>
-                                                                    {renderStars(p.starRating)}
+                            </div>
+                            {/* Defence */}
+                            <div>
+                                <h3 className="text-xl font-semibold mb-2">Defence</h3>
+                                <div className="space-y-4">
+                                    {Object.entries(team.lineup.defence).map(([pairKey, players]) => (
+                                        <div key={pairKey} className="p-4 border rounded-lg">
+                                            <h4 className="font-semibold capitalize mb-2">{pairKey.replace('pair', 'Pair ')}</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {players.map((playerId, index) => {
+                                                    const player = playerId ? playerMap.get(playerId) : null;
+                                                    const availablePlayers = getAvailablePlayers(false, playerId);
+                                                    const applicableRoles = player ? getApplicableRoles(player) : [];
+                                                    return (
+                                                        <div key={index} className="space-y-2 p-2 bg-muted/50 rounded-md">
+                                                            <Select value={playerId || 'none'} onValueChange={(val) => handleLineupChange('defence', pairKey as keyof LineupType['defence'], index, val === 'none' ? null : val)}>
+                                                                <SelectTrigger><SelectValue placeholder="Empty Slot" /></SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="none">Empty Slot</SelectItem>
+                                                                    {player && <SelectItem value={player.id}>{player.name}</SelectItem>}
+                                                                    {availablePlayers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            {player && (
+                                                                <div className="space-y-1 text-xs">
+                                                                    <div className="flex justify-between"><span>{player.positions.join(', ')}</span>{renderStars(player.starRating)}</div>
+                                                                    {applicableRoles.length > 0 && (
+                                                                        <Select value={player.role || ''} onValueChange={(newRole) => handleRoleChange(player.id, newRole)}>
+                                                                            <SelectTrigger className="h-7"><SelectValue placeholder="Select role" /></SelectTrigger>
+                                                                            <SelectContent>
+                                                                                {applicableRoles.map(role => (
+                                                                                    <SelectItem key={role.name} value={role.name}>
+                                                                                        <div className="flex justify-between w-full pr-2">
+                                                                                            <span>{role.name}</span>
+                                                                                            <span className={`font-bold ${getAttributeColorClass(player.roleSuitability[role.name])}`}>{player.roleSuitability[role.name]}/20</span>
+                                                                                        </div>
+                                                                                    </SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    )}
                                                                 </div>
-                                                            </SelectItem>
-                                                        ))}
-                                                        {playerId && <SelectItem value="remove">Remove Player</SelectItem>}
-                                                    </SelectContent>
-                                                </Select>
-                                            );
-                                        })}
-                                    </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-2xl font-bold">Goalies</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-2">Starter</h3>
-                                    <Select
-                                        value={team.lineup.goalies.starter || 'remove'}
-                                        onValueChange={(newPlayerId) => handleGoalieChange('starter', newPlayerId === 'remove' ? null : newPlayerId)}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Starter">
-                                                {team.lineup.goalies.starter ? (
-                                                    <PlayerLineupCard
-                                                        player={playerMap.get(team.lineup.goalies.starter)!}
-                                                        onRoleChange={(newRole) => handleRoleChange(team.lineup.goalies.starter!, newRole)}
-                                                        displayName={playerDisplayNames.get(team.lineup.goalies.starter) || playerMap.get(team.lineup.goalies.starter)!.name}
-                                                    />
-                                                ) : 'Empty Slot'}
-                                            </SelectValue>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {getAvailablePlayers('G', team.lineup.goalies.starter).map(p => (
-                                                <SelectItem key={p.id} value={p.id}>
-                                                    <div className="flex items-center justify-between w-full">
-                                                        <span>{p.name} (#{p.jerseyNumber})</span>
-                                                        {renderStars(p.starRating)}
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                            {team.lineup.goalies.starter && <SelectItem value="remove">Remove Player</SelectItem>}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-2">Backup</h3>
-                                    <Select
-                                        value={team.lineup.goalies.backup || 'remove'}
-                                        onValueChange={(newPlayerId) => handleGoalieChange('backup', newPlayerId === 'remove' ? null : newPlayerId)}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Backup">
-                                                {team.lineup.goalies.backup ? (
-                                                    <PlayerLineupCard
-                                                        player={playerMap.get(team.lineup.goalies.backup)!}
-                                                        onRoleChange={(newRole) => handleRoleChange(team.lineup.goalies.backup!, newRole)}
-                                                        displayName={playerDisplayNames.get(team.lineup.goalies.backup) || playerMap.get(team.lineup.goalies.backup)!.name}
-                                                    />
-                                                ) : 'Empty Slot'}
-                                            </SelectValue>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {getAvailablePlayers('G', team.lineup.goalies.backup).map(p => (
-                                                <SelectItem key={p.id} value={p.id}>
-                                                    <div className="flex items-center justify-between w-full">
-                                                        <span>{p.name} (#{p.jerseyNumber})</span>
-                                                        {renderStars(p.starRating)}
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                            {team.lineup.goalies.backup && <SelectItem value="remove">Remove Player</SelectItem>}
-                                        </SelectContent>
-                                    </Select>
+                            </div>
+                            {/* Goalies */}
+                            <div>
+                                <h3 className="text-xl font-semibold mb-2">Goalies</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {(['starter', 'backup'] as const).map(role => {
+                                        const playerId = team.lineup.goalies[role];
+                                        const player = playerId ? playerMap.get(playerId) : null;
+                                        const availablePlayers = getAvailablePlayers(true, playerId);
+                                        return (
+                                            <div key={role} className="p-4 border rounded-lg">
+                                                <h4 className="font-semibold capitalize mb-2">{role}</h4>
+                                                <div className="space-y-2 p-2 bg-muted/50 rounded-md">
+                                                    <Select value={playerId || 'none'} onValueChange={(val) => handleGoalieChange(role, val === 'none' ? null : val)}>
+                                                        <SelectTrigger><SelectValue placeholder="Empty Slot" /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">Empty Slot</SelectItem>
+                                                            {player && <SelectItem value={player.id}>{player.name}</SelectItem>}
+                                                            {availablePlayers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {player && (
+                                                        <div className="space-y-1 text-xs">
+                                                            <div className="flex justify-between"><span>{player.positions.join(', ')}</span>{renderStars(player.starRating)}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </CardContent>
@@ -464,7 +274,7 @@ const Lineup = () => {
                 <TabsContent value="tactics" className="mt-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-2xl font-bold">Team Tactics</CardTitle>
+                            <CardTitle>Team Tactics</CardTitle>
                             <CardDescription>Choose your team's overall playing style and specific tactics.</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -483,9 +293,7 @@ const Lineup = () => {
                                                             <TooltipTrigger className="text-left w-full">{tactic.tactic}</TooltipTrigger>
                                                             <TooltipContent>
                                                                 <p>{tactic.description}</p>
-                                                                <p className="text-xs text-muted-foreground mt-1">Affects: {tactic.affectedAttributes.join(', ')}</p>
-                                                                <p className="text-xs text-muted-foreground">Best for: {tactic.bestForRoles.join(', ')}</p>
-                                                                <p className="text-xs text-muted-foreground">Suitability: {calculateTacticSuitability(tactic, team.roster).score.toFixed(1)}%</p>
+                                                                <p className="text-xs text-muted-foreground mt-1">Suitability: {calculateTacticSuitability(tactic, team.roster).score.toFixed(1)}/5</p>
                                                             </TooltipContent>
                                                         </Tooltip>
                                                     </TooltipProvider>
