@@ -13,7 +13,7 @@ import { validateLineup } from '@/lib/lineupValidation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const NationalsPage = () => {
-  const { nationalsData, currentDate, userTeam, teams, playNationalsRound, autoSimulateUserNationalsGame, simulateFullNationalsTournament, simulateSingleNationalsGame } = useTeam();
+  const { nationalsData, currentDate, userTeam, teams, playNationalsRound, autoSimulateUserNationalsGame, simulateFullNationalsTournament, simulateSingleNationalsGame, simulateAllNationalsTournaments } = useTeam();
   const [selectedDivision, setSelectedDivision] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -59,6 +59,10 @@ const NationalsPage = () => {
   const handleSimulateFullTournament = () => {
     if (!tournamentToDisplay) return;
     simulateFullNationalsTournament(tournamentToDisplay.division);
+  };
+
+  const handleSimulateAllTournaments = () => {
+    simulateAllNationalsTournaments();
   };
 
   const handleSimulateSingleGame = (gameId: string) => {
@@ -110,6 +114,9 @@ const NationalsPage = () => {
             <div className="flex gap-2">
                 {tournamentToDisplay && tournamentToDisplay.status !== 'completed' && !userHasGameThisRound && (
                     <Button onClick={handleSimulateRound}>Simulate Next Round</Button>
+                )}
+                {tournamentToDisplay && tournamentToDisplay.status !== 'completed' && (
+                    <Button onClick={handleSimulateAllTournaments} variant="outline">Sim All Tournaments</Button>
                 )}
                 {tournamentToDisplay && tournamentToDisplay.status !== 'completed' && (
                     <Button onClick={handleSimulateFullTournament} variant="secondary">Sim Full Tournament</Button>
