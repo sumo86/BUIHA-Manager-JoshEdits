@@ -37,6 +37,7 @@ interface TeamContextType {
     selectTeam: (teamName: string | null) => void;
     scoutingPool: Player[];
     recruitedPool: Player[];
+    transferPool: Player[];
     fairHosted: boolean;
     generateScoutingPool: () => void;
     recruitPlayer: (playerId: string) => void;
@@ -801,6 +802,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         return team;
                     });
 
+                    setTransferPool([]);
+                    setScoutingPool([]);
+                    setRecruitedPool([]);
+                    setFairHosted(false);
+
                     if (newTransferPlayers.length > 0) {
                         for (let i = newTransferPlayers.length - 1; i > 0; i--) {
                             const j = Math.floor(Math.random() * (i + 1));
@@ -837,18 +843,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         }
                         
                         if (userTransfers.length > 0) {
-                            setRecruitedPool(prev => [...prev, ...userTransfers]);
-                            toast.info("Exclusive Transfer Offers", { description: `Your program's prestige has attracted ${userTransfers.length} transfer players. Find them in your Recruits tab.` });
+                            setTransferPool(userTransfers);
+                            toast.info("Exclusive Transfer Offers", { description: `Your program's prestige has attracted ${userTransfers.length} transfer players. Find them in the Transfer Portal tab.` });
                         }
                     }
 
                     if (newAlumni.length > 0) {
                         setAlumni(prev => [...prev, ...newAlumni]);
                     }
-                    setTransferPool([]);
-                    setScoutingPool([]);
-                    setRecruitedPool([]);
-                    setFairHosted(false);
 
                     tempTeams = tempTeams.map(team => {
                         const updatedRoster = team.roster.map(player => {
@@ -1309,9 +1311,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.error("No active team selected.");
             return;
         }
-        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+
+        let playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        let fromPool: 'scouting' | 'transfer' = 'scouting';
+
         if (!playerToRecruit) {
-            toast.error("Player not found in scouting pool.");
+            playerToRecruit = transferPool.find(p => p.id === playerId);
+            fromPool = 'transfer';
+        }
+
+        if (!playerToRecruit) {
+            toast.error("Player not found in scouting or transfer pool.");
             return;
         }
 
@@ -1323,9 +1333,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
 
-        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        if (fromPool === 'scouting') {
+            setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        } else {
+            setTransferPool(prev => prev.filter(p => p.id !== playerId));
+        }
+        
         setRecruitedPool(prev => [...prev, playerToRecruit]);
-        toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been recruited to your team.` });
+        toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been recruited.` });
     };
 
     const assignPlayerToRoster = (playerId: string) => {
@@ -1560,6 +1575,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             selectTeam,
             scoutingPool,
             recruitedPool,
+            transferPool,
             fairHosted,
             generateScoutingPool,
             recruitPlayer,

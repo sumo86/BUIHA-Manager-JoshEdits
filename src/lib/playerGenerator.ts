@@ -335,7 +335,8 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         else { const tier1 = divisionTierStats[1]; targetCurrentAbilityMin = isSkater ? tier1.skater + (tier1.step.skater * 0.25) : tier1.goalie + (tier1.step.goalie * 0.25); targetCurrentAbilityMax = isSkater ? tier1.skater + (tier1.step.skater * 2.0) : tier1.goalie + (tier1.step.goalie * 2.0); }
 
         const targetAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);
-        const player = generatePlayer(usedJerseyNumbers, position, userLeagueDivision, "Unattached", [eligibility], { targetAbility });
+        const randomTeamName = allTeamNames.length > 0 ? getRandomItem(allTeamNames) : "Unattached";
+        const player = generatePlayer(usedJerseyNumbers, position, userLeagueDivision, randomTeamName, [eligibility], { targetAbility });
         
         if (estimatedQuality === 'Beginner') player.recruitmentCost = getRandomValueInRange(75, 150);
         else if (estimatedQuality === 'Moderate') player.recruitmentCost = getRandomValueInRange(150, 300);

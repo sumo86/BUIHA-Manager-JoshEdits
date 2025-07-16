@@ -11,7 +11,7 @@ import { Player, Position } from '@/types';
 const qualityOrder: (Player['estimatedQuality'])[] = ['Beginner', 'Moderate', 'Intermediate', 'Experienced', 'Elite'];
 
 const Recruitment = () => {
-  const { userTeam, scoutingPool, recruitedPool } = useTeam();
+  const { userTeam, scoutingPool, recruitedPool, transferPool } = useTeam();
   const recruitingBudget = userTeam.financials.budgetAllocations.Recruiting;
 
   // Filter state
@@ -19,7 +19,7 @@ const Recruitment = () => {
   const [positionFilter, setPositionFilter] = useState('All');
   const [sourceFilter, setSourceFilter] = useState('All');
 
-  if (scoutingPool.length === 0 && recruitedPool.length === 0) {
+  if (scoutingPool.length === 0 && recruitedPool.length === 0 && transferPool.length === 0) {
     return (
       <div>
         <h1 className="text-3xl font-bold mb-4">Recruitment</h1>
@@ -74,8 +74,9 @@ const Recruitment = () => {
         </Card>
       </div>
       <Tabs defaultValue="scouting" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="scouting">Scouting Pool</TabsTrigger>
+          <TabsTrigger value="transfer">Transfer Portal</TabsTrigger>
           <TabsTrigger value="recruits">Your Recruits</TabsTrigger>
         </TabsList>
         <TabsContent value="scouting" className="mt-4">
@@ -128,6 +129,23 @@ const Recruitment = () => {
                 </CardContent>
               </Card>
               <ScoutingTable data={filteredScoutingPool} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="transfer" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Transfer Portal</CardTitle>
+              <CardDescription>
+                Players who have graduated from other universities and are looking for a new team. Their recruitment cost is free due to your program's prestige.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {transferPool.length > 0 ? (
+                <ScoutingTable data={transferPool} />
+              ) : (
+                <p className="text-muted-foreground text-center py-8">The Transfer Portal is currently empty. Check back at the start of next season.</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
