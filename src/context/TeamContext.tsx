@@ -1400,7 +1400,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const startFacilityProject = (projectId: string) => {
         if (!userTeam) return;
 
-        const project = initialFacilityProjects.find(p => p.id === projectId);
+        const project = initialFacilityProjects.find(p => p.id === projectId) as FacilityProject; // Type assertion here
         if (!project) {
             toast.error("Project not found.");
             return;
@@ -1419,7 +1419,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (managedOrganization) {
                 // If managing an organization, apply to all teams in the organization
                 if (managedTeams.some(mt => mt.name === team.name)) {
-                    const updatedFacilities = team.facilities.map(f => f.id === projectId ? { ...f, status: 'In Progress', weeksToComplete: project.weeksToComplete } : f);
+                    const updatedFacilities = team.facilities.map(f => {
+                        if (f.id === projectId) {
+                            const newFacility: FacilityProject = { // Explicitly type the new object
+                                ...f,
+                                status: 'In Progress' as 'In Progress', // Explicitly assert the literal type
+                                weeksToComplete: project.weeksToComplete
+                            };
+                            return newFacility;
+                        }
+                        return f;
+                    });
                     const updatedAllocations = {
                         ...team.financials.budgetAllocations,
                         Facilities: team.financials.budgetAllocations.Facilities - project.cost / managedTeams.length // Distribute cost
@@ -1429,7 +1439,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
             } else if (team.name === userTeam.name) {
                 // If managing a single team
-                const updatedFacilities = team.facilities.map(f => f.id === projectId ? { ...f, status: 'In Progress', weeksToComplete: project.weeksToComplete } : f);
+                const updatedFacilities = team.facilities.map(f => {
+                    if (f.id === projectId) {
+                        const newFacility: FacilityProject = { // Explicitly type the new object
+                            ...f,
+                            status: 'In Progress' as 'In Progress', // Explicitly assert the literal type
+                            weeksToComplete: project.weeksToComplete
+                        };
+                        return newFacility;
+                    }
+                    return f;
+                });
                 const updatedAllocations = {
                     ...team.financials.budgetAllocations,
                     Facilities: team.financials.budgetAllocations.Facilities - project.cost
