@@ -99,7 +99,11 @@ const Recruitment = () => {
                         <SelectValue placeholder="Filter by quality" />
                       </SelectTrigger>
                       <SelectContent>
-                        {uniqueQualities.map((q: Player['estimatedQuality'] | 'All') => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                        {uniqueQualities.map((q) => (
+                          <SelectItem key={q as string} value={q as string}>
+                            {q}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
