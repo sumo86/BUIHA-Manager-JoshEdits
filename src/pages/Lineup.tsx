@@ -75,7 +75,7 @@ const PlayerLineupCard = ({ player, onRoleChange, displayName }: { player: Playe
 };
 
 const Lineup = () => {
-    const { userTeam: team, updateTeam } = useTeam(); // Changed userTeam to team
+    const { userTeam: team, updateTeam } = useTeam();
 
     if (!team) {
         return <div>Loading...</div>;
@@ -172,659 +172,339 @@ const Lineup = () => {
         } else {
             newLineup.defence[pos as keyof LineupType['defence']][index!] = playerId;
         }
-        updateTeam({ ...<dyad-problem-report summary="155 problems">
-<problem file="src/pages/Lineup.tsx" line="389" column="10" code="17008">JSX element 'Tabs' has no corresponding closing tag.</problem>
-<problem file="src/pages/Lineup.tsx" line="440" column="14" code="17008">JSX element 'TabsContent' has no corresponding closing tag.</problem>
-<problem file="src/pages/Lineup.tsx" line="441" column="18" code="17008">JSX element 'Card' has no corresponding closing tag.</problem>
-<problem file="src/pages/Lineup.tsx" line="503" column="23" code="1003">Identifier expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="504" column="111" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="504" column="354" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="505" column="32" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="505" column="275" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="506" column="25" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="506" column="268" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="510" column="114" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="510" column="224" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="511" column="35" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="511" column="145" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="512" column="19" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="512" column="129" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="539" column="15" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="544" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="571" column="2" code="17008">JSX element 'dyad-write' has no corresponding closing tag.</problem>
-<problem file="src/pages/Lineup.tsx" line="578" column="7" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="580" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="583" column="11" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="587" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="590" column="15" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="634" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="637" column="10" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="668" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="671" column="9" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="686" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="691" column="5" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="700" column="17" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="700" column="44" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="707" column="26" code="1005">',' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="707" column="44" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="719" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="722" column="11" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="723" column="7" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="726" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="728" column="7" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="730" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="732" column="12" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="734" column="3" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="735" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="738" column="7" code="1005">',' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="739" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="744" column="26" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="745" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="748" column="14" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="752" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="755" column="5" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="763" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="766" column="5" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="782" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="785" column="7" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="789" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="792" column="11" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="795" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="798" column="12" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="807" column="23" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="807" column="89" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="810" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="813" column="7" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="816" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="819" column="5" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="824" column="23" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="824" column="51" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="826" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="829" column="11" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="835" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="838" column="8" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="845" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="848" column="8" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="850" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="853" column="13" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="857" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="862" column="13" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="868" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="872" column="11" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="880" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="883" column="7" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="886" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="889" column="5" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="892" column="32" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="892" column="41" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="893" column="32" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="893" column="41" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="895" column="23" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="895" column="51" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="898" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="901" column="11" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="909" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="913" column="11" code="1005">'}' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="922" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="925" column="10" code="1005">',' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="926" column="1" code="1381">Unexpected token. Did you mean `{'}'}` or `&amp;rbrace;`?</problem>
-<problem file="src/pages/Lineup.tsx" line="926" column="3" code="1005">'&lt;/' expected.</problem>
-<problem file="src/pages/Lineup.tsx" line="503" column="23" code="2339">Property 'dyad-problem-report' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="504" column="1" code="2339">Property 'problem' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="504" column="99" code="2304">Cannot find name 'jerseyNumber'.</problem>
-<problem file="src/pages/Lineup.tsx" line="505" column="20" code="2304">Cannot find name 'jerseyNumber'.</problem>
-<problem file="src/pages/Lineup.tsx" line="506" column="13" code="2304">Cannot find name 'jerseyNumber'.</problem>
-<problem file="src/pages/Lineup.tsx" line="508" column="133" code="2339">Property 'problem' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="509" column="1" code="2339">Property 'problem' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="509" column="149" code="2339">Property 'problem' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="510" column="1" code="2339">Property 'problem' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="514" column="125" code="2339">Property 'problem' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="515" column="1" code="2339">Property 'problem' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="515" column="148" code="2339">Property 'problem' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="516" column="1" code="2339">Property 'dyad-problem-report' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="516" column="23" code="2339">Property 'think' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="544" column="2" code="2339">Property 'think' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="544" column="10" code="2339">Property 'dyad-codebase-context' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="544" column="103" code="2339">Property 'dyad-codebase-context' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="544" column="127" code="2339">Property 'think' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="564" column="1" code="2339">Property 'think' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="571" column="1" code="2339">Property 'dyad-write' does not exist on type 'JSX.IntrinsicElements'.</problem>
-<problem file="src/pages/Lineup.tsx" line="578" column="3" code="2304">Cannot find name 'type'.</problem>
-<problem file="src/pages/Lineup.tsx" line="583" column="3" code="2304">Cannot find name 'position'.</problem>
-<problem file="src/pages/Lineup.tsx" line="590" column="3" code="2304">Cannot find name 'acceleration'.</problem>
-<problem file="src/pages/Lineup.tsx" line="637" column="3" code="2304">Cannot find name 'blocker'.</problem>
-<problem file="src/pages/Lineup.tsx" line="671" column="3" code="2304">Cannot find name 'season'.</problem>
-<problem file="src/pages/Lineup.tsx" line="691" column="3" code="2304">Cannot find name 'id'.</problem>
-<problem file="src/pages/Lineup.tsx" line="700" column="13" code="2304">Cannot find name 'type'.</problem>
-<problem file="src/pages/Lineup.tsx" line="707" column="23" code="2304">Cannot find name 'key'.</problem>
-<problem file="src/pages/Lineup.tsx" line="722" column="3" code="2304">Cannot find name 'forwards'.</problem>
-<problem file="src/pages/Lineup.tsx" line="723" column="5" code="2304">Cannot find name 'lw'.</problem>
-<problem file="src/pages/Lineup.tsx" line="728" column="5" code="2304">Cannot find name 'ld'.</problem>
-<problem file="src/pages/Lineup.tsx" line="732" column="5" code="2304">Cannot find name 'starter'.</problem>
-<problem file="src/pages/Lineup.tsx" line="738" column="4" code="2304">Cannot find name 'key'.</problem>
-<problem file="src/pages/Lineup.tsx" line="744" column="4" code="2304">Cannot find name 'key'.</problem>
-<problem file="src/pages/Lineup.tsx" line="744" column="11" code="2304">Cannot find name 'BudgetCategory'.</problem>
-<problem file="src/pages/Lineup.tsx" line="748" column="3" code="2304">Cannot find name 'totalBudget'.</problem>
-<problem file="src/pages/Lineup.tsx" line="755" column="3" code="2304">Cannot find name 'id'.</problem>
-<problem file="src/pages/Lineup.tsx" line="766" column="3" code="2304">Cannot find name 'id'.</problem>
-<problem file="src/pages/Lineup.tsx" line="785" column="3" code="2304">Cannot find name 'time'.</problem>
-<problem file="src/pages/Lineup.tsx" line="792" column="3" code="2304">Cannot find name 'isActive'.</problem>
-<problem file="src/pages/Lineup.tsx" line="798" column="3" code="2304">Cannot find name 'userScore'.</problem>
-<problem file="src/pages/Lineup.tsx" line="807" column="15" code="2304">Cannot find name 'teamName'.</problem>
-<problem file="src/pages/Lineup.tsx" line="813" column="3" code="2304">Cannot find name 'year'.</problem>
-<problem file="src/pages/Lineup.tsx" line="819" column="3" code="2304">Cannot find name 'id'.</problem>
-<problem file="src/pages/Lineup.tsx" line="824" column="14" code="2304">Cannot find name 'homeScore'.</problem>
-<problem file="src/pages/Lineup.tsx" line="829" column="3" code="2304">Cannot find name 'playerId'.</problem>
-<problem file="src/pages/Lineup.tsx" line="838" column="3" code="2304">Cannot find name 'phase'.</problem>
-<problem file="src/pages/Lineup.tsx" line="848" column="3" code="2304">Cannot find name 'score'.</problem>
-<problem file="src/pages/Lineup.tsx" line="853" column="3" code="2304">Cannot find name 'playerName'.</problem>
-<problem file="src/pages/Lineup.tsx" line="862" column="3" code="2304">Cannot find name 'playerName'.</problem>
-<problem file="src/pages/Lineup.tsx" line="872" column="3" code="2304">Cannot find name 'teamName'.</problem>
-<problem file="src/pages/Lineup.tsx" line="889" column="3" code="2304">Cannot find name 'id'.</problem>
-<problem file="src/pages/Lineup.tsx" line="892" column="24" code="2304">Cannot find name 'winnerOf'.</problem>
-<problem file="src/pages/Lineup.tsx" line="893" column="24" code="2304">Cannot find name 'winnerOf'.</problem>
-<problem file="src/pages/Lineup.tsx" line="895" column="14" code="2304">Cannot find name 'homeScore'.</problem>
-<problem file="src/pages/Lineup.tsx" line="901" column="3" code="2304">Cannot find name 'division'.</problem>
-<problem file="src/pages/Lineup.tsx" line="913" column="3" code="2304">Cannot find name 'teamName'.</problem>
-<problem file="src/pages/Lineup.tsx" line="925" column="4" code="2304">Cannot find name 'season'.</problem>
-<problem file="src/App.tsx" line="15" column="8" code="1192">Module '&quot;/Users/drew/dyad-apps/mystical-penguin-jump/src/pages/Lineup&quot;' has no default export.</problem>
-</dyad-problem-report><think>Deciding which files are relevant...
-
-**Analyzing Compilation Failures**
-
-I've zeroed in on the source of the trouble: a swarm of TypeScript errors, mainly in `src/pages/Lineup.tsx`. The compiler's flagging missing closures and syntax glitches. I'm also seeing some issues connected to `dyad-write` and `dyad-problem-`. I'm digging deeper into those files now, hoping to get this resolved promptly.
-
-
-**Debugging JSX Structure**
-
-I'm focusing on `src/pages/Lineup.tsx` as the source of many problems. I need to remove those bogus `dyad` tags that are causing so many compilation failures. Also, I am investigating the missing closing tags, misbalanced curly braces, and undeclared variables. It's a tangled mess, but I'm slowly untangling the JSX, trying to clean up the code and ensure correct syntax.
-
-
-**Tackling Compile-Time Errors**
-
-I'm now methodically addressing the reported 155 errors. Removing the rogue `dyad` tags from `Lineup.tsx` is underway, along with fixing mismatched tags and brace issues. I'm also correcting references to undeclared variables, making sure everything aligns correctly. Next, I will verify the import of `useTeam` and check the `TeamContext.tsx` for the expected exports. The focus remains on syntax corrections to stabilize the build.
-
-
-**Refining Lineup.tsx Cleanup**
-
-I've moved forward with the `Lineup.tsx` file. I've carefully excised all the problematic tags, including the AI-generated ones that were triggering compilation failures. The JSX structure is being fixed, and I'm carefully closing elements that are missing their closing tags. Also, the "Cannot find name" errors are addressed as the scope is restored with correct code. The `handleLineupChange` function's completion is next.
-
-
-**Formulating Error Correction Plan**
-
-I've developed a detailed plan: First, I'll clean up the corrupted `Lineup.tsx`, removing the rogue tags and ensuring correct JSX structure and variable scope, especially within the `handleLineupChange` function. Next, I'll tackle the `useTeam` import/export issues, verifying the context file and correcting import paths. Then, I will look into the errors in `Recruitment.tsx`. The end of `TeamContext.tsx` will also be checked for a missing brace.
-
-
-{
-  "complexity": "high",
-  "relevantFiles": [
-    "src/pages/Lineup.tsx",
-    "src/context/TeamContext.tsx",
-    "src/types/index.ts",
-    "src/pages/Recruitment.tsx",
-    "src/App.tsx",
-    "src/components/Sidebar.tsx",
-    "src/components/Layout.tsx",
-    "src/pages/Dashboard.tsx",
-    "src/pages/Standings.tsx",
-    "src/components/roster/PlayerMovement.tsx",
-    "src/components/roster/JerseyManagement.tsx",
-    "src/pages/Roster.tsx",
-    "src/components/recruitment/ScoutingTable.tsx",
-    "src/components/recruitment/RecruitsTable.tsx",
-    "src/components/finance/BudgetAllocation.tsx",
-    "src/pages/Finances.tsx",
-    "src/components/facilities/FacilityProjectCard.tsx",
-    "src/pages/Facilities.tsx",
-    "src/pages/PlayerProfile.tsx",
-    "src/pages/BuihaOverview.tsx",
-    "src/pages/Game.tsx",
-    "src/pages/PlayGame.tsx",
-    "src/pages/Morale.tsx",
-    "src/pages/SeasonOverview.tsx",
-    "src/pages/Calendar.tsx",
-    "src/pages/Training.tsx",
-    "src/pages/TeamSelection.tsx",
-    "src/pages/TeamHistory.tsx",
-    "src/pages/Nationals.tsx",
-    "src/pages/Alumni.tsx",
-    "src/pages/NationalsGame.tsx"
-  ]
-}</think><dyad-codebase-context files="src/pages/Lineup.tsx,src/context/TeamContext.tsx,src/types/index.ts,src/pages/Recruitment.tsx,src/App.tsx,src/components/Sidebar.tsx,src/components/Layout.tsx,src/pages/Dashboard.tsx,src/pages/Standings.tsx,src/components/roster/PlayerMovement.tsx,src/components/roster/JerseyManagement.tsx,src/pages/Roster.tsx,src/components/recruitment/ScoutingTable.tsx,src/components/recruitment/RecruitsTable.tsx,src/components/finance/BudgetAllocation.tsx,src/pages/Finances.tsx,src/components/facilities/FacilityProjectCard.tsx,src/pages/Facilities.tsx,src/pages/PlayerProfile.tsx,src/pages/BuihaOverview.tsx,src/pages/Game.tsx,src/pages/PlayGame.tsx,src/pages/Morale.tsx,src/pages/SeasonOverview.tsx,src/pages/Calendar.tsx,src/pages/Training.tsx,src/pages/TeamSelection.tsx,src/pages/TeamHistory.tsx,src/pages/Nationals.tsx,src/pages/Alumni.tsx,src/pages/NationalsGame.tsx">Complexity: high</dyad-codebase-context><think>**Deconstructing Errors' Causes**
-
-I'm beginning the analysis by focusing on the `TeamContext.tsx` file, as it seems to be a central source of several errors. My strategy involves identifying the root causes first to address the cascading issues. I'm looking for patterns and commonalities across the errors to quickly narrow down the scope.
-
-
-**Isolating the Primary Issues**
-
-I'm now focusing on pinpointing the root causes. The `TeamContext.tsx` file is critical, with syntax errors and type mismatches being the main culprits. The `useTeam` hook's missing export is a simple fix. I suspect these errors are contributing to issues in `Lineup.tsx` and the missing `buildTimeWeeks` on `FacilityProject`.
-
-
-**Evaluating File Corruption**
-
-I've confirmed the suspicion of file corruption in `src/pages/Lineup.tsx`. The errors are far too numerous and inconsistent to be the result of standard coding issues. I'm prioritizing restoring this file. I'll need to replace its contents with the version provided in the prompt to resolve this. This should resolve many of the errors. Then I can address `TeamContext.tsx` and the missing exports.
-
-
-**Categorizing Error Types**
-
-I'm now classifying the errors to prioritize my fixes. There are clearly four major groups: syntax errors in `TeamContext.tsx`, missing export for `useTeam`, severe corruption in `Lineup.tsx`, and type mismatches across various files. My immediate goal is to address the most critical issues, specifically the file corruption, which is likely cascading. I need to replace the `Lineup.tsx` content first, as a single fix there should resolve dozens of errors.
-
-
-**Devising a Repair Sequence**
-
-I'm formulating a plan to methodically resolve the 155 errors. The strategy involves tackling `TeamContext.tsx` errors first, then `Lineup.tsx` reconstruction based on the provided content. Missing `useTeam` export is an easy fix. Type mismatches across files, particularly those involving `unknown` types, will follow. I will also address the file corruption of `Lineup.tsx` by replacing the contents with the previous correct file.
-
-
-**Implementing Corrections and Refinement**
-
-I'm currently correcting the file corruption in `Lineup.tsx` by replacing its contents with the correct version. I will also add the `export default Lineup` to ensure correct module exports. After this, I'll address the syntax errors in `TeamContext.tsx`, specifically the closing brace, and the missing `export` for the hook. Finally, I'll address the type mismatches, including updating `FacilityProject` to include `buildTimeWeeks`.
-
-
-**Formulating Corrections**
-
-I'm currently focused on implementing the necessary fixes. I'll start by exporting `useTeam` and closing the `TeamContext.tsx` component. Then, I'll apply the fixes within `assignPlayerToRoster` and `startFacilityProject`, while checking the `useState` initializers in the context file. Next, I'll update `FacilityProject` to include `buildTimeWeeks` in `src/types/index.ts`. Finally, I'll fix the corrupted `Lineup.tsx` file using the most recent user provided content.
-
-
-**Implementing Necessary Fixes**
-
-I'm now focused on implementing the solutions. I will add the `export` to the `useTeam` hook and close `TeamContext.tsx`, then address the `useState` initializer, which I've confirmed is correct. I'll also correct the function bodies. Additionally, I'll add `buildTimeWeeks` to `FacilityProject` and reconstruct and export `Lineup.tsx` using the correct user-provided code, and then fix the related export issues.
-
-
-**Revising and Refactoring**
-
-I'm actively refining the implementation plan to ensure a smooth execution, especially for the crucial `Lineup.tsx` file. I will replace this entire file's contents and ensure it has all the closing tags. I'm also confirming the correct order of operations and export statements to resolve dependencies and ensure the code runs correctly. I've added and corrected all of the fixes and I will submit the file for validation.
-
-
-**Analyzing the Implementation Plan**
-
-I'm now prioritizing the implementation and the required fixes, and I will address them in the most efficient order to eliminate the errors, starting with fixing the root problems first. I will replace `Lineup.tsx` entirely. I will also apply the fixes for `TeamContext.tsx`, then address any remaining issues. I am focused on the most efficient order to address these issues.
-
-
-**Analyzing the Current Errors**
-
-I've now analyzed the errors again in detail, and they are far-ranging. I'm currently focusing on rectifying `Lineup.tsx` as a priority, along with `TeamContext.tsx`, to tackle the most significant and pervasive issues. This should eliminate a large number of errors, as well as the fundamental root cause of the problems. Then I'll work on other minor errors.
-
-
-**Addressing the Core Issues**
-
-I'm now focusing on the crucial repairs. I will replace the file contents for `Lineup.tsx`, finish the `TeamContext.tsx` file and add the missing export. Then I'll address the `FacilityProject` type issue, and fix the remaining type errors in `Recruitment.tsx` by correctly casting the `q` to type string in the map function. Finally, I will fix the file corruption of `Lineup.tsx` by replacing the contents with the previous correct file.
-
-
-**Addressing Compilation Issues**
-
-I'm starting the implementation by focusing on critical fixes. First, I'll export `useTeam` and resolve the syntax errors within `TeamContext.tsx`, including the brace issue. Next, I'll fix the `Lineup.tsx` file corruption with a complete rewrite. Then I'll add the `buildTimeWeeks` to `FacilityProject` type, and lastly fix the export issues. This should eliminate the root causes, allowing the code to compile successfully.
-
-
-**Addressing the Remaining Errors**
-
-I've now completed the necessary adjustments. I've added the export, fixed `TeamContext.tsx`'s syntax errors, and reconstructed `Lineup.tsx` with the proper tags, including the missing closing tags. I've incorporated the type changes into `FacilityProject` and corrected type issues within `Recruitment.tsx`. I will submit these files to address the errors.
-
-
-</think>This is quite a cascade of errors! It seems like the main issues stem from a few files with syntax errors and missing exports, which then causes a chain reaction of problems across the application.
-
-I'll fix this by:
-
-1.  **Correcting `src/types/index.ts`**: Adding a missing optional property to a type definition.
-2.  **Fixing `src/context/TeamContext.tsx`**: This file was incomplete. I'll complete the component, fix some type inconsistencies, and most importantly, export the `useTeam` hook, which will resolve the majority of the "module has no exported member" errors.
-3.  **Rebuilding `src/pages/Lineup.tsx`**: This file appears to have been corrupted. I will replace it with a corrected version, ensuring all JSX tags are properly closed and adding the missing default export.
-4.  **Fixing `src/pages/Recruitment.tsx`**: Correcting a minor type issue when filtering scouting results.
-5.  **Updating `src/App.tsx`**: Ensuring the import for the `Lineup` page is correct.
-
-Here are the corrected files:
-
-<dyad-write path="src/types/index.ts" description="Adding the missing `buildTimeWeeks` property to the `FacilityProject` type.">
-```typescript
-export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
-
-export type Instruction = "Encourage" | "Discipline" | "Praise" | "Push Harder" | "Calm Down";
-
-export type ActiveInstruction = {
-  type: Instruction;
-  duration: number; // in game ticks
+        updateTeam({ ...team, lineup: newLineup });
+    }
+
+    const handleGoalieChange = (role: 'starter' | 'backup', playerId: string | null) => {
+        const newLineup = { ...team.lineup };
+        newLineup.goalies[role] = playerId;
+        updateTeam({ ...team, lineup: newLineup });
+    };
+
+    const handleRoleChange = (playerId: string, newRole: string) => {
+        const newRoster = team.roster.map(p => p.id === playerId ? { ...p, role: newRole } : p);
+        updateTeam({ ...team, roster: newRoster });
+    };
+
+    const handleTacticChange = (category: string, tactic: string) => {
+        updateTeam({ ...team, tactics: { ...team.tactics, [category]: tactic } });
+    };
+
+    const autoFillLines = () => {
+        const healthyRoster = team.roster.filter(p => p.healthStatus === 'Healthy');
+    
+        const forwards = healthyRoster.filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
+        const defencemen = healthyRoster.filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
+        const goalies = healthyRoster.filter(p => p.positions.includes('G')).sort((a, b) => b.starRating - a.starRating);
+    
+        const assigned = new Set<string>();
+        let staffCount = 0;
+        const MAX_STAFF = 2;
+    
+        const newLineup: LineupType = {
+            forwards: { lw: [null, null, null], c: [null, null, null], rw: [null, null, null] },
+            defence: { ld: [null, null, null], rd: [null, null, null] },
+            goalies: { starter: null, backup: null }
+        };
+    
+        const findAndAssignPlayer = (playerPool: Player[], position?: Position): string | null => {
+            if (position) {
+                const naturalFit = playerPool.find(p => {
+                    if (assigned.has(p.id)) return false;
+                    if (p.eligibility === 'Staff' && staffCount >= MAX_STAFF) return false;
+                    return p.positions.includes(position);
+                });
+                if (naturalFit) {
+                    assigned.add(naturalFit.id);
+                    if (naturalFit.eligibility === 'Staff') staffCount++;
+                    return naturalFit.id;
+                }
+            }
+    
+            const anyFit = playerPool.find(p => {
+                if (assigned.has(p.id)) return false;
+                if (p.eligibility === 'Staff' && staffCount >= MAX_STAFF) return false;
+                return true;
+            });
+            if (anyFit) {
+                assigned.add(anyFit.id);
+                if (anyFit.eligibility === 'Staff') staffCount++;
+                return anyFit.id;
+            }
+    
+            return null;
+        };
+    
+        for (let i = 0; i < 3; i++) {
+            newLineup.forwards.lw[i] = findAndAssignPlayer(forwards, 'LW');
+            newLineup.forwards.c[i] = findAndAssignPlayer(forwards, 'C');
+            newLineup.forwards.rw[i] = findAndAssignPlayer(forwards, 'RW');
+        }
+    
+        for (let i = 0; i < 3; i++) {
+            newLineup.defence.ld[i] = findAndAssignPlayer(defencemen, 'LD');
+            newLineup.defence.rd[i] = findAndAssignPlayer(defencemen, 'RD');
+        }
+    
+        newLineup.goalies.starter = findAndAssignPlayer(goalies, 'G');
+        newLineup.goalies.backup = findAndAssignPlayer(goalies, 'G');
+    
+        updateTeam({ ...team, lineup: newLineup });
+        toast.success("Lines have been auto-filled with healthy players.");
+    };
+
+    const autoAssignRoles = () => {
+        const newRoster = team.roster.map(p => ({ ...p }));
+        const rosterMap = new Map(newRoster.map(p => [p.id, p]));
+
+        const forwardRoles = roles.filter(r => r.positions.includes('Forward'));
+        const defenceRoles = roles.filter(r => r.positions.includes('Defenceman'));
+
+        const findBestRole = (player: Player, availableRoles: typeof roles): string | null => {
+            if (!player || !player.roleSuitability || availableRoles.length === 0) return null;
+
+            let bestRoleName: string | null = null;
+            let maxSuitability = -1;
+
+            for (const role of availableRoles) {
+                const suitability = player.roleSuitability[role.name] || 0;
+                if (suitability > maxSuitability) {
+                    maxSuitability = suitability;
+                    bestRoleName = role.name;
+                }
+            }
+            return bestRoleName;
+        };
+
+        Object.values(team.lineup.forwards).flat().forEach(playerId => {
+            if (!playerId) return;
+            const player = rosterMap.get(playerId) as Player;
+            if (player) {
+                const bestRole = findBestRole(player, forwardRoles);
+                if (bestRole) player.role = bestRole;
+            }
+        });
+
+        Object.values(team.lineup.defence).flat().forEach(playerId => {
+            if (!playerId) return;
+            const player = rosterMap.get(playerId) as Player;
+            if (player) {
+                const bestRole = findBestRole(player, defenceRoles);
+                if (bestRole) player.role = bestRole;
+            }
+        });
+
+        updateTeam({ ...team, roster: newRoster });
+        toast.success("Player roles have been auto-assigned based on position and suitability.");
+    };
+
+    const autoFillTactics = () => {
+        const newTactics = { ...team.tactics };
+        Object.keys(groupedTactics).forEach(phase => {
+            Object.keys(groupedTactics[phase]).forEach(category => {
+                const bestTactic = groupedTactics[phase][category]
+                    .map(t => ({ tactic: t, suitability: calculateTacticSuitability(t, team.roster) }))
+                    .sort((a, b) => b.suitability.score - a.suitability.score)[0];
+                newTactics[category] = bestTactic.tactic.tactic;
+            });
+        });
+        updateTeam({ ...team, tactics: newTactics });
+    };
+
+    const groupedTactics = useMemo(() => tactics.reduce((acc, t) => {
+        acc[t.phase] = acc[t.phase] || {};
+        acc[t.phase][t.category] = acc[t.phase][t.category] || [];
+        acc[t.phase][t.category].push(t);
+        return acc;
+    }, {} as Record<string, Record<string, typeof tactics>>), []);
+
+    const LineupSlot = ({ posType, pos, index }: { posType: 'forwards' | 'defence' | 'goalies', pos: string, index: number | null }) => {
+        let currentId: string | null;
+        let players: Player[];
+        let onValueChangeHandler: (val: string | null) => void;
+        let placeholderText: string;
+        let positionForFilter: Position;
+
+        if (posType === 'forwards') {
+            const typedPos = pos as keyof LineupType['forwards'];
+            currentId = team.lineup.forwards[typedPos][index!];
+            onValueChangeHandler = (val: string) => handleLineupChange('forwards', typedPos, index!, val === 'empty' ? null : val);
+            positionForFilter = pos.toUpperCase() as Position;
+            placeholderText = `Select ${pos.toUpperCase()}`;
+        } else if (posType === 'defence') {
+            const typedPos = pos as keyof LineupType['defence'];
+            currentId = team.lineup.defence[typedPos][index!];
+            onValueChangeHandler = (val: string) => handleLineupChange('defence', typedPos, index!, val === 'empty' ? null : val);
+            positionForFilter = pos.toUpperCase() as Position;
+            placeholderText = `Select ${pos.toUpperCase()}`;
+        } else { // goalies
+            const typedPos = pos as keyof LineupType['goalies'];
+            currentId = team.lineup.goalies[typedPos];
+            onValueChangeHandler = (val: string) => handleGoalieChange(typedPos, val === 'empty' ? null : val);
+            positionForFilter = 'G';
+            placeholderText = `Select ${pos.toUpperCase()}`;
+        }
+
+        players = getAvailablePlayers(positionForFilter, currentId);
+        const player = currentId ? playerMap.get(currentId) as Player : undefined;
+
+        if (player) {
+            return (
+                <div className="flex flex-col items-center gap-1">
+                    <PlayerLineupCard 
+                        player={player} 
+                        onRoleChange={(newRole) => handleRoleChange(player.id, newRole)} 
+                        displayName={playerDisplayNames.get(player.id) || player.name.split(' ').pop()?.toUpperCase() || ''}
+                    />
+                    <Button variant="link" className="h-auto p-0 text-xs" onClick={() => onValueChangeHandler(null)}>Remove</Button>
+                </div>
+            );
+        }
+
+        return (
+            <Select value={currentId || 'empty'} onValueChange={(val: string) => onValueChangeHandler(val)}>
+                <SelectTrigger className="w-full h-full min-h-[118px] bg-muted/50 border-dashed">
+                    <SelectValue placeholder={placeholderText} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="empty">Empty</SelectItem>
+                    {players.map((p: Player) => (
+                        <SelectItem key={p.id} value={p.id}>
+                            {p.name} ({p.positions.join(', ')}) - {p.starRating}⭐ {p.eligibility === 'Staff' && '(Staff)'}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        );
+    };
+
+    const LineRow = ({ title, children }: { title: string, children: React.ReactNode }) => (
+        <div className="grid grid-cols-4 items-start gap-4 py-2 border-b">
+            <div className="font-semibold text-muted-foreground pt-2">{title}</div>
+            <div className="col-span-3">{children}</div>
+        </div>
+    );
+
+    return (
+        <Tabs defaultValue="lineup" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="lineup">Lineup</TabsTrigger>
+                <TabsTrigger value="tactics">Tactics</TabsTrigger>
+            </TabsList>
+            <TabsContent value="lineup">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle>Set Your Lines</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <Button onClick={autoAssignRoles} variant="outline">Auto-Assign Roles</Button>
+                                <Button onClick={autoFillLines}>Auto-Fill Lines</Button>
+                            </div>
+                        </div>
+                        <CardDescription>
+                            You can have a maximum of 2 staff members in your lineup. Currently: {staffInLineupCount}/2
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Forwards</h3>
+                            {[...Array(3)].map((_, i) => (
+                                <LineRow key={i} title={`Line ${i + 1}`}>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <LineupSlot posType="forwards" pos="lw" index={i} />
+                                        <LineupSlot posType="forwards" pos="c" index={i} />
+                                        <LineupSlot posType="forwards" pos="rw" index={i} />
+                                    </div>
+                                </LineRow>
+                            ))}
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Defence</h3>
+                            {[...Array(3)].map((_, i) => (
+                                <LineRow key={i} title={`Pairing ${i + 1}`}>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <LineupSlot posType="defence" pos="ld" index={i} />
+                                        <LineupSlot posType="defence" pos="rd" index={i} />
+                                    </div>
+                                </LineRow>
+                            ))}
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Goalies</h3>
+                            <LineRow title="Starter"><LineupSlot posType="goalies" pos="starter" index={null} /></LineRow>
+                            <LineRow title="Backup"><LineupSlot posType="goalies" pos="backup" index={null} /></LineRow>
+                        </div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="tactics">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle>Set Your Tactics</CardTitle>
+                            <Button onClick={autoFillTactics}>Auto-Fill Tactics</Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {Object.entries(groupedTactics).map(([phase, categories]) => (
+                            <div key={phase}>
+                                <h3 className="text-lg font-semibold mb-2">{phase}</h3>
+                                <div className="space-y-4">
+                                    {Object.entries(categories).map(([category, categoryTactics]) => {
+                                        const selectedTactic = categoryTactics.find(t => t.tactic === team.tactics[category]);
+                                        const suitability = selectedTactic ? calculateTacticSuitability(selectedTactic, team.roster) : { score: 0, explanation: '' };
+                                        return (
+                                            <div key={category} className="grid grid-cols-3 items-center gap-4">
+                                                <label className="font-semibold">{category}</label>
+                                                <div className="col-span-2">
+                                                    <Select value={team.tactics[category]} onValueChange={(val: string) => handleTacticChange(category, val)}>
+                                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {categoryTactics.map(t => {
+                                                                const tacticSuitability = calculateTacticSuitability(t, team.roster);
+                                                                const scaledScore = tacticSuitability.score * 4; // Scale 1-5 to 4-20
+                                                                return (
+                                                                    <SelectItem key={t.tactic} value={t.tactic}>
+                                                                        <div className="flex justify-between w-full items-center pr-2">
+                                                                            <span>{t.tactic}</span>
+                                                                            <span className="text-muted-foreground text-sm">
+                                                                                Suitability: {scaledScore}/20
+                                                                            </span>
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                );
+                                                            })}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {selectedTactic && (
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className="flex items-center gap-2 mt-2">
+                                                                        {renderStars(suitability.score)}
+                                                                        <p className="text-xs text-muted-foreground">Suitability</p>
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="bottom" className="max-w-xs">
+                                                                    <p className="font-bold mb-1">{selectedTactic.tactic}</p>
+                                                                    <p className="text-sm text-muted-foreground mb-2">{suitability.explanation}</p>
+                                                                    <p className="text-xs"><span className="font-semibold">Description:</span> {selectedTactic.description}</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
+    );
 };
 
-export type PlayerArchetype = {
-  position: 'Defenceman' | 'Centre' | 'Winger' | 'Goaltender';
-  type: string;
-  physicality: string;
-  description: string;
-};
-
-export type SkaterAttributes = {
-  acceleration: number;
-  agility: number;
-  balance: number;
-  fighting: number;
-  speed: number;
-  stamina: number;
-  strength: number;
-  hitting: number;
-  aggression: number;
-  bravery: number;
-  determination: number;
-  leadership: number;
-  professionalism: number;
-  teamPlayer: number;
-  temperament: number;
-  gettingOpen: number;
-  offensiveRead: number;
-  passing: number;
-  puckhandling: number;
-  screening: number;
-  shootingAccuracy: number;
-  shootingRange: number;
-  checking: number;
-  defensiveRead: number;
-  faceoffs: number;
-  positioning: number;
-  shotBlocking: number;
-  stickchecking: number;
-  aging: number;
-  ambition: number;
-  bigGames: number;
-  coachability: number;
-  controversy: number;
-  developmentRate: number;
-  greed: number;
-  handleFailure: number;
-  handleSuccess: number;
-  handleCritics: number;
-  injuryProneness: number;
-  intelligence: number;
-  loyalty: number;
-  mood: number;
-  sportsmanship: number;
-  passShootTendency: number;
-};
-
-export type GoalieAttributes = {
-  blocker: number;
-  glove: number;
-  lowShots: number;
-  positioning: number;
-  rebound: number;
-  recovery: number;
-  reflexes: number;
-  passing: number;
-  pokeCheck: number;
-  puckhandling: number;
-  skating: number;
-  mentalToughness: number;
-  goaltenderStamina: number;
-  aging: number;
-  ambition: number;
-  bigGames: number;
-  coachability: number;
-  controversy: number;
-  developmentRate: number;
-  greed: number;
-  handleFailure: number;
-  handleSuccess: number;
-  handleCritics: number;
-  injuryProneness: number;
-  intelligence: number;
-  loyalty: number;
-  mood: number;
-  sportsmanship: number;
-  professionalism: number;
-  determination: number;
-  leadership: number;
-};
-
-export type PlayerSeasonStats = {
-  season: string;
-  team: string;
-  league: string;
-  gamesPlayed: number;
-  goals?: number;
-  assists?: number;
-  points?: number;
-  penaltyMinutes?: number;
-  captaincy?: 'C' | 'A' | null;
-  goalsAgainst?: number;
-  shotsAgainst?: number;
-  saves?: number;
-  goalsAgainstAverage?: number;
-  savePercentage?: number;
-  shutouts?: number;
-};
-
-export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
-
-export type Player = {
-  id: string;
-  jerseyNumber: number;
-  name: string;
-  age: number;
-  nationality: string;
-  positions: Position[];
-  starRating: number;
-  morale: "Content" | "Happy" | "Unhappy" | "Angry";
-  healthStatus: "Healthy" | "Injured" | "Suspended";
-  injury: { type: string; duration: number } | null;
-  eligibility: "UG Year 1" | "UG Year 2" | "UG Year 3" | "UG Year 4" | "Masters" | "PhD" | "Staff";
-  archetype: PlayerArchetype;
-  attributes: SkaterAttributes | GoalieAttributes;
-  currentAbility: number;
-  potentialAbility: number;
-  role: string | undefined;
-  roleSuitability: { [key: string]: number };
-  captaincy: 'C' | 'A' | null;
-  yearsLeftInProgram?: number;
-  history: PlayerSeasonStats[];
-  trainingFocus: TrainingFocus;
-  currentStats: PlayerSeasonStats[];
-  activeInstructions: ActiveInstruction[];
-  source?: 'Local' | 'International' | 'Transfer';
-  estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
-  recruitmentCost?: number;
-  alumniStatus?: 'Retired' | 'Active Elsewhere';
-  isContinuingEducation?: boolean;
-};
-
-export type Lineup = {
-  forwards: {
-    lw: (string | null)[];
-    c: (string | null)[];
-    rw: (string | null)[];
-  };
-  defence: {
-    ld: (string | null)[];
-    rd: (string | null)[];
-  };
-  goalies: {
-    starter: string | null;
-    backup: string | null;
-  };
-};
-
-export type TacticsSelection = {
-  [key: string]: string;
-};
-
-export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities";
-
-export type BudgetAllocations = {
-  [key in BudgetCategory]: number;
-};
-
-export type Financials = {
-  totalBudget: number;
-  iceTimeCostPerGame: number;
-  equipmentCost: number;
-  budgetAllocations: BudgetAllocations;
-};
-
-export type FacilityProject = {
-  id: string;
-  name: string;
-  description: string;
-  cost: number;
-  status: 'Not Started' | 'In Progress' | 'Completed';
-  benefit: string;
-  weeksToComplete?: number;
-  buildTimeWeeks?: number;
-};
-
-export type Team = {
-  id: string;
-  name: string;
-  logo: string;
-  leagueDivision: string;
-  nationalsDivision: string;
-  roster: Player[];
-  wins: number;
-  losses: number;
-  draws: number;
-  points: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  lineup: Lineup;
-  tactics: TacticsSelection;
-  financials: Financials;
-  facilities: FacilityProject[];
-};
-
-export type GameEvent = {
-  time: string;
-  period: number;
-  team: string;
-  description: string;
-};
-
-export type PowerPlayState = {
-  isActive: boolean;
-  teamOnPowerPlay: string | null;
-  timeLeft: number; // in game ticks
-};
-
-export type GameState = {
-  userScore: number;
-  opponentScore: number;
-  userShots: number;
-  opponentShots: number;
-  period: number;
-  time: number;
-  gameLog: GameEvent[];
-  isGameOver: boolean;
-  isPaused: boolean;
-  injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
-  possessionHolder: string | null;
-  powerPlayState: PowerPlayState;
-};
-
-export type GameDate = {
-  year: number;
-  month: string;
-  week: number;
-};
-
-export type ScheduleEntry = {
-  id: string;
-  homeTeam: string;
-  awayTeam: string;
-  date: GameDate;
-  status: 'scheduled' | 'completed';
-  result?: { homeScore: number; awayScore: number };
-  round?: number;
-};
-
-export type DevelopmentLog = {
-  playerId: string;
-  playerName: string;
-  attribute: string;
-  change: number;
-  newRating: number;
-  date: GameDate;
-};
-
-export type Tactic = {
-  phase: string;
-  category: string;
-  tactic: string;
-  description: string;
-  bestUsedWith: string;
-  strongVs: string;
-  weakVs: string;
-};
-
-export type TacticSuitability = {
-  score: number;
-  explanation: string;
-};
-
-export type TeamRecord = {
-  playerName: string;
-  teamName: string;
-  value: number;
-  season?: string;
-};
-
-export type RecordCategory = 'Goals' | 'Assists' | 'Points' | 'PenaltyMinutes' | 'GAA' | 'SavePercentage' | 'Shutouts';
-
-export type LegacyRecord = {
-  playerName: string;
-  teamName: string;
-  category: RecordCategory;
-  type: 'season' | 'career';
-  value: number;
-  season?: string;
-};
-
-// Nationals Types
-export type NationalsStanding = {
-  teamName: string;
-  played: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  points: number;
-};
-
-export type NationalsGroup = {
-  name: string; // e.g., "Group A"
-  teams: string[]; // team names
-  standings: NationalsStanding[];
-};
-
-export type NationalsPlayoffMatch = {
-  id: string;
-  round: 'Quarter-Final' | 'Semi-Final' | 'Final' | 'Preliminary';
-  bracket: 'Gold' | 'Silver';
-  homeTeam: string | { winnerOf: string };
-  awayTeam: string | { winnerOf: string };
-  winner?: string;
-  result?: { homeScore: number; awayScore: number };
-  status: 'scheduled' | 'completed';
-  date: GameDate;
-};
-
-export type NationalsTournament = {
-  division: string;
-  year: number;
-  groups: NationalsGroup[];
-  groupStageSchedule: ScheduleEntry[];
-  playoffSchedule: NationalsPlayoffMatch[];
-  status: 'pending' | 'group-stage' | 'silver-playoffs' | 'gold-playoffs' | 'completed';
-  winner?: string;
-  currentRound: number | 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final';
-};
-
-// History Types
-export type TeamSeasonHistory = {
-  teamName: string;
-  leagueDivision: string;
-  nationalsDivision: string;
-  wins: number;
-  losses: number;
-  draws: number;
-  points: number;
-  goalsFor: number;
-  goalsAgainst: number;
-};
-
-export type SeasonHistory = {
-  [season: string]: TeamSeasonHistory[];
-};
+export default Lineup;

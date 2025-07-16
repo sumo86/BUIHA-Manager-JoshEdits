@@ -1459,6 +1459,49 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setNationalsData(tempNationalsData);
     };
 
+    const autoSimulateUserNationalsGame = (division: string, gameId: string) => {
+        if (!userTeam) return;
+        const tournament = nationalsData[currentDate.year]?.[division];
+        if (!tournament) return;
+
+        const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
+        const gameToSim = allGames.find(g => g.id === gameId);
+
+        if (!gameToSim) {
+            toast.error("Game not found.");
+            return;
+        }
+
+        const homeTeam = teams.find(t => t.name === gameToSim.homeTeam);
+        const awayTeam = teams.find(t => t.name === gameToSim.awayTeam);
+
+        if (!homeTeam || !awayTeam) {
+            toast.error("One or both teams not found for simulation.");
+            return;
+        }
+
+        const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+        const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+
+        setTeams(currentTeams =>
+            currentTeams.map(t => {
+                if (t.name === updatedHomeTeam.name) return updatedHomeTeam;
+                if (t.name === updatedAwayTeam.name) return updatedAwayTeam;
+                return t;
+            })
+        );
+
+        const completedGame = {
+            gameId: gameId,
+            homeScore: finalGameState.userScore,
+            awayScore: finalGameState.opponentScore,
+            homeTeamName: homeTeam.name,
+            awayTeamName: awayTeam.name,
+        };
+        playNationalsRound(division, completedGame);
+        toast.info("Nationals game auto-simulated.", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
+    };
+
     const simulateFullNationalsTournament = (division: string) => {
         let tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
         const tournament = tempNationalsData[currentDate.year]?.[division];
@@ -1566,8 +1609,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         tournament.winner = finalMatch?.winner;
                     }
                 } else {
-                    const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Final' : 'Semi-Final', 'Semi-Final': 'Final' };
-                    currentRound = nextRoundMap[currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
+                    const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Financials': 'Semi-Final', 'Semi-Final': 'Final' };
+                    currentRound = nextRoundMap[currentRound as 'Preliminary' | 'Quarter-Financials' | 'Semi-Final'];
                     tournament.currentRound = currentRound;
                 }
                 continue;
