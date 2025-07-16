@@ -94,7 +94,7 @@ const Recruitment = () => {
                 <CardContent className="grid sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="quality-filter">Est. Quality</Label>
-                    <Select value={qualityFilter} onValueChange={setQualityFilter}>
+                    <Select value={qualityFilter} onValueChange={(value) => setQualityFilter(value)}>
                       <SelectTrigger id="quality-filter">
                         <SelectValue placeholder="Filter by quality" />
                       </SelectTrigger>
@@ -105,7 +105,7 @@ const Recruitment = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="position-filter">Position</Label>
-                    <Select value={positionFilter} onValueChange={setPositionFilter}>
+                    <Select value={positionFilter} onValueChange={(value) => setPositionFilter(value)}>
                       <SelectTrigger id="position-filter">
                         <SelectValue placeholder="Filter by position" />
                       </SelectTrigger>
@@ -116,7 +116,7 @@ const Recruitment = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="source-filter">Source</Label>
-                    <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <Select value={sourceFilter} onValueChange={(value) => setSourceFilter(value)}>
                       <SelectTrigger id="source-filter">
                         <SelectValue placeholder="Filter by source" />
                       </SelectTrigger>

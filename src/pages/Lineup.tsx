@@ -53,7 +53,7 @@ const PlayerLineupCard = ({ player, onRoleChange, displayName }: { player: Playe
             <div className="font-bold text-sm truncate">{displayName}</div>
             <div className="text-xs text-muted-foreground">#{player.jerseyNumber}</div>
             <div className="flex justify-center my-1">{renderStars(player.starRating)}</div>
-            <Select value={player.role || ''} onValueChange={onRoleChange}>
+            <Select value={player.role || ''} onValueChange={(value) => onRoleChange(value)}>
                 <SelectTrigger className="h-7 text-xs mt-1">
                     <SelectValue placeholder="Select role" />
                 </SelectTrigger>
@@ -452,7 +452,7 @@ const Lineup = () => {
                                             <div key={category} className="grid grid-cols-3 items-center gap-4">
                                                 <label className="font-semibold">{category}</label>
                                                 <div className="col-span-2">
-                                                    <Select value={team.tactics[category]} onValueChange={val => handleTacticChange(category, val)}>
+                                                    <Select value={team.tactics[category]} onValueChange={(val: string) => handleTacticChange(category, val)}>
                                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                                         <SelectContent>
                                                             {categoryTactics.map(t => {
