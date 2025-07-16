@@ -94,22 +94,18 @@ const Recruitment = () => {
                 <CardContent className="grid sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="quality-filter">Est. Quality</Label>
-                    <Select value={qualityFilter} onValueChange={(value) => setQualityFilter(value)}>
+                    <Select value={qualityFilter} onValueChange={setQualityFilter}>
                       <SelectTrigger id="quality-filter">
                         <SelectValue placeholder="Filter by quality" />
                       </SelectTrigger>
                       <SelectContent>
-                        {uniqueQualities.map((q) => (
-                          <SelectItem key={q as string} value={q as string}>
-                            {q}
-                          </SelectItem>
-                        ))}
+                        {uniqueQualities.map((q: Player['estimatedQuality'] | 'All') => <SelectItem key={q} value={q}>{q}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="position-filter">Position</Label>
-                    <Select value={positionFilter} onValueChange={(value) => setPositionFilter(value)}>
+                    <Select value={positionFilter} onValueChange={setPositionFilter}>
                       <SelectTrigger id="position-filter">
                         <SelectValue placeholder="Filter by position" />
                       </SelectTrigger>
@@ -120,7 +116,7 @@ const Recruitment = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="source-filter">Source</Label>
-                    <Select value={sourceFilter} onValueChange={(value) => setSourceFilter(value)}>
+                    <Select value={sourceFilter} onValueChange={setSourceFilter}>
                       <SelectTrigger id="source-filter">
                         <SelectValue placeholder="Filter by source" />
                       </SelectTrigger>
