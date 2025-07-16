@@ -350,7 +350,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 if (userGame) {
                     const opponentName = (typeof userGame.homeTeam === 'string' && userGame.homeTeam === userTeam.name)
                         ? (typeof userGame.awayTeam === 'string' ? userGame.awayTeam : 'TBD')
-                        : (typeof userGame.homeTeam === 'string' ? userGame.homeTeam : 'TBD'); // Corrected: userGame.homeTeam instead of userTeam.homeTeam
+                        : (typeof userGame.homeTeam === 'string' ? userGame.homeTeam : 'TBD');
                     
                     return {
                         id: userGame.id,
@@ -500,10 +500,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 const finalGameState = simulateFullGame(homeTeam, awayTeam, isBigGame);
 
-                if (userTeam) { // Corrected: use userTeam
+                if (userTeam) {
                     finalGameState.injuries.forEach(injury => {
-                        if (injury.teamName === userTeam.name) { // Corrected: use userTeam
-                            const injuredPlayer = userTeam.roster.find(p => p.id === injury.playerId); // Corrected: use userTeam
+                        if (injury.teamName === userTeam.name) {
+                            const injuredPlayer = userTeam.roster.find(p => p.id === injury.playerId);
                             if (injuredPlayer) {
                                 toast.warning("Player Injured!", { description: `${injuredPlayer.name} was injured during the game. (${injury.injuryType}, out for ${injury.duration} weeks)` });
                             }
@@ -516,7 +516,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 tempTeams[awayTeamIndex] = updatedAwayTeam;
                 updateGameRecords(updatedHomeTeam, updatedAwayTeam);
 
-                if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) { // Corrected: use userTeam
+                if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
                     toast.info("Game Auto-Simulated", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
                 }
             });
@@ -525,7 +525,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         tempTeams = tempTeams.map(team => {
             let newRoster = [...team.roster];
             let newFacilities = [...team.facilities];
-            const isUserManagedTeam = team.name === userTeam?.name || managedTeamNames.includes(team.name); // Corrected: use userTeam
+            const isUserManagedTeam = team.name === userTeam?.name || managedTeamNames.includes(team.name);
 
             newRoster = newRoster.map(player => {
                 let playerChanged = false;
@@ -555,7 +555,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }
 
                     if (player.injury.duration <= 0) {
-                        if (team.name === userTeam?.name) toast.success("Player Recovered", { description: `${player.name} has recovered from their injury.` }); // Corrected: use userTeam
+                        if (team.name === userTeam?.name) toast.success("Player Recovered", { description: `${player.name} has recovered from their injury.` });
                         player.injury = null;
                         player.healthStatus = 'Healthy';
                     }
@@ -633,10 +633,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     project.weeksToComplete -= 1;
                     if (project.weeksToComplete <= 0) {
                         project.status = 'Completed';
-                        if (team.name === userTeam?.name) toast.info("Facility Project Completed", { description: `${project.name} is now complete.` }); // Corrected: use userTeam
+                        if (team.name === userTeam?.name) toast.info("Facility Project Completed", { description: `${project.name} is now complete.` });
                         if (project.id === 'locker_room_1') {
                             newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
-                            if (team.name === userTeam?.name) toast.success("Morale Boost!", { description: "The new locker room has boosted team morale." }); // Corrected: use userTeam
+                            if (team.name === userTeam?.name) toast.success("Morale Boost!", { description: "The new locker room has boosted team morale." });
                         }
                     }
                 }
@@ -836,6 +836,64 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     player.jerseyNumber = newJerseyNumber;
                                     const isSkater = player.positions[0] !== 'G';
                                     player.starRating = calculateStarRating(player.currentAbility, isSkater, teamToUpdate.leagueDivision);
+                                    teamToUpdate.roster.push(player);
+                                    tempTeams[teamToUpdateIndex] = teamToUpdate;
+                                }
+                            });
+                            toast.info("Off-Season Transfers", { description: "AI teams have signed players from the transfer market." });
+                        }
+                        
+                        if (userTransfers.length > 0) {
+                            setRecruitedPool(prev => [...prev, ...userTransfers]);
+                            toast.info("Exclusive Transfer Offers", { description: `Your program's prestige has attracted ${userTransfers.length} transfer players. Find them in your Recruits tab.` });
+                        }
+                    }
+
+                    if (newAlumni.length > 0) {
+                        setAlumni(prev => [...prev, ...newAlumni]);
+                    }
+                    setTransferPool([]);
+                    setScoutingPool([]);
+                    setRecruitedPool([]);
+                    setFairHosted(false);
+
+                    // AI Recruitment Logic
+                    const allOrgs = getTeamOrganizations();
+                    const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
+                    const allTeamNames = tempTeams.map(t => t.name);
+                    let recruitmentOccurred = false;
+
+                    aiOrgs.forEach(org => {
+                        const orgTeamNames = org.teams.map(t => t.name);
+                        const orgTeams = tempTeams.filter(t => orgTeamNames.includes(t.name));
+                        if (orgTeams.length === 0) return;
+
+                        const targetRosterSize = orgTeams.length * 21; // Standard roster size
+                        const currentRosterSize = orgTeams.reduce((sum, team) => sum + team.roster.length, 0);
+                        const playersToRecruitCount = Math.max(0, targetRosterSize - currentRosterSize);
+
+                        if (playersToRecruitCount > 0) {
+                            recruitmentOccurred = true;
+                            const primaryTeam = orgTeams.sort((a, b) => a.name.localeCompare(b.name))[0];
+                            const prospects = generateRecruits(primaryTeam.leagueDivision, allTeamNames, playersToRecruitCount * 2);
+                            
+                            prospects.sort((a, b) => b.potentialAbility - a.potentialAbility);
+                            const newRecruits = prospects.slice(0, playersToRecruitCount);
+
+                            const lowestTierTeamName = orgTeams.sort((a, b) => b.name.localeCompare(b.name))[0].name;
+                            const lowestTierTeamIndex = tempTeams.findIndex(t => t.name === lowestTierTeamName);
+
+                            if (lowestTierTeamIndex !== -1) {
+                                const teamToUpdate = tempTeams[lowestTierTeamIndex];
+                                const usedJerseyNumbers = new Set(teamToUpdate.roster.map(p => p.jerseyNumber));
+                                
+                                newRecruits.forEach(recruit => {
+                                    let newJerseyNumber = 1;
+                                    while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
+                                    recruit.jerseyNumber = newJerseyNumber;
+                                    usedJerseyNumbers.add(newJerseyNumber);
+                                    const isSkater = recruit.positions[0] !== 'G';
+                                    recruit.starRating = calculateStarRating(recruit.currentAbility, isSkater, teamToUpdate.leagueDivision);
                                 });
 
                                 teamToUpdate.roster.push(...newRecruits);
