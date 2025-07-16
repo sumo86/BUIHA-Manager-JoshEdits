@@ -15,7 +15,7 @@ const StandingsPage = () => {
   }, [teams]);
 
   const { displayedTeams, leaguePlayers } = useMemo(() => {
-    const leagueToDisplay = selectedLeague || leagues[0];
+    const leagueToDisplay = selectedLeague || (leagues.length > 0 ? leagues[0] : null);
     if (!leagueToDisplay) return { displayedTeams: [], leaguePlayers: [] };
 
     const filteredTeams = teams.filter(team => team.leagueDivision === leagueToDisplay);

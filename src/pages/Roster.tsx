@@ -42,6 +42,10 @@ const Roster = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [viewMode, setViewMode] = useState<'attributes' | 'stats'>('attributes');
 
+  if (!team) {
+    return <div>Loading team data...</div>;
+  }
+
   const roleTypeColors: { [key: string]: string } = {
     Offensive: 'bg-red-500',
     Defensive: 'bg-yellow-500',

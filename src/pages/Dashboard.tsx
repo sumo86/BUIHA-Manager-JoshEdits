@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 const Dashboard = () => {
   const { userTeam, generateScoutingPool, scoutingPool, recruitedPool, fairHosted } = useTeam();
 
+  if (!userTeam) {
+    return <div>Loading team data...</div>;
+  }
+
   const handleHostFair = () => {
     generateScoutingPool();
   };

@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 const Training = () => {
   const { userTeam, currentDate, developmentHistory, updatePlayerTrainingFocus, autoAssignTrainingFocuses } = useTeam();
 
+  if (!userTeam) {
+    return <div>Loading team data...</div>;
+  }
+
   const handleAutoAssign = () => {
     autoAssignTrainingFocuses();
   };
