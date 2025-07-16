@@ -187,6 +187,7 @@ export type FacilityProject = {
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
   weeksToComplete?: number;
+  buildTimeWeeks?: number;
 };
 
 export type Team = {

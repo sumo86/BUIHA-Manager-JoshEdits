@@ -840,7 +840,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     tempTeams[teamToUpdateIndex] = teamToUpdate;
                                 }
                             });
-                            toast.info("Off-Season Transfers", { description: "AI teams have signed players from the transfer market." });
+                            toast.info("AI teams have recruited new players for the upcoming season.");
                         }
                         
                         if (userTransfers.length > 0) {
@@ -1005,13 +1005,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             newJerseyNumber++;
         }
 
-        const assignedPlayer: Player = { // Explicitly type assignedPlayer as Player
+        const assignedPlayer: Player = { 
             ...playerToAssign,
             jerseyNumber: newJerseyNumber,
             currentStats: [], // Reset current season stats for new players
             history: playerToAssign.history || [], // Ensure history is initialized
             morale: 'Content', // Default morale for new players
-            trainingFocus: 'General', // Default training focus
+            trainingFocus: null, // Default training focus changed from 'General' to null
             role: null, // No role assigned initially
             captaincy: null, // No captaincy initially
             isContinuingEducation: false, // Not continuing education by default
@@ -1088,9 +1088,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         };
         updateBudgetAllocations(newAllocations);
 
-        const updatedProject: FacilityProject = { // Explicitly type updatedProject as FacilityProject
+        const updatedProject: FacilityProject = { 
             ...projectToStart,
-            status: 'In Progress', // Explicitly cast to literal type
+            status: 'In Progress',
             weeksToComplete: projectToStart.buildTimeWeeks,
         };
         const updatedFacilities = userTeam.facilities.map(f => f.id === projectId ? updatedProject : f);
@@ -1457,49 +1457,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         setTeams(tempTeams);
         setNationalsData(tempNationalsData);
-    };
-
-    const autoSimulateUserNationalsGame = (division: string, gameId: string) => {
-        if (!userTeam) return;
-        const tournament = nationalsData[currentDate.year]?.[division];
-        if (!tournament) return;
-
-        const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
-        const gameToSim = allGames.find(g => g.id === gameId);
-
-        if (!gameToSim) {
-            toast.error("Game not found.");
-            return;
-        }
-
-        const homeTeam = teams.find(t => t.name === gameToSim.homeTeam);
-        const awayTeam = teams.find(t => t.name === gameToSim.awayTeam);
-
-        if (!homeTeam || !awayTeam) {
-            toast.error("One or both teams not found for simulation.");
-            return;
-        }
-
-        const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-        const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
-
-        setTeams(currentTeams =>
-            currentTeams.map(t => {
-                if (t.name === updatedHomeTeam.name) return updatedHomeTeam;
-                if (t.name === updatedAwayTeam.name) return updatedAwayTeam;
-                return t;
-            })
-        );
-
-        const completedGame = {
-            gameId: gameId,
-            homeScore: finalGameState.userScore,
-            awayScore: finalGameState.opponentScore,
-            homeTeamName: homeTeam.name,
-            awayTeamName: awayTeam.name,
-        };
-        playNationalsRound(division, completedGame);
-        toast.info("Nationals game auto-simulated.", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
     };
 
     const simulateFullNationalsTournament = (division: string) => {
