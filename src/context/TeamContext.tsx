@@ -413,6 +413,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const STAFF_RETIREMENT_CHANCE_PER_YEAR_INCREASE = 0.08; // 8% increase per year after min age
 
     const advanceWeek = () => {
+        console.log("advanceWeek called. Current Date:", currentDate); // Added log
         if (gameForCurrentWeek && userTeam) {
             const validationError = validateLineup(userTeam);
             if (validationError) {
