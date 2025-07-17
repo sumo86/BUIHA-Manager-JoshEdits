@@ -10,6 +10,7 @@ import { ArrowUpDown, Star, StarHalf } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeasonHistoryTable } from '@/components/buiha/SeasonHistoryTable';
+import NationalsHistoryView from '@/components/buiha/NationalsHistoryView';
 
 type PlayerWithTeamInfo = Player & {
   teamName: string;
@@ -169,12 +170,13 @@ const PlayerOverview = () => {
 };
 
 const SeasonsHistory = () => {
-  const { seasonHistory } = useTeam();
+  const { seasonHistory, nationalsData } = useTeam();
   const [selectedSeason, setSelectedSeason] = useState<string>('');
 
   const availableSeasons = useMemo(() => {
-    return Object.keys(seasonHistory).sort((a, b) => b.localeCompare(a));
-  }, [seasonHistory]);
+    const seasons = new Set([...Object.keys(seasonHistory), ...Object.keys(nationalsData).map(year => `${parseInt(year) - 1}-${year}`)]);
+    return Array.from(seasons).sort((a, b) => b.localeCompare(a));
+  }, [seasonHistory, nationalsData]);
 
   useMemo(() => {
     if (availableSeasons.length > 0 && !selectedSeason) {
@@ -185,6 +187,12 @@ const SeasonsHistory = () => {
   const standingsForSelectedSeason = useMemo(() => {
     return seasonHistory[selectedSeason] || [];
   }, [seasonHistory, selectedSeason]);
+
+  const nationalsForSelectedSeason = useMemo(() => {
+    if (!selectedSeason) return null;
+    const year = parseInt(selectedSeason.split('-')[1], 10);
+    return nationalsData[year] || null;
+  }, [nationalsData, selectedSeason]);
 
   return (
     <div className="space-y-4">
@@ -198,11 +206,23 @@ const SeasonsHistory = () => {
           ))}
         </SelectContent>
       </Select>
-      {standingsForSelectedSeason.length > 0 ? (
-        <SeasonHistoryTable standings={standingsForSelectedSeason} />
-      ) : (
-        <p>No historical data for the selected season.</p>
-      )}
+      
+      <Tabs defaultValue="league" className="pt-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="league">League History</TabsTrigger>
+          <TabsTrigger value="nationals">Nationals History</TabsTrigger>
+        </TabsList>
+        <TabsContent value="league" className="pt-4">
+          {standingsForSelectedSeason.length > 0 ? (
+            <SeasonHistoryTable standings={standingsForSelectedSeason} />
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No league history available for the selected season.</p>
+          )}
+        </TabsContent>
+        <TabsContent value="nationals" className="pt-4">
+          <NationalsHistoryView nationalsDataForYear={nationalsForSelectedSeason} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
