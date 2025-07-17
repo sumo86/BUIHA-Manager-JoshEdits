@@ -21,9 +21,7 @@ const StandingsPage = () => {
     const filteredTeams = teams.filter(team => team.leagueDivision === leagueToDisplay);
 
     const sortedTeams = [...filteredTeams].sort((a, b) => {
-      const pointsA = a.wins * 3 + a.draws;
-      const pointsB = b.wins * 3 + b.draws;
-      if (pointsB !== pointsA) return pointsB - pointsA;
+      if (b.points !== a.points) return b.points - a.points;
       
       const goalDiffA = a.goalsFor - a.goalsAgainst;
       const goalDiffB = b.goalsFor - b.goalsAgainst;
@@ -77,7 +75,6 @@ const StandingsPage = () => {
         </TableHeader>
         <TableBody>
           {displayedTeams.map((team, index) => {
-            const points = team.wins * 3 + team.draws;
             const goalDifference = team.goalsFor - team.goalsAgainst;
             const gamesPlayed = team.wins + team.losses + team.draws;
             return (
@@ -91,7 +88,7 @@ const StandingsPage = () => {
                 <TableCell className="text-center">{team.goalsFor}</TableCell>
                 <TableCell className="text-center">{team.goalsAgainst}</TableCell>
                 <TableCell className="text-center">{goalDifference}</TableCell>
-                <TableCell className="text-right font-bold">{points}</TableCell>
+                <TableCell className="text-right font-bold">{team.points}</TableCell>
               </TableRow>
             );
           })}

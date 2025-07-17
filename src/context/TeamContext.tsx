@@ -209,7 +209,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const organizationFacilities = useMemo((): FacilityProject[] | null => {
         if (!managedOrganization || managedTeams.length === 0) {
-            return null; // Explicitly return null here
+            return null;
         }
         const uniqueFacilities = managedTeams.reduce((acc, team) => {
             team.facilities.forEach(project => {
@@ -234,23 +234,49 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const selectTeam = (teamName: string | null) => {
         if (teamName) {
-            const team = teams.find(t => t.name === teamName);
-            if (team) {
-                const orgName = getOrganizationName(team.name);
-                localStorage.setItem('activeTeamName', teamName);
-                localStorage.setItem('managedOrganization', orgName);
-                localStorage.setItem('isManagingOrg', 'false');
-                setActiveTeamName(teamName);
-                setManagedOrganization(orgName);
-                setIsManagingOrg(false);
-            }
-        } else {
-            localStorage.removeItem('activeTeamName');
-            localStorage.removeItem('managedOrganization');
-            localStorage.removeItem('isManagingOrg');
-            setActiveTeamName(null);
-            setManagedOrganization(null);
+            // Reset the game state for a new game
+            const startDate: GameDate = { month: 'August', week: 1, year: new Date().getFullYear() };
+            const freshTeams = initialTeams.map(team => ({
+                ...team,
+                roster: team.roster.map(player => ({
+                    ...player,
+                    currentStats: [{
+                        season: `${startDate.year}-${startDate.year + 1}`,
+                        team: team.name,
+                        league: team.leagueDivision,
+                        gamesPlayed: 0,
+                    }]
+                }))
+            }));
+
+            setTeams(freshTeams);
+            setScoutingPool([]);
+            setRecruitedPool([]);
+            setFairHosted(false);
+            setTransferPool([]);
+            setCurrentDate(startDate);
+            setDevelopmentHistory([]);
+            setNationalsData({});
+            setSeasonRecords({});
+            setCareerRecords({});
+            setAlumni([]);
+            setSeasonHistory({});
+
+            const newSchedule = generateSeasonSchedule(freshTeams, startDate);
+            setSchedule(newSchedule);
+            
+            // Now set the selected team
+            const orgName = getOrganizationName(teamName);
+            localStorage.setItem('activeTeamName', teamName);
+            localStorage.setItem('managedOrganization', orgName);
+            localStorage.setItem('isManagingOrg', 'false');
+            setActiveTeamName(teamName);
+            setManagedOrganization(orgName);
             setIsManagingOrg(false);
+
+            toast.info("New Game Started", { description: `The ${startDate.year}-${startDate.year + 1} season is ready to begin.` });
+        } else {
+            exitToMainMenu();
         }
     };
 
@@ -259,6 +285,38 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const organizations = getTeamOrganizations();
             const org = organizations.find(o => o.name === orgName);
             if (org && org.teams.length > 0) {
+                // Reset the game state for a new game
+                const startDate: GameDate = { month: 'August', week: 1, year: new Date().getFullYear() };
+                const freshTeams = initialTeams.map(team => ({
+                    ...team,
+                    roster: team.roster.map(player => ({
+                        ...player,
+                        currentStats: [{
+                            season: `${startDate.year}-${startDate.year + 1}`,
+                            team: team.name,
+                            league: team.leagueDivision,
+                            gamesPlayed: 0,
+                        }]
+                    }))
+                }));
+
+                setTeams(freshTeams);
+                setScoutingPool([]);
+                setRecruitedPool([]);
+                setFairHosted(false);
+                setTransferPool([]);
+                setCurrentDate(startDate);
+                setDevelopmentHistory([]);
+                setNationalsData({});
+                setSeasonRecords({});
+                setCareerRecords({});
+                setAlumni([]);
+                setSeasonHistory({});
+
+                const newSchedule = generateSeasonSchedule(freshTeams, startDate);
+                setSchedule(newSchedule);
+
+                // Now set the selected organization and active team
                 const mainTeam = org.teams[0];
                 localStorage.setItem('managedOrganization', orgName);
                 localStorage.setItem('activeTeamName', mainTeam.name);
@@ -266,14 +324,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 setManagedOrganization(orgName);
                 setActiveTeamName(mainTeam.name);
                 setIsManagingOrg(true);
+
+                toast.info("New Game Started", { description: `The ${startDate.year}-${startDate.year + 1} season is ready to begin.` });
             }
         } else {
-            localStorage.removeItem('managedOrganization');
-            localStorage.removeItem('activeTeamName');
-            localStorage.removeItem('isManagingOrg');
-            setManagedOrganization(null);
-            setActiveTeamName(null);
-            setIsManagingOrg(false);
+            exitToMainMenu();
         }
     };
 
@@ -407,13 +462,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         );
     };
 
-    // Constants for staff retirement logic
-    const STAFF_RETIREMENT_MIN_AGE = 36; // Changed from 25 to 36
-    const STAFF_RETIREMENT_MAX_AGE = 37;
-    const STAFF_RETIREMENT_CHANCE_PER_YEAR_INCREASE = 0.08; // 8% increase per year after min age
-
     const advanceWeek = () => {
-        console.log("advanceWeek called. Current Date:", currentDate); // Added log
         if (gameForCurrentWeek && userTeam) {
             const validationError = validateLineup(userTeam);
             if (validationError) {
@@ -426,7 +475,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         let tempTeams = JSON.parse(JSON.stringify(teams)) as Team[];
         
-        const allOrganizations = getTeamOrganizations(); // Renamed to avoid conflict with 'allOrgs' later
+        const allOrganizations = getTeamOrganizations();
         const aiOrgs = allOrganizations.filter(org => org.name !== managedOrganization);
 
         aiOrgs.forEach(org => {
@@ -443,7 +492,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
         });
 
-        let tempSchedule = JSON.parse(JSON.stringify(schedule)) as ScheduleEntry[];
         let newDevelopmentLogs: DevelopmentLog[] = [];
         const managedTeamNames = managedTeams.map(t => t.name);
 
@@ -553,80 +601,66 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             let newFacilities = [...team.facilities];
             const isUserManagedTeam = team.name === userTeam?.name || managedTeamNames.includes(team.name);
 
-            // --- NEW FACILITY BENEFIT LOGIC ---
-            // 1. Weekly Income
             let weeklyIncome = 0;
             const hasMerchKiosk = team.facilities.some(f => f.id === 'merch_store_1' && f.status === 'Completed');
             const hasSocialMedia = team.facilities.some(f => f.id === 'social_media_1' && f.status === 'Completed');
 
             if (hasMerchKiosk) {
-                let merchIncome = 25; // Base income adjusted to £25
+                let merchIncome = 25;
                 if (hasSocialMedia) {
-                    merchIncome *= 1.2; // Social media boosts merch sales by 20%
+                    merchIncome *= 1.2;
                 }
                 weeklyIncome += merchIncome;
             }
             if (hasSocialMedia) {
-                weeklyIncome += 50; // Base income from social media itself
+                weeklyIncome += 50;
             }
 
             if (weeklyIncome > 0) {
-                team.financials.totalBudget += Math.round(weeklyIncome); // Add to unallocated funds
+                team.financials.totalBudget += Math.round(weeklyIncome);
             }
 
-            // 2. Development Boost Modifiers
             const hasGym = team.facilities.some(f => f.id === 'training_gym_1' && f.status === 'Completed');
             const hasVideoRoom = team.facilities.some(f => f.id === 'video_room_1' && f.status === 'Completed');
             const physicalAttrs: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'speed', 'stamina', 'strength', 'hitting'];
             const mentalAttrs: (keyof SkaterAttributes)[] = ['aggression', 'bravery', 'determination', 'leadership', 'teamPlayer', 'gettingOpen', 'offensiveRead', 'defensiveRead', 'positioning'];
-            // --- END NEW FACILITY BENEFIT LOGIC ---
 
             newRoster = newRoster.map(player => {
-                let playerChanged = false;
-                const isSkater = !player.positions.includes('G');
-
-                // Apply injury recovery
                 if (player.healthStatus === 'Injured' && player.injury) {
                     player.injury.duration--;
-                    // Physiotherapy Office benefit
                     if (team.facilities.some(f => f.id === 'physio_office_1' && f.status === 'Completed')) {
-                        player.injury.duration--; // Reduce by an additional week
+                        player.injury.duration--;
                     }
                     if (player.injury.duration <= 0) {
                         player.healthStatus = 'Healthy';
                         player.injury = null;
                         toast.info("Player Recovered!", { description: `${player.name} has recovered from injury.` });
                     }
-                    playerChanged = true;
                 }
 
-                // Player development
                 if (player.potentialAbility > player.currentAbility) {
                     const paGap = player.potentialAbility - player.currentAbility;
-                    const devRate = player.attributes.developmentRate || 1; // Default to 1 if not set
-                    const coachability = player.attributes.coachability || 10; // Default to 10 if not set
-                    const professionalism = player.attributes.professionalism || 10; // Default to 10 if not set
+                    const devRate = player.attributes.developmentRate || 1;
+                    const coachability = player.attributes.coachability || 10;
+                    const professionalism = player.attributes.professionalism || 10;
 
-                    const baseDevChance = 0.05 * (devRate / 20); // Base chance, scaled by devRate (max 20)
-                    const paBonus = paGap > 0 ? Math.min(0.1, paGap / 100) : 0; // Max 10% bonus for PA gap
-                    const workEthicBonus = (professionalism - 10) / 100; // Scale professionalism (1-20) to -0.09 to 0.1
+                    const baseDevChance = 0.05 * (devRate / 20);
+                    const paBonus = paGap > 0 ? Math.min(0.1, paGap / 100) : 0;
+                    const workEthicBonus = (professionalism - 10) / 100;
                     const coachabilityBonus = (coachability - 10) / 100;
                     const devChance = baseDevChance + paBonus + workEthicBonus + coachabilityBonus;
 
                     if (Math.random() < devChance) {
                         let attributesToDevelop: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
 
-                        // Safeguard: Ensure trainingFocusesMap[player.trainingFocus] is an array
                         if (player.trainingFocus && trainingFocusesMap[player.trainingFocus]) {
                             attributesToDevelop = trainingFocusesMap[player.trainingFocus] as (keyof SkaterAttributes | keyof GoalieAttributes)[];
                         } else {
-                            // If no focus or invalid focus, pick a random numeric attribute
                             const allAttrs = Object.keys(player.attributes) as (keyof SkaterAttributes | keyof GoalieAttributes)[];
                             const numericAttrs = allAttrs.filter(attr => typeof player.attributes[attr] === 'number');
                             if (numericAttrs.length > 0) {
                                 attributesToDevelop = [getRandomItem(numericAttrs)];
                             } else {
-                                // Fallback if no numeric attributes found (shouldn't happen with current types)
                                 console.warn(`Player ${player.name} has no numeric attributes for development.`);
                                 attributesToDevelop = [];
                             }
@@ -641,18 +675,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 else if ((player as Player).morale === 'Unhappy') moraleModifier = 0.5;
                                 let improvement = ((Math.random() * 0.2) + (devRate / 100)) * moraleModifier;
 
-                                // --- APPLY DEV BOOST ---
                                 if (hasGym && physicalAttrs.includes(attrToImprove as any)) {
-                                    improvement *= 1.15; // 15% boost for physical attributes
+                                    improvement *= 1.15;
                                 }
                                 if (hasVideoRoom && mentalAttrs.includes(attrToImprove as any)) {
-                                    improvement *= 1.15; // 15% boost for mental attributes
+                                    improvement *= 1.15;
                                 }
-                                // --- END APPLY DEV BOOST ---
 
                                 const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                 (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
-                                playerChanged = true;
                                 newDevelopmentLogs.push({
                                     playerId: player.id,
                                     playerName: player.name,
@@ -667,16 +698,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
                 return player;
             });
-            team.roster = newRoster; // Update team roster with modified players
+            team.roster = newRoster;
 
-            // Check for facility project completion
             newFacilities = newFacilities.map(project => {
                 if (project.status === 'In Progress' && project.weeksToComplete !== undefined && project.weeksToComplete > 0) {
                     project.weeksToComplete--;
                     if (project.weeksToComplete <= 0) {
                         project.status = 'Completed';
                         toast.success("Facility Completed!", { description: `${project.name} is now operational!` });
-                        // Apply one-time benefits here if any
                         if (project.id === 'locker_room_1') {
                             team.roster = team.roster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
                             toast.info("Team Morale Boost!", { description: "Locker Room Refurbishment improved team morale!" });
@@ -687,28 +716,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             });
             team.facilities = newFacilities;
 
-            // Staff retirement logic (if applicable)
-            // ... (existing staff retirement logic if any)
-
             return team;
         });
 
         setDevelopmentHistory(prev => [...prev, ...newDevelopmentLogs]);
 
-        // Advance date
-        let nextMonthIndex = months.indexOf(currentDate.month) + 1;
+        let nextMonthIndex = months.indexOf(currentDate.month);
         let nextWeek = currentDate.week + 1;
         let nextMonth = currentDate.month;
         let nextYear = currentDate.year;
 
-        if (nextWeek > 4) { // Assuming 4 weeks per month
+        if (nextWeek > 4) {
             nextWeek = 1;
+            nextMonthIndex++;
             if (nextMonthIndex >= months.length) {
-                nextMonthIndex = 0; // Reset to August
+                nextMonthIndex = 0;
                 nextYear++;
-                // End of season processing
                 tempTeams = tempTeams.map(team => {
-                    // Handle graduating players
                     const graduatingPlayers = team.roster.filter(p => p.eligibility === 'UG Year 4' || p.eligibility === 'Masters' || p.eligibility === 'PhD');
                     const remainingPlayers = team.roster.filter(p => p.eligibility !== 'UG Year 4' && p.eligibility !== 'Masters' && p.eligibility !== 'PhD');
 
@@ -717,11 +741,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             player.history.push(...player.currentStats);
                             player.currentStats = [];
                         }
-                        // Decide if player continues education or becomes alumni
-                        if (Math.random() < 0.3) { // 30% chance to continue education
+                        if (Math.random() < 0.3) {
                             player.isContinuingEducation = true;
                             player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
-                            remainingPlayers.push(player); // Keep in roster
+                            remainingPlayers.push(player);
                         } else {
                             setAlumni(prev => [...prev, { ...player, alumniStatus: 'Retired' }]);
                         }
@@ -729,61 +752,51 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     team.roster = remainingPlayers;
 
-                    // --- REVISED BUDGET LOGIC START ---
-                    // Calculate bonus income from end-of-year facilities
                     let facilityBonusIncome = 0;
                     if (team.facilities.some(f => f.id === 'rink_ads_1' && f.status === 'Completed')) {
-                        facilityBonusIncome += 5000; // Lump sum from ads
+                        facilityBonusIncome += 5000;
                     }
                     if (team.facilities.some(f => f.id === 'team_bus_1' && f.status === 'Completed')) {
-                        const travelCostPerSeason = 13 * 200; // 13 away games * £200 (example base travel cost)
-                        facilityBonusIncome += travelCostPerSeason * 0.25; // 25% rebate
+                        const travelCostPerSeason = 13 * 200;
+                        facilityBonusIncome += travelCostPerSeason * 0.25;
                     }
 
                     const orgName = getOrganizationName(team.name);
                     const organization = allOrganizations.find(org => org.name === orgName);
 
-                    let newBaseBudget = 15000; // Default for single-team orgs
+                    let newBaseBudget = 15000;
                     if (organization && organization.teams.length > 1) {
-                        // Replicate the multi-team organization budget calculation
                         const orgTotalBudget = 10000 + (organization.teams.length * 7500);
                         newBaseBudget = orgTotalBudget / organization.teams.length;
                     }
 
-                    // The new totalBudget (unallocated funds) is the new base budget + facility bonus income
-                    // The allocated pots are reset to 0 at the start of a new season
                     const resetAllocations = { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations;
 
                     return {
                         ...team,
-                        roster: team.roster, // Already updated above
+                        roster: team.roster,
                         financials: {
                             ...team.financials,
-                            totalBudget: Math.round(newBaseBudget + facilityBonusIncome), // New unallocated funds
-                            budgetAllocations: resetAllocations, // Reset pots
+                            totalBudget: Math.round(newBaseBudget + facilityBonusIncome),
+                            budgetAllocations: resetAllocations,
                         },
-                        wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 // existing reset
+                        wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0
                     };
                 });
 
                 setTransferPool([]);
-                setScoutingPool([]); // Clear scouting pool at end of season
-                setRecruitedPool([]); // Clear recruited pool at end of season
-                setFairHosted(false); // Reset fair hosted status
+                setScoutingPool([]);
+                setRecruitedPool([]);
+                setFairHosted(false);
 
-                // Generate new schedule for the next season
                 console.log("Attempting to generate schedule for next year:", nextYear, "with", tempTeams.length, "teams.");
                 const newSchedule = generateSeasonSchedule(tempTeams, { month: 'August', week: 1, year: nextYear });
                 setSchedule(newSchedule);
                 console.log("Schedule generated:", newSchedule.length, "games.");
 
-                // Generate new recruits for the next season
                 generateScoutingPool();
-
-                // Reset season records
                 setSeasonRecords({});
 
-                // Save season history
                 setSeasonHistory(prev => ({
                     ...prev,
                     [currentYear]: tempTeams.map(t => ({
@@ -813,9 +826,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.error("Cannot generate scouting pool", { description: "Please select a team first." });
             return;
         }
-        // Pass userTeam's league division and all team names to generateRecruits
         const allTeamNames = teams.map(team => team.name);
-        const newPool = generateRecruits(userTeam.leagueDivision, allTeamNames, 30); // Generate 30 new recruits
+        const newPool = generateRecruits(userTeam.leagueDivision, allTeamNames, 30);
         setScoutingPool(newPool);
         setFairHosted(true);
         toast.success("Recruitment Fair Hosted!", { description: "A new pool of potential recruits is available." });
@@ -872,7 +884,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         setTeams(prevTeams => prevTeams.map(team => {
             if (team.name === userTeam.name) {
-                // Check if roster is full (e.g., max 25 players)
                 if (team.roster.length >= 25) {
                     toast.error("Roster Full", { description: "Your roster is full. You need to cut a player before assigning a new one." });
                     return team;
@@ -900,19 +911,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
         setTeams(prevTeams => prevTeams.map(team => {
             if (team.name === userTeam.name) {
-                // Calculate total wealth before this change
                 const currentAllocated = Object.values(team.financials.budgetAllocations).reduce((sum, val) => sum + val, 0);
                 const totalWealth = team.financials.totalBudget + currentAllocated;
-
-                // Calculate the sum of the new allocations
                 const newlyAllocated = Object.values(newAllocations).reduce((sum, val) => sum + val, 0);
 
                 if (newlyAllocated > totalWealth) {
                     toast.error("Cannot allocate more than your total wealth.");
-                    return team; // Return original team state
+                    return team;
                 }
 
-                // The new unallocated budget is the total wealth minus the new allocations
                 const newUnallocatedBudget = totalWealth - newlyAllocated;
 
                 return {
@@ -920,7 +927,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     financials: {
                         ...team.financials,
                         budgetAllocations: newAllocations,
-                        totalBudget: newUnallocatedBudget, // totalBudget is now Unallocated Funds
+                        totalBudget: newUnallocatedBudget,
                     }
                 };
             }
@@ -934,7 +941,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.error("No active team selected.");
             return;
         }
-        const cost = 500; // Example cost
+        const cost = 500;
         if (userTeam.financials.budgetAllocations["Student Life"] < cost) {
             toast.error("Insufficient Student Life Budget", { description: `You need £${cost.toLocaleString()} in student life budget to run an initiative.` });
             return;
@@ -1038,8 +1045,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (team.name === userTeam.name) {
                 const updatedRoster = team.roster.map(player => {
                     if (!player.trainingFocus) {
-                        const availableFocuses = player.positions.includes('G') ? Object.keys(goalieFocuses) : Object.keys(skaterFocuses);
-                        const randomFocus = getRandomItem(availableFocuses) as TrainingFocus;
+                        const availableFocuses = player.positions.includes('G') ? goalieFocuses : skaterFocuses;
+                        const randomFocus = getRandomItem(availableFocuses);
                         return { ...player, trainingFocus: randomFocus };
                     }
                     return player;
@@ -1088,7 +1095,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 status: 'completed',
                                 result: { homeScore, awayScore }
                             };
-                            // Update winner for playoff bracket
                             const game = tournament.playoffSchedule[gameIndex];
                             if (game) {
                                 game.winner = homeScore > awayScore ? (typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD') : (typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD');
@@ -1145,7 +1151,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (!tournament) return newData;
 
             if (tournament.status === 'group-stage') {
-                // Simulate all group stage games for the current round
                 const gamesToSimulate = tournament.groupStageSchedule.filter(g =>
                     g.round === tournament.currentRound && g.status === 'scheduled'
                 );
@@ -1157,7 +1162,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (homeTeam && awayTeam) {
                         const finalGameState = simulateFullGame(homeTeam, awayTeam, false);
                         markGameAsCompleted(game.id, finalGameState.userScore, finalGameState.opponentScore, true, division);
-                        // Update team stats for nationals
                         setTeams(prevTeams => prevTeams.map(t => {
                             if (t.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
                             if (t.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
@@ -1166,21 +1170,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }
                 });
 
-                // Update standings after all games in the round
                 const allTeamNamesInTournament = tournament.groups.flatMap(group => group.teams);
-                const teamsInTournament = teams.filter(t => allTeamNamesInTournament.includes(t.name)); // Get actual Team objects
-                const updatedTournament = createNationalsTournament(division, teamsInTournament, currentDate.year, currentDate.week); // Fixed: Pass currentDate.week
+                const teamsInTournament = teams.filter(t => allTeamNamesInTournament.includes(t.name));
+                const updatedTournament = createNationalsTournament(division, teamsInTournament, currentDate.year, currentDate.week);
                 newData[currentDate.year][division].groups = updatedTournament.groups;
 
-                // Advance round or transition to playoffs
-                if (typeof tournament.currentRound === 'number' && tournament.currentRound < 3) { // Assuming 3 group stage rounds
+                if (typeof tournament.currentRound === 'number' && tournament.currentRound < 3) {
                     newData[currentDate.year][division].currentRound = (tournament.currentRound as number) + 1;
                     toast.info(`Nationals Group Stage: Round ${newData[currentDate.year][division].currentRound} started for ${division}.`);
                 } else {
-                    // Transition to playoffs
-                    const playoffSchedule = generatePlayoffBracket(tournament.groups, currentDate); // Fixed: No destructuring
+                    const playoffSchedule = generatePlayoffBracket(tournament.groups, currentDate);
                     newData[currentDate.year][division].playoffSchedule = playoffSchedule;
-                    newData[currentDate.year][division].status = 'gold-playoffs'; // Start with Gold playoffs
+                    newData[currentDate.year][division].status = 'gold-playoffs';
                     newData[currentDate.year][division].currentRound = 'Quarter-Final';
                     toast.success(`Nationals Group Stage Completed for ${division}! Playoffs begin!`);
                 }
@@ -1192,7 +1193,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 gamesToSimulate.forEach(game => {
                     if (userGameResult && userGameResult.gameId === game.id) {
-                        // User played this game, use their result
                         markGameAsCompleted(game.id, userGameResult.homeScore, userGameResult.awayScore, true, division);
                         const homeTeam = teams.find(t => t.name === userGameResult.homeTeamName);
                         const awayTeam = teams.find(t => t.name === userGameResult.awayTeamName);
@@ -1205,7 +1205,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             }));
                         }
                     } else {
-                        // Simulate AI vs AI games or user's game if not played manually
                         const homeTeamName = typeof game.homeTeam === 'string' ? game.homeTeam : game.homeTeam.winnerOf;
                         const awayTeamName = typeof game.awayTeam === 'string' ? game.awayTeam : game.awayTeam.winnerOf;
 
@@ -1224,7 +1223,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }
                 });
 
-                // Determine next round or winner
                 const allGamesCompletedInRound = gamesToSimulate.every(g => g.status === 'completed');
                 if (allGamesCompletedInRound) {
                     if (tournament.currentRound === 'Quarter-Final') {
@@ -1234,21 +1232,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         newData[currentDate.year][division].currentRound = 'Final';
                         toast.info(`Nationals ${currentBracket} Playoffs: Finals started for ${division}.`);
                     } else if (tournament.currentRound === 'Final') {
-                        // Tournament completed for this bracket
-                        const finalGame = gamesToSimulate[0]; // Should only be one final game
+                        const finalGame = gamesToSimulate[0];
                         if (finalGame && finalGame.winner) {
                             if (currentBracket === 'Gold') {
                                 newData[currentDate.year][division].winner = finalGame.winner;
                                 newData[currentDate.year][division].status = 'completed';
                                 toast.success(`Nationals ${division} Gold Champion: ${finalGame.winner}!`);
                             } else {
-                                // Silver bracket completed, now check if Gold is done or if we need to transition
                                 const goldTournament = newData[currentDate.year]?.[division];
                                 if (goldTournament && goldTournament.status === 'gold-playoffs' && goldTournament.playoffSchedule.filter(g => g.bracket === 'Gold').every(g => g.status === 'completed')) {
                                     newData[currentDate.year][division].status = 'completed';
                                     toast.success(`Nationals ${division} Silver Champion: ${finalGame.winner}!`);
                                 } else {
-                                    // If Gold is not done, stay in gold-playoffs status
                                     toast.success(`Nationals ${division} Silver Champion: ${finalGame.winner}!`);
                                 }
                             }
@@ -1311,7 +1306,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const tournament = newData[currentDate.year]?.[division];
             if (!tournament) return newData;
 
-            // Simulate group stage
             if (tournament.status === 'group-stage') {
                 for (let round = typeof tournament.currentRound === 'number' ? tournament.currentRound : 1; round <= 3; round++) {
                     const gamesToSimulate = tournament.groupStageSchedule.filter(g =>
@@ -1331,19 +1325,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         }
                     });
                     const allTeamNamesInTournament = tournament.groups.flatMap(group => group.teams);
-                    const teamsInTournament = teams.filter(t => allTeamNamesInTournament.includes(t.name)); // Get actual Team objects
-                    const updatedTournament = createNationalsTournament(division, teamsInTournament, currentDate.year, currentDate.week); // Fixed: Pass currentDate.week
+                    const teamsInTournament = teams.filter(t => allTeamNamesInTournament.includes(t.name));
+                    const updatedTournament = createNationalsTournament(division, teamsInTournament, currentDate.year, currentDate.week);
                     newData[currentDate.year][division].groups = updatedTournament.groups;
                     newData[currentDate.year][division].currentRound = (round as number) + 1;
                 }
-                // Transition to playoffs
-                const playoffSchedule = generatePlayoffBracket(tournament.groups, currentDate); // Fixed: No destructuring
+                const playoffSchedule = generatePlayoffBracket(tournament.groups, currentDate);
                 newData[currentDate.year][division].playoffSchedule = playoffSchedule;
                 newData[currentDate.year][division].status = 'gold-playoffs';
                 newData[currentDate.year][division].currentRound = 'Quarter-Final';
             }
 
-            // Simulate playoffs (Gold and Silver)
             const playoffRounds: ('Quarter-Final' | 'Semi-Final' | 'Final')[] = ['Quarter-Final', 'Semi-Final', 'Final'];
             const brackets: ('Gold' | 'Silver')[] = ['Gold', 'Silver'];
 
@@ -1369,7 +1361,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             }));
                         }
                     });
-                    newData[currentDate.year][division].currentRound = round; // Update current round for display
+                    newData[currentDate.year][division].currentRound = round;
                 }
             }
             newData[currentDate.year][division].status = 'completed';
@@ -1473,7 +1465,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const exitToMainMenu = () => {
-        // Clear all game-specific local storage items
         localStorage.removeItem('teams');
         localStorage.removeItem('scoutingPool');
         localStorage.removeItem('recruitedPool');
@@ -1490,9 +1481,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         localStorage.removeItem('careerRecords');
         localStorage.removeItem('alumni');
         localStorage.removeItem('seasonHistory');
-        // Do NOT remove 'savedGamesList' as it tracks all save slots
 
-        // Reset all state variables to initial values
         setTeams(initialTeams);
         setScoutingPool([]);
         setRecruitedPool([]);
