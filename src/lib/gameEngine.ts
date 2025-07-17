@@ -375,14 +375,7 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
             const defender = defendingTeam.roster.find(p => p.name === defenderName);
             if (defender && defender.healthStatus === 'Healthy') {
                 const injuryProneness = (defender.attributes as SkaterAttributes).injuryProneness || 10;
-                let injuryChance = 0.01 + (injuryProneness / 2000);
-
-                const hasMedicalUpgrade = defendingTeam.upgrades.includes('medical_1');
-                if (hasMedicalUpgrade) {
-                    injuryChance *= (1 - 0.15); // 15% reduction
-                }
-
-                if (Math.random() < injuryChance) {
+                if (Math.random() < 0.01 + (injuryProneness / 2000)) {
                     const injuryRoll = Math.random();
                     let injuryType: string, duration: number;
                     if (injuryRoll < 0.6) { injuryType = getRandomItem(["Bruised Ribs", "Minor Strain"]); duration = getRandomValueInRange(1, 3); } 
@@ -425,8 +418,6 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
             teamOnPowerPlay: null,
             timeLeft: 0,
         },
-        userTeamStats: { playerStats: {} },
-        opponentTeamStats: { playerStats: {} },
     };
 
     let currentHomeTeam = JSON.parse(JSON.stringify(homeTeam));

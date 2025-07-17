@@ -1,5 +1,6 @@
 import { Team, Lineup, TacticsSelection, Player } from "@/types";
 import { generateRoster } from "@/lib/playerGenerator";
+import { initialFacilityProjects } from './facilities';
 import { teamLogos } from './logos';
 import { getTierName as getNationalsDivision } from '@/lib/leagueUtils';
 import { populateLineup } from '@/lib/lineupUtils';
@@ -127,7 +128,7 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
                 equipmentCost: Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500,
                 budgetAllocations: { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 },
             },
-            upgrades: [],
+            facilities: initialFacilityProjects.map(p => ({ ...p })),
         };
     });
 });

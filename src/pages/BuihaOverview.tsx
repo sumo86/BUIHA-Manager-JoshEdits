@@ -174,13 +174,7 @@ const SeasonsHistory = () => {
   const [selectedSeason, setSelectedSeason] = useState<string>('');
 
   const availableSeasons = useMemo(() => {
-    const seasons = new Set([
-      ...Object.keys(seasonHistory), // e.g., "2025-2026"
-      // Nationals data is keyed by the calendar year the tournament takes place (e.g., 2026).
-      // We want to display it as part of the season it belongs to (e.g., 2025-2026).
-      // So, map the tournament year (e.g., 2026) to the season string (e.g., "2025-2026").
-      ...Object.keys(nationalsData).map(year => `${parseInt(year) - 1}-${year}`) 
-    ]);
+    const seasons = new Set([...Object.keys(seasonHistory), ...Object.keys(nationalsData).map(year => `${parseInt(year) - 1}-${year}`)]);
     return Array.from(seasons).sort((a, b) => b.localeCompare(a));
   }, [seasonHistory, nationalsData]);
 
@@ -196,9 +190,8 @@ const SeasonsHistory = () => {
 
   const nationalsForSelectedSeason = useMemo(() => {
     if (!selectedSeason) return null;
-    // The selectedSeason is like "2025-2026". We need the tournament year (2026).
-    const tournamentYear = parseInt(selectedSeason.split('-')[1], 10);
-    return nationalsData[tournamentYear] || null;
+    const year = parseInt(selectedSeason.split('-')[1], 10);
+    return nationalsData[year] || null;
   }, [nationalsData, selectedSeason]);
 
   return (

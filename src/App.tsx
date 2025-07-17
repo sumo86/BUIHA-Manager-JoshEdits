@@ -10,7 +10,7 @@ import Standings from "./pages/Standings";
 import Roster from "./pages/Roster";
 import Recruitment from "./pages/Recruitment";
 import Finances from "./pages/Finances";
-import Upgrades from "./pages/Upgrades";
+import Facilities from "./pages/Facilities";
 import PlayerProfile from "./pages/PlayerProfile";
 import Lineup from "./pages/Lineup";
 import { TeamProvider, useTeam } from "./context/TeamContext";
@@ -41,7 +41,7 @@ const router = createBrowserRouter(
       <Route path="/recruitment" element={<Recruitment />} />
       <Route path="/finances" element={<Finances />} />
       <Route path="/morale" element={<MoralePage />} />
-      <Route path="/upgrades" element={<Upgrades />} />
+      <Route path="/facilities" element={<Facilities />} />
       <Route path="/lineup" element={<Lineup />} />
       <Route path="/training" element={<Training />} />
       <Route path="/history" element={<TeamHistory />} />

@@ -98,17 +98,12 @@ export type GoalieAttributes = {
 export type PlayerSeasonStats = {
   season: string;
   team: string;
-  league?: string;
+  league: string;
   gamesPlayed: number;
   goals?: number;
   assists?: number;
   points?: number;
   penaltyMinutes?: number;
-  shots?: number;
-  shotsOnGoal?: number;
-  hits?: number;
-  faceoffsWon?: number;
-  faceoffsLost?: number;
   captaincy?: 'C' | 'A' | null;
   goalsAgainst?: number;
   shotsAgainst?: number;
@@ -184,16 +179,14 @@ export type Financials = {
   budgetAllocations: BudgetAllocations;
 };
 
-export type UpgradeType = "Financial" | "Development" | "Medical" | "Morale" | "Recruiting";
-
-export type Upgrade = {
+export type FacilityProject = {
   id: string;
   name: string;
   description: string;
   cost: number;
-  type: UpgradeType;
-  benefitValue: number;
-  benefitDescription: string;
+  status: 'Not Started' | 'In Progress' | 'Completed';
+  benefit: string;
+  weeksToComplete?: number;
 };
 
 export type Team = {
@@ -212,7 +205,7 @@ export type Team = {
   lineup: Lineup;
   tactics: TacticsSelection;
   financials: Financials;
-  upgrades: string[];
+  facilities: FacilityProject[];
 };
 
 export type GameEvent = {
@@ -241,8 +234,6 @@ export type GameState = {
   injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
   possessionHolder: string | null;
   powerPlayState: PowerPlayState;
-  userTeamStats: { playerStats: { [playerId: string]: Partial<PlayerSeasonStats> } };
-  opponentTeamStats: { playerStats: { [playerId: string]: Partial<PlayerSeasonStats> } };
 };
 
 export type GameDate = {
