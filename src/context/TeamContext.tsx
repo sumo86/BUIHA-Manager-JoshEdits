@@ -704,7 +704,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 let nextMonthIndex = (monthIndex + 1) % months.length;
                 if (month === "July" && months[nextMonthIndex] === "August") {
                     year += 1;
-                    const endedSeasonString = `${prevDate.year}-${prevDate.year + 1}`;
+                    const endedSeasonString = `${prevDate.year - 1}-${prevDate.year}`;
                     toast.info("Season Ended", { description: `The ${endedSeasonString} season has concluded. Stats are being archived.` });
 
                     const seasonToArchive = endedSeasonString;
