@@ -11,7 +11,7 @@ import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
-import { NationalsTournament } => '@/types';
+import { NationalsTournament } from '@/types';
 import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { initialFacilityProjects } from '@/data/facilities';
@@ -904,7 +904,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                     (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                     playerChanged = true;
-                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
+                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: -improvement, newRating: newAttrValue, date: currentDate });
                                 }
                             }
                         }
