@@ -7,6 +7,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SaveGameDialog } from "./dialogs/SaveGameDialog";
+import { ExitGameDialog } from "./dialogs/ExitGameDialog";
 
 const Layout = () => {
   const location = useLocation();
@@ -17,7 +19,7 @@ const Layout = () => {
     managedTeams, 
     userTeam, 
     setActiveTeam,
-    isManagingOrg // Added isManagingOrg here
+    isManagingOrg
   } = useTeam();
   const isMobile = useIsMobile();
 
@@ -67,12 +69,16 @@ const Layout = () => {
               </div>
             )}
           </div>
-          {showHeaderButton && (
-            <Button onClick={advanceWeek} className="ml-4">
-              Advance Week
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {showHeaderButton && (
+              <Button onClick={advanceWeek}>
+                Advance Week
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+            <SaveGameDialog />
+            <ExitGameDialog />
+          </div>
         </header>
         <main className="flex-1 p-6 overflow-auto">
           <Outlet />

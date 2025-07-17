@@ -351,3 +351,10 @@ export type TeamSeasonHistory = {
 export type SeasonHistory = {
   [season: string]: TeamSeasonHistory[];
 };
+
+export type SaveGameSlot = {
+  saveName: string;
+  savedAt: string;
+  userTeamName: string;
+  currentDate: GameDate;
+};
