@@ -1,15 +1,13 @@
 import { Player } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom'; // Import Link
 
 interface AdditionalDegreesTableProps {
   players: Player[];
 }
 
 export const AdditionalDegreesTable = ({ players }: AdditionalDegreesTableProps) => {
-  const navigate = useNavigate();
-
   if (!players || players.length === 0) {
     return (
       <Card>
@@ -39,8 +37,12 @@ export const AdditionalDegreesTable = ({ players }: AdditionalDegreesTableProps)
           </TableHeader>
           <TableBody>
             {players.map(player => (
-              <TableRow key={player.id} onClick={() => navigate(`/player/${player.id}`)} className="cursor-pointer hover:bg-muted/50">
-                <TableCell className="font-medium">{player.name}</TableCell>
+              <TableRow key={player.id}>
+                <TableCell className="font-medium">
+                  <Link to={`/player/${player.id}`} className="text-blue-600 hover:underline">
+                    {player.name}
+                  </Link>
+                </TableCell>
                 <TableCell>{player.eligibility}</TableCell>
                 <TableCell>{player.yearsLeftInProgram}</TableCell>
               </TableRow>

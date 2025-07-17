@@ -813,8 +813,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             [newTransferPlayers[i], newTransferPlayers[j]] = [newTransferPlayers[j], newTransferPlayers[i]];
                         }
 
-                        const userPercentage = 0.05 + Math.random() * 0.02;
-                        const userPlayerCount = Math.round(newTransferPlayers.length * userPercentage);
+                        // Limit user transfers to 2-3 players
+                        const maxUserTransfers = 3;
+                        const userPlayerCount = Math.min(maxUserTransfers, newTransferPlayers.length);
 
                         const userTransfers = newTransferPlayers.slice(0, userPlayerCount);
                         userTransfers.forEach(p => p.recruitmentCost = 0);
