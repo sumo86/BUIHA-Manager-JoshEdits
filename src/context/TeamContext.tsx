@@ -702,6 +702,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
         }
 
+        // --- Seasonal Costs ---
+        if (currentDate.month === 'August' && currentDate.week === 1) {
+            tempTeams = tempTeams.map(team => {
+                const equipmentCost = team.financials.equipmentCost;
+                if (equipmentCost > 0) {
+                    const equipmentAllocated = team.financials.budgetAllocations.Equipment;
+                    const equipmentDeduction = Math.min(equipmentAllocated, equipmentCost);
+                    team.financials.budgetAllocations.Equipment -= equipmentDeduction;
+                    team.financials.totalBudget -= equipmentCost;
+                    if (team.name === userTeam?.name) {
+                        toast.info("Seasonal Costs", { description: `Paid $${equipmentCost.toLocaleString()} for new season equipment.` });
+                    }
+                }
+                return team;
+            });
+        }
+
         // --- Game-related income/costs ---
         const gamesThisWeek = schedule.filter(game =>
             game.date.month === currentDate.month && game.date.week === currentDate.week && game.status === 'scheduled'
@@ -715,18 +732,38 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const homeTeam = tempTeams[homeTeamIndex];
             const awayTeam = tempTeams[awayTeamIndex];
 
-            // Ticket Revenue for home team
+            // --- Home Team Costs & Revenue ---
+            // Ice Time Cost
+            const homeIceTimeCost = homeTeam.financials.iceTimeCostPerGame;
+            const homeIceTimeAllocated = homeTeam.financials.budgetAllocations["Ice Time"];
+            const homeIceTimeDeduction = Math.min(homeIceTimeAllocated, homeIceTimeCost);
+            homeTeam.financials.budgetAllocations["Ice Time"] -= homeIceTimeDeduction;
+            homeTeam.financials.totalBudget -= homeIceTimeCost;
+
+            // Ticket Revenue
             let ticketRevenue = homeTeam.financials.ticketRevenuePerHomeGame;
             if (homeTeam.facilities.some(f => f.id === 'social_media_1' && f.status === 'Completed')) {
                 ticketRevenue *= 1.15; // 15% bonus
             }
             homeTeam.financials.totalBudget += ticketRevenue;
 
-            // Travel Costs for away team
+
+            // --- Away Team Costs ---
+            // Ice Time Cost
+            const awayIceTimeCost = awayTeam.financials.iceTimeCostPerGame;
+            const awayIceTimeAllocated = awayTeam.financials.budgetAllocations["Ice Time"];
+            const awayIceTimeDeduction = Math.min(awayIceTimeAllocated, awayIceTimeCost);
+            awayTeam.financials.budgetAllocations["Ice Time"] -= awayIceTimeDeduction;
+            awayTeam.financials.totalBudget -= awayIceTimeCost;
+
+            // Travel Cost
             let travelCost = awayTeam.financials.travelCostPerAwayGame;
             if (awayTeam.facilities.some(f => f.id === 'team_bus_1' && f.status === 'Completed')) {
                 travelCost *= 0.5; // 50% reduction
             }
+            const travelAllocated = awayTeam.financials.budgetAllocations.Travel;
+            const travelDeduction = Math.min(travelAllocated, travelCost);
+            awayTeam.financials.budgetAllocations.Travel -= travelDeduction;
             awayTeam.financials.totalBudget -= travelCost;
         });
 
