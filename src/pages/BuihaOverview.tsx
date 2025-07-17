@@ -174,7 +174,11 @@ const SeasonsHistory = () => {
   const [selectedSeason, setSelectedSeason] = useState<string>('');
 
   const availableSeasons = useMemo(() => {
-    const seasons = new Set([...Object.keys(seasonHistory), ...Object.keys(nationalsData).map(year => `${parseInt(year) - 1}-${year}`)]);
+    const seasons = new Set([
+      ...Object.keys(seasonHistory), // e.g., "2025-2026"
+      // Nationals data is now keyed by the season's start year, so format matches seasonHistory
+      ...Object.keys(nationalsData).map(year => `${year}-${parseInt(year) + 1}`) 
+    ]);
     return Array.from(seasons).sort((a, b) => b.localeCompare(a));
   }, [seasonHistory, nationalsData]);
 
@@ -190,8 +194,9 @@ const SeasonsHistory = () => {
 
   const nationalsForSelectedSeason = useMemo(() => {
     if (!selectedSeason) return null;
-    const year = parseInt(selectedSeason.split('-')[1], 10);
-    return nationalsData[year] || null;
+    // Use the start year of the selected season to look up nationals data
+    const startYear = parseInt(selectedSeason.split('-')[0], 10);
+    return nationalsData[startYear] || null;
   }, [nationalsData, selectedSeason]);
 
   return (

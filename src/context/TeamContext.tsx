@@ -329,7 +329,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const gameForCurrentWeek = useMemo(() => {
         if (!userTeam) return null;
 
-        const currentYearNationals = nationalsData[currentDate.year];
+        // Nationals games are keyed by the season's start year
+        const currentYearNationals = nationalsData[currentDate.year - 1]; 
         if (currentYearNationals && userTeam.nationalsDivision) {
             const tournament = currentYearNationals[userTeam.nationalsDivision];
             if (tournament && (tournament.status === 'group-stage' || tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs')) {
@@ -437,7 +438,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         let tempCareerRecords = JSON.parse(JSON.stringify(careerRecords)) as { [key in RecordCategory]?: TeamRecord };
 
         if (currentDate.month === 'May' && currentDate.week === 4) {
-            const allTournamentsCompleted = Object.values(tempNationalsData[currentYear] || {}).every(t => t.status === 'completed');
+            const allTournamentsCompleted = Object.values(tempNationalsData[currentYear - 1] || {}).every(t => t.status === 'completed'); // Check previous year's nationals
             if (!allTournamentsCompleted) {
                 toast.error("Nationals In Progress", { description: "You must complete the National Championships before advancing the week." });
                 return;
@@ -827,6 +828,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                         team.roster = remainingPlayers;
 
+                        // Budget carryover: totalBudget is carried over, allocations are reset
                         const unspentBudget = team.financials.totalBudget;
 
                         const orgName = getOrganizationName(team.name);
@@ -923,7 +925,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     newNationalsDataForYear[division] = tournament;
                 }
             });
-            tempNationalsData[newDate.year] = newNationalsDataForYear;
+            // Key nationals data by the season's start year
+            tempNationalsData[newDate.year - 1] = newNationalsDataForYear; 
         }
 
         setNationalsData(tempNationalsData);
@@ -1368,7 +1371,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const playNationalsRound = (division: string, userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }) => {
         setNationalsData(prevData => {
             const currentYear = currentDate.year;
-            const yearData = { ...prevData[currentYear] };
+            const yearData = { ...prevData[currentYear - 1] }; // Use start year for lookup
             const tournament = yearData[division];
 
             if (!tournament) {
@@ -1381,7 +1384,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             setTeams(updatedTeams); // Update the main teams state with any changes from simulation
 
             yearData[division] = updatedTournament;
-            return { ...prevData, [currentYear]: yearData };
+            return { ...prevData, [currentYear - 1]: yearData }; // Use start year for update
         });
     };
 
@@ -1413,7 +1416,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const simulateSingleNationalsGame = (division: string, gameId: string) => {
         setNationalsData(prevData => {
             const currentYear = currentDate.year;
-            const yearData = { ...prevData[currentYear] };
+            const yearData = { ...prevData[currentYear - 1] }; // Use start year for lookup
             const tournament = yearData[division];
 
             if (!tournament) {
@@ -1453,14 +1456,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             setTeams(updatedTeams); // Update the main teams state with any changes from simulation
 
             yearData[division] = updatedTournament;
-            return { ...prevData, [currentYear]: yearData };
+            return { ...prevData, [currentYear - 1]: yearData }; // Use start year for update
         });
     };
 
     const simulateFullNationalsTournament = (division: string) => {
         setNationalsData(prevData => {
             const currentYear = currentDate.year;
-            const yearData = { ...prevData[currentYear] };
+            const yearData = { ...prevData[currentYear - 1] }; // Use start year for lookup
             let tournament = yearData[division];
 
             if (!tournament) {
@@ -1488,14 +1491,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
             yearData[division] = tournament;
             toast.success(`Full Nationals tournament for ${division} simulated!`);
-            return { ...prevData, [currentYear]: yearData };
+            return { ...prevData, [currentYear - 1]: yearData }; // Use start year for update
         });
     };
 
     const simulateAllNationalsTournaments = () => {
         setNationalsData(prevData => {
             const currentYear = currentDate.year;
-            const yearData = { ...prevData[currentYear] };
+            const yearData = { ...prevData[currentYear - 1] }; // Use start year for lookup
             let currentTeams = [...teams]; // Create a mutable copy of teams
 
             for (const division in yearData) {
@@ -1520,7 +1523,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
             setTeams(currentTeams); // Update the main teams state with any changes from simulation
             toast.success(`All Nationals tournaments for ${currentYear} simulated!`);
-            return { ...prevData, [currentYear]: yearData };
+            return { ...prevData, [currentYear - 1]: yearData }; // Use start year for update
         });
     };
 
