@@ -727,6 +727,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const allOrganizations = getTeamOrganizations();
 
                     tempTeams = tempTeams.map(team => {
+                        // Archive stats for all players before graduation logic
+                        team.roster.forEach(player => {
+                            if (player.currentStats && player.currentStats.length > 0) {
+                                player.history.push(...player.currentStats);
+                                player.currentStats = [];
+                            }
+                        });
+
                         const graduatingPlayers: Player[] = [];
                         const remainingPlayers = team.roster.filter(player => {
                             player.age += 1;
@@ -769,11 +777,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         });
 
                         graduatingPlayers.forEach(player => {
-                            if (player.currentStats.length > 0) {
-                                player.history.push(...player.currentStats);
-                                player.currentStats = [];
-                            }
-
                             const isManaged = managedTeamNames.includes(team.name);
                             const ambition = player.attributes.ambition || 10;
                             const loyalty = player.attributes.loyalty || 10;
@@ -824,8 +827,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                         team.roster = remainingPlayers;
 
-                        const currentSpentFunds = Object.values(team.financials.budgetAllocations).reduce((sum, val) => sum + val, 0);
-                        const unspentFunds = team.financials.totalBudget - currentSpentFunds;
+                        const unspentBudget = team.financials.totalBudget;
 
                         const orgName = getOrganizationName(team.name);
                         const organization = allOrganizations.find(org => org.name === orgName);
@@ -836,7 +838,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             newBaseBudget = orgTotalBudget / organization.teams.length;
                         }
 
-                        const newTotalBudget = newBaseBudget + unspentFunds;
+                        const newTotalBudget = newBaseBudget + unspentBudget;
                         const resetAllocations = { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 };
                         return {
                             ...team,
@@ -1553,11 +1555,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const recruitPlayer = (playerId: string) => {
-        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        const playerToRecruit = scoutingPool.find(p => p.id === playerId) || transferPool.find(p => p.id === playerId);
         if (!playerToRecruit || !userTeam) return;
 
-        if (userTeam.financials.budgetAllocations.Recruiting < (playerToRecruit.recruitmentCost || 0)) {
-            toast.error("Insufficient Recruiting Budget", { description: `You need $${playerToRecruit.recruitmentCost?.toLocaleString()} to recruit this player.` });
+        const cost = playerToRecruit.recruitmentCost || 0;
+        if (userTeam.financials.budgetAllocations.Recruiting < cost) {
+            toast.error("Insufficient Recruiting Budget", { description: `You need $${cost.toLocaleString()} to recruit this player.` });
             return;
         }
 
@@ -1567,9 +1570,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     ...team,
                     financials: {
                         ...team.financials,
+                        totalBudget: team.financials.totalBudget - cost,
                         budgetAllocations: {
                             ...team.financials.budgetAllocations,
-                            Recruiting: team.financials.budgetAllocations.Recruiting - (playerToRecruit.recruitmentCost || 0)
+                            Recruiting: team.financials.budgetAllocations.Recruiting - cost
                         }
                     }
                 };
@@ -1580,6 +1584,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         setRecruitedPool(prev => [...prev, playerToRecruit]);
         setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        setTransferPool(prev => prev.filter(p => p.id !== playerId));
         toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been added to your recruited pool.` });
     };
 
@@ -1651,6 +1656,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     upgrades: [...team.upgrades, upgradeId],
                     financials: {
                         ...team.financials,
+                        totalBudget: team.financials.totalBudget - upgrade.cost,
                         budgetAllocations: {
                             ...team.financials.budgetAllocations,
                             Facilities: team.financials.budgetAllocations.Facilities - upgrade.cost
@@ -1709,6 +1715,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     roster: updatedRoster,
                     financials: {
                         ...team.financials,
+                        totalBudget: team.financials.totalBudget - cost,
                         budgetAllocations: {
                             ...team.financials.budgetAllocations,
                             "Student Life": team.financials.budgetAllocations["Student Life"] - cost
