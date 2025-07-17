@@ -1,3 +1,5 @@
+File to edit: src/types/index.ts
+        <edit-description>Updating type definitions for player stats and game state to resolve compile errors.</edit-description>
 export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
 
 export type Instruction = "Encourage" | "Discipline" | "Praise" | "Push Harder" | "Calm Down";
@@ -98,12 +100,17 @@ export type GoalieAttributes = {
 export type PlayerSeasonStats = {
   season: string;
   team: string;
-  league: string;
+  league?: string;
   gamesPlayed: number;
   goals?: number;
   assists?: number;
   points?: number;
   penaltyMinutes?: number;
+  shots?: number;
+  shotsOnGoal?: number;
+  hits?: number;
+  faceoffsWon?: number;
+  faceoffsLost?: number;
   captaincy?: 'C' | 'A' | null;
   goalsAgainst?: number;
   shotsAgainst?: number;
@@ -236,6 +243,8 @@ export type GameState = {
   injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
   possessionHolder: string | null;
   powerPlayState: PowerPlayState;
+  userTeamStats: { playerStats: { [playerId: string]: Partial<PlayerSeasonStats> } };
+  opponentTeamStats: { playerStats: { [playerId: string]: Partial<PlayerSeasonStats> } };
 };
 
 export type GameDate = {
