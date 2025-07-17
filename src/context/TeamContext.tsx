@@ -8,11 +8,11 @@ import { trainingFocusesMap } from '@/data/trainingFocuses';
 import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
 import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
 import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
-import { simulateFullGame } from '@/lib/gameEngine';
+import { simulateFullGame } => '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
 import { NationalsTournament } from '@/types';
-import { isRivalryGame } from '@/lib/rivalries';
+import { isRivalryGame } '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { allUpgrades } from '@/data/upgrades';
 
@@ -536,126 +536,120 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const isUserManagedTeam = team.name === userTeam?.name || managedTeamNames.includes(team.name);
             const purchasedUpgrades = allUpgrades.filter(u => team.upgrades.includes(u.id));
 
-            tempTeams = tempTeams.map(t => {
-                let newRoster = [...t.roster];
-                const isUserManagedTeam = t.name === userTeam?.name || managedTeamNames.includes(t.name);
-                const purchasedUpgrades = allUpgrades.filter(u => t.upgrades.includes(u.id));
+            newRoster = newRoster.map(player => {
+                let playerChanged = false;
+                const isSkater = !player.positions.includes('G');
 
-                newRoster = newRoster.map(player => {
-                    let playerChanged = false;
-                    const isSkater = !player.positions.includes('G');
+                if (player.injury && player.injury.duration > 0) {
+                    let recoveryAmount = 1; // Base recovery is 1 week
 
-                    if (player.injury && player.injury.duration > 0) {
-                        const hasPhysio = t.facilities?.some(f => f.id === 'physio_office_1' && f.status === 'Completed');
-                        let recoveryAmount = hasPhysio ? 2 : 1;
+                    const medicalRecoveryUpgrade = purchasedUpgrades.find(u => u.id === 'medical_2');
+                    if (medicalRecoveryUpgrade) {
+                        recoveryAmount += medicalRecoveryUpgrade.benefitValue;
+                    }
+                    player.injury.duration -= recoveryAmount;
 
-                        const medicalRecoveryUpgrade = purchasedUpgrades.find(u => u.id === 'medical_2');
-                        if (medicalRecoveryUpgrade) {
-                            recoveryAmount += medicalRecoveryUpgrade.benefitValue;
-                        }
-                        player.injury.duration -= recoveryAmount;
+                    const regression = (Math.random() * 0.1) + 0.02;
+                    if (Math.random() < regression) {
+                        let attrsToRegress: (keyof SkaterAttributes | keyof GoalieAttributes)[] = isSkater
+                            ? ['speed', 'acceleration', 'agility', 'balance', 'stamina', 'strength']
+                            : ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
 
-                        const regression = (Math.random() * 0.1) + 0.02;
-                        if (Math.random() < regression) {
-                            let attrsToRegress: (keyof SkaterAttributes | keyof GoalieAttributes)[] = isSkater
-                                ? ['speed', 'acceleration', 'agility', 'balance', 'stamina', 'strength']
-                                : ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
+                        const attrToRegress = getRandomItem(attrsToRegress);
+                        const currentAttrValue = player.attributes[attrToRegress as keyof typeof player.attributes] as number;
 
-                            const attrToRegress = getRandomItem(attrsToRegress);
-                            const currentAttrValue = player.attributes[attrToRegress as keyof typeof player.attributes] as number;
-
-                            if (currentAttrValue > 1) {
-                                const newAttrValue = Math.max(1, currentAttrValue - regression);
-                                (player.attributes[attrToRegress as keyof typeof player.attributes] as number) = newAttrValue;
-                                playerChanged = true;
-                                if (isUserManagedTeam) {
-                                    newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToRegress.toString(), change: -regression, newRating: newAttrValue, date: currentDate });
-                                }
+                        if (currentAttrValue > 1) {
+                            const newAttrValue = Math.max(1, currentAttrValue - regression);
+                            (player.attributes[attrToRegress as keyof typeof player.attributes] as number) = newAttrValue;
+                            playerChanged = true;
+                            if (isUserManagedTeam) {
+                                newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToRegress.toString(), change: -regression, newRating: newAttrValue, date: currentDate });
                             }
                         }
+                    }
 
-                        if (player.injury.duration <= 0) {
-                            if (t.name === userTeam?.name) toast.success("Player Recovered", { description: `${player.name} has recovered from their injury.` });
-                            player.injury = null;
-                            player.healthStatus = 'Healthy';
-                        }
-                    } else {
-                        const paGap = player.potentialAbility - player.currentAbility;
-                        if (player.age < 33 && paGap > 0 && (player as Player).morale !== 'Angry') {
-                            const devRate = (player.attributes as SkaterAttributes | GoalieAttributes).developmentRate || 10;
-                            const professionalism = (player.attributes as SkaterAttributes | GoalieAttributes).professionalism || 10;
-                            const determination = (player.attributes as SkaterAttributes | GoalieAttributes).determination || 10;
-                            const coachability = (player.attributes as SkaterAttributes | GoalieAttributes).coachability || 10;
-                            const baseDevChance = 0.2;
-                            const paBonus = Math.max(0, paGap / 50);
-                            const workEthicBonus = (professionalism + determination - 20) / 100;
-                            const coachabilityBonus = (coachability - 10) / 100;
+                    if (player.injury.duration <= 0) {
+                        if (team.name === userTeam?.name) toast.success("Player Recovered", { description: `${player.name} has recovered from their injury.` });
+                        player.injury = null;
+                        player.healthStatus = 'Healthy';
+                    }
+                } else {
+                    const paGap = player.potentialAbility - player.currentAbility;
+                    if (player.age < 33 && paGap > 0 && (player as Player).morale !== 'Angry') {
+                        const devRate = (player.attributes as SkaterAttributes | GoalieAttributes).developmentRate || 10;
+                        const professionalism = (player.attributes as SkaterAttributes | GoalieAttributes).professionalism || 10;
+                        const determination = (player.attributes as SkaterAttributes | GoalieAttributes).determination || 10;
+                        const coachability = (player.attributes as SkaterAttributes | GoalieAttributes).coachability || 10;
+                        const baseDevChance = 0.2;
+                        const paBonus = Math.max(0, paGap / 50);
+                        const workEthicBonus = (professionalism + determination - 20) / 100;
+                        const coachabilityBonus = (coachability - 10) / 100;
 
-                            const devUpgrades = purchasedUpgrades.filter(u => u.type === 'Development');
-                            const devBoost = devUpgrades.reduce((max, u) => Math.max(max, u.benefitValue), 0);
-                            const devChance = (baseDevChance + paBonus + workEthicBonus + coachabilityBonus) * (1 + devBoost);
+                        const devUpgrades = purchasedUpgrades.filter(u => u.type === 'Development');
+                        const devBoost = devUpgrades.reduce((max, u) => Math.max(max, u.benefitValue), 0);
+                        const devChance = (baseDevChance + paBonus + workEthicBonus + coachabilityBonus) * (1 + devBoost);
 
-                            if (Math.random() < devChance) {
-                                let attributesToDevelop: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
-                                if ((player as Player).trainingFocus && trainingFocusesMap[(player as Player).trainingFocus]) {
-                                    attributesToDevelop = trainingFocusesMap[(player as Player).trainingFocus];
-                                } else {
-                                    const allAttrs = Object.keys(player.attributes).filter(attr => !['aging', 'injuryProneness', 'passShootTendency', 'mood', 'controversy', 'greed', 'loyalty', 'handleCritics', 'handleFailure', 'handleSuccess', 'sportsmanship', 'ambition', 'bigGames', 'coachability', 'intelligence'].includes(attr)) as (keyof typeof player.attributes)[];
-                                    if (allAttrs.length > 0) attributesToDevelop.push(getRandomItem(allAttrs));
-                                }
-                                if (attributesToDevelop.length > 0) {
-                                    const attrToImprove = getRandomItem(attributesToDevelop);
-                                    const currentAttrValue = player.attributes[attrToImprove as keyof typeof player.attributes] as number;
-                                    if (currentAttrValue < 20) {
-                                        let moraleModifier = 1.0;
-                                        if ((player as Player).morale === 'Happy') moraleModifier = 1.2;
-                                        else if ((player as Player).morale === 'Unhappy') moraleModifier = 0.5;
-                                        const improvement = ((Math.random() * 0.2) + (devRate / 100)) * moraleModifier;
-                                        const newAttrValue = Math.min(20, currentAttrValue + improvement);
-                                        (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
-                                        playerChanged = true;
-                                        if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
-                                    }
-                                }
+                        if (Math.random() < devChance) {
+                            let attributesToDevelop: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
+                            if ((player as Player).trainingFocus && trainingFocusesMap[(player as Player).trainingFocus]) {
+                                attributesToDevelop = trainingFocusesMap[(player as Player).trainingFocus];
+                            } else {
+                                const allAttrs = Object.keys(player.attributes).filter(attr => !['aging', 'injuryProneness', 'passShootTendency', 'mood', 'controversy', 'greed', 'loyalty', 'handleCritics', 'handleFailure', 'handleSuccess', 'sportsmanship', 'ambition', 'bigGames', 'coachability', 'intelligence'].includes(attr)) as (keyof typeof player.attributes)[];
+                                if (allAttrs.length > 0) attributesToDevelop.push(getRandomItem(allAttrs));
                             }
-                        }
-                        if (player.age > 28) {
-                            const baseDeclineChance = 0.05;
-                            const agePenalty = (player.age - 28) / 80;
-                            const declineChance = baseDeclineChance + agePenalty;
-                            if (Math.random() < declineChance) {
-                                let attrsToDecline: (keyof SkaterAttributes | keyof GoalieAttributes)[] = isSkater
-                                    ? ['acceleration', 'agility', 'balance', 'speed', 'stamina', 'strength']
-                                    : ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
-                                const attrToDecline = getRandomItem(attrsToDecline);
-                                const currentAttrValue = player.attributes[attrToDecline as keyof typeof player.attributes] as number;
-                                if (currentAttrValue > 1) {
-                                    const decline = (Math.random() * 0.15) + 0.05;
-                                    const newAttrValue = Math.max(1, currentAttrValue - decline);
-                                    (player.attributes[attrToDecline as keyof typeof player.attributes] as number) = newAttrValue;
+                            if (attributesToDevelop.length > 0) {
+                                const attrToImprove = getRandomItem(attributesToDevelop);
+                                const currentAttrValue = player.attributes[attrToImprove as keyof typeof player.attributes] as number;
+                                if (currentAttrValue < 20) {
+                                    let moraleModifier = 1.0;
+                                    if ((player as Player).morale === 'Happy') moraleModifier = 1.2;
+                                    else if ((player as Player).morale === 'Unhappy') moraleModifier = 0.5;
+                                    const improvement = ((Math.random() * 0.2) + (devRate / 100)) * moraleModifier;
+                                    const newAttrValue = Math.min(20, currentAttrValue + improvement);
+                                    (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                     playerChanged = true;
-                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToDecline.toString(), change: -decline, newRating: newAttrValue, date: currentDate });
+                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
                                 }
                             }
                         }
                     }
-
-                    if (playerChanged) {
-                        const newCurrentAbility = calculateCurrentAbility(player.attributes, isSkater);
-                        const newStarRating = calculateStarRating(newCurrentAbility, isSkater, t.leagueDivision);
-                        player.currentAbility = newCurrentAbility;
-                        player.starRating = newStarRating;
+                    if (player.age > 28) {
+                        const baseDeclineChance = 0.05;
+                        const agePenalty = (player.age - 28) / 80;
+                        const declineChance = baseDeclineChance + agePenalty;
+                        if (Math.random() < declineChance) {
+                            let attrsToDecline: (keyof SkaterAttributes | keyof GoalieAttributes)[] = isSkater
+                                ? ['acceleration', 'agility', 'balance', 'speed', 'stamina', 'strength']
+                                : ['skating', 'goaltenderStamina', 'reflexes', 'recovery'];
+                            const attrToDecline = getRandomItem(attrsToDecline);
+                            const currentAttrValue = player.attributes[attrToDecline as keyof typeof player.attributes] as number;
+                            if (currentAttrValue > 1) {
+                                const decline = (Math.random() * 0.15) + 0.05;
+                                const newAttrValue = Math.max(1, currentAttrValue - decline);
+                                (player.attributes[attrToDecline as keyof typeof player.attributes] as number) = newAttrValue;
+                                playerChanged = true;
+                                if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToDecline.toString(), change: -decline, newRating: newAttrValue, date: currentDate });
+                            }
+                        }
                     }
+                }
 
-                    return player;
-                });
+                if (playerChanged) {
+                    const newCurrentAbility = calculateCurrentAbility(player.attributes, isSkater);
+                    const newStarRating = calculateStarRating(newCurrentAbility, isSkater, team.leagueDivision);
+                    player.currentAbility = newCurrentAbility;
+                    player.starRating = newStarRating;
+                }
+
+                return player;
+            });
 
             // Apply financial upgrade benefits
             const weeklyIncome = purchasedUpgrades
                 .filter(u => u.type === 'Financial')
                 .reduce((sum, u) => sum + u.benefitValue, 0);
             if (weeklyIncome > 0) {
-                t.financials.totalBudget += weeklyIncome;
+                team.financials.totalBudget += weeklyIncome;
                 if (isUserManagedTeam) {
                     toast.info(`+$${weeklyIncome.toLocaleString()} from upgrades`, { description: "Weekly income has been added to your budget." });
                 }
@@ -696,7 +690,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 return player;
             });
 
-            return { ...t, roster: newRoster };
+            return { ...team, roster: newRoster };
         });
 
         const newDate = ((prevDate) => {
@@ -1354,4 +1348,471 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         }
                     }
                 } else {
-                    const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | '
+                    const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
+                    if (nextRound) {
+                        tournament.currentRound = nextRound;
+                        toast.info(`Advancing to the ${tournament.currentRound} round of the ${currentBracket} bracket for ${tournament.division}.`);
+                    } else {
+                        // Fallback if nextRound is undefined (shouldn't happen with correct map)
+                        tournament.status = 'completed';
+                        toast.info(`The ${tournament.division} ${currentBracket} bracket has concluded.`);
+                    }
+                }
+            }
+        }
+        return { tournament, teams: tempTeams };
+    };
+
+    const playNationalsRound = (division: string, userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }) => {
+        setNationalsData(prevData => {
+            const currentYear = currentDate.year;
+            const yearData = { ...prevData[currentYear] };
+            const tournament = yearData[division];
+
+            if (!tournament) {
+                toast.error("Nationals tournament not found for this division.");
+                return prevData;
+            }
+
+            const { tournament: updatedTournament, teams: updatedTeams } = _runNationalsRoundSimulation(tournament, teams, userGameResult);
+
+            setTeams(updatedTeams); // Update the main teams state with any changes from simulation
+
+            yearData[division] = updatedTournament;
+            return { ...prevData, [currentYear]: yearData };
+        });
+    };
+
+    const autoSimulateUserNationalsGame = (division: string, gameId: string) => {
+        const userGame = gameForCurrentWeek;
+        if (!userGame || userGame.id !== gameId || !userTeam) {
+            toast.error("Game not found or not the current user game.");
+            return;
+        }
+
+        const opponentTeam = teams.find(t => t.name === userGame.opponent);
+        if (!opponentTeam) {
+            toast.error("Opponent team not found.");
+            return;
+        }
+
+        const finalGameState = simulateFullGame(userTeam, opponentTeam, true);
+        const completedGame = {
+            gameId: gameId,
+            homeScore: finalGameState.userScore,
+            awayScore: finalGameState.opponentScore,
+            homeTeamName: userTeam.name,
+            awayTeamName: opponentTeam.name,
+        };
+        playNationalsRound(division, completedGame);
+        toast.info("Nationals Game Auto-Simulated", { description: `${userTeam.name} ${finalGameState.userScore} - ${opponentTeam.name} ${finalGameState.opponentScore}` });
+    };
+
+    const simulateSingleNationalsGame = (division: string, gameId: string) => {
+        setNationalsData(prevData => {
+            const currentYear = currentDate.year;
+            const yearData = { ...prevData[currentYear] };
+            const tournament = yearData[division];
+
+            if (!tournament) {
+                toast.error("Nationals tournament not found for this division.");
+                return prevData;
+            }
+
+            const gameToSim = (tournament.groupStageSchedule as (ScheduleEntry | NationalsPlayoffMatch)[])
+                .concat(tournament.playoffSchedule)
+                .find(g => g.id === gameId);
+
+            if (!gameToSim || gameToSim.status === 'completed') {
+                toast.info("Game already completed or not found.");
+                return prevData;
+            }
+
+            const homeTeam = teams.find(t => t.name === (typeof gameToSim.homeTeam === 'string' ? gameToSim.homeTeam : ''));
+            const awayTeam = teams.find(t => t.name === (typeof gameToSim.awayTeam === 'string' ? gameToSim.awayTeam : ''));
+
+            if (!homeTeam || !awayTeam) {
+                toast.error("One or both teams for the game not found.");
+                return prevData;
+            }
+
+            const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+
+            const completedGameResult = {
+                homeTeamName: homeTeam.name,
+                awayTeamName: awayTeam.name,
+                homeScore: finalGameState.userScore,
+                awayScore: finalGameState.opponentScore,
+                gameId: gameId,
+            };
+
+            const { tournament: updatedTournament, teams: updatedTeams } = _runNationalsRoundSimulation(tournament, teams, completedGameResult);
+
+            setTeams(updatedTeams); // Update the main teams state with any changes from simulation
+
+            yearData[division] = updatedTournament;
+            return { ...prevData, [currentYear]: yearData };
+        });
+    };
+
+    const simulateFullNationalsTournament = (division: string) => {
+        setNationalsData(prevData => {
+            const currentYear = currentDate.year;
+            const yearData = { ...prevData[currentYear] };
+            let tournament = yearData[division];
+
+            if (!tournament) {
+                toast.error("Nationals tournament not found for this division.");
+                return prevData;
+            }
+
+            let currentTeams = [...teams]; // Create a mutable copy of teams
+
+            // Simulate group stage
+            while (tournament.status === 'group-stage' && tournament.groupStageSchedule.some(g => g.status === 'scheduled')) {
+                const { tournament: updatedTourney, teams: updatedTeams } = _runNationalsRoundSimulation(tournament, currentTeams);
+                tournament = updatedTourney;
+                currentTeams = updatedTeams;
+            }
+
+            // Simulate playoffs (Silver then Gold)
+            while (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
+                const { tournament: updatedTourney, teams: updatedTeams } = _runNationalsRoundSimulation(tournament, currentTeams);
+                tournament = updatedTourney;
+                currentTeams = updatedTeams;
+            }
+
+            setTeams(currentTeams); // Update the main teams state with any changes from simulation
+
+            yearData[division] = tournament;
+            toast.success(`Full Nationals tournament for ${division} simulated!`);
+            return { ...prevData, [currentYear]: yearData };
+        });
+    };
+
+    const simulateAllNationalsTournaments = () => {
+        setNationalsData(prevData => {
+            const currentYear = currentDate.year;
+            const yearData = { ...prevData[currentYear] };
+            let currentTeams = [...teams]; // Create a mutable copy of teams
+
+            for (const division in yearData) {
+                let tournament = yearData[division];
+                if (!tournament) continue;
+
+                // Simulate group stage
+                while (tournament.status === 'group-stage' && tournament.groupStageSchedule.some(g => g.status === 'scheduled')) {
+                    const { tournament: updatedTourney, teams: updatedTeams } = _runNationalsRoundSimulation(tournament, currentTeams);
+                    tournament = updatedTourney;
+                    currentTeams = updatedTeams;
+                }
+
+                // Simulate playoffs (Silver then Gold)
+                while (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
+                    const { tournament: updatedTourney, teams: updatedTeams } = _runNationalsRoundSimulation(tournament, currentTeams);
+                    tournament = updatedTourney;
+                    currentTeams = updatedTeams;
+                }
+                yearData[division] = tournament;
+            }
+
+            setTeams(currentTeams); // Update the main teams state with any changes from simulation
+            toast.success(`All Nationals tournaments for ${currentYear} simulated!`);
+            return { ...prevData, [currentYear]: yearData };
+        });
+    };
+
+    const generateScoutingPool = () => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        const allTeamNames = teams.map(t => t.name);
+        let newScoutingPool = generateRecruits(userTeam.leagueDivision, allTeamNames);
+
+        const recruitingUpgrades = allUpgrades.filter(u => userTeam.upgrades.includes(u.id) && u.type === 'Recruiting');
+        if (recruitingUpgrades.length > 0) {
+            const totalRecruitingBoost = recruitingUpgrades.reduce((sum, u) => sum + u.benefitValue, 0);
+            newScoutingPool = newScoutingPool.map(player => {
+                const boost = 1 + totalRecruitingBoost;
+                const newPotential = Math.min(100, player.potentialAbility * boost);
+                const isSkater = !player.positions.includes('G');
+                const newCurrentAbility = calculateCurrentAbility(player.attributes, isSkater);
+                return {
+                    ...player,
+                    potentialAbility: newPotential,
+                    currentAbility: Math.min(newPotential, newCurrentAbility),
+                };
+            });
+            toast.info("Recruiting Boost!", { description: "Your recruiting upgrades have improved the quality of available recruits." });
+        }
+
+        setScoutingPool(newScoutingPool);
+        setFairHosted(true);
+        toast.success("Scouting Fair Hosted!", { description: `${newScoutingPool.length} recruits added to the scouting pool.` });
+    };
+
+    const recruitPlayer = (playerId: string) => {
+        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        if (!playerToRecruit || !userTeam) return;
+
+        if (userTeam.financials.budgetAllocations.Recruiting < (playerToRecruit.recruitmentCost || 0)) {
+            toast.error("Insufficient Recruiting Budget", { description: `You need $${playerToRecruit.recruitmentCost?.toLocaleString()} to recruit this player.` });
+            return;
+        }
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const updatedTeam = {
+                    ...team,
+                    financials: {
+                        ...team.financials,
+                        budgetAllocations: {
+                            ...team.financials.budgetAllocations,
+                            Recruiting: team.financials.budgetAllocations.Recruiting - (playerToRecruit.recruitmentCost || 0)
+                        }
+                    }
+                };
+                return updatedTeam;
+            }
+            return team;
+        }));
+
+        setRecruitedPool(prev => [...prev, playerToRecruit]);
+        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been added to your recruited pool.` });
+    };
+
+    const assignPlayerToRoster = (playerId: string) => {
+        const playerToAssign = recruitedPool.find(p => p.id === playerId) || transferPool.find(p => p.id === playerId);
+        if (!playerToAssign || !userTeam) return;
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const usedJerseyNumbers = new Set(team.roster.map(p => p.jerseyNumber));
+                let newJerseyNumber = playerToAssign.jerseyNumber;
+                if (newJerseyNumber === 0 || usedJerseyNumbers.has(newJerseyNumber)) {
+                    newJerseyNumber = 1;
+                    while (usedJerseyNumbers.has(newJerseyNumber)) {
+                        newJerseyNumber++;
+                    }
+                }
+
+                const isSkater = playerToAssign.positions[0] !== 'G';
+                const updatedPlayer = {
+                    ...playerToAssign,
+                    jerseyNumber: newJerseyNumber,
+                    starRating: calculateStarRating(playerToAssign.currentAbility, isSkater, team.leagueDivision)
+                };
+
+                return {
+                    ...team,
+                    roster: [...team.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber)
+                };
+            }
+            return team;
+        }));
+
+        setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+        setTransferPool(prev => prev.filter(p => p.id !== playerId));
+        toast.success("Player Assigned!", { description: `${playerToAssign.name} has been added to your roster.` });
+    };
+
+    const discardRecruit = (playerId: string) => {
+        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+        setTransferPool(prev => prev.filter(p => p.id !== playerId));
+        toast.info("Recruit Discarded", { description: "Player removed from consideration." });
+    };
+
+    const purchaseUpgrade = (upgradeId: string) => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        const upgrade = allUpgrades.find(u => u.id === upgradeId);
+        if (!upgrade) {
+            toast.error("Upgrade not found.");
+            return;
+        }
+        if (userTeam.upgrades.includes(upgradeId)) {
+            toast.info("Upgrade already purchased.");
+            return;
+        }
+        if (userTeam.financials.budgetAllocations.Facilities < upgrade.cost) {
+            toast.error("Insufficient Facilities Budget", { description: `You need $${upgrade.cost.toLocaleString()} to purchase this.` });
+            return;
+        }
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                return {
+                    ...team,
+                    upgrades: [...team.upgrades, upgradeId],
+                    financials: {
+                        ...team.financials,
+                        budgetAllocations: {
+                            ...team.financials.budgetAllocations,
+                            Facilities: team.financials.budgetAllocations.Facilities - upgrade.cost
+                        }
+                    }
+                };
+            }
+            return team;
+        }));
+        toast.success("Upgrade Purchased!", { description: `${upgrade.name} is now active.` });
+    };
+
+    const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                return {
+                    ...team,
+                    financials: {
+                        ...team.financials,
+                        budgetAllocations: newAllocations
+                    }
+                };
+            }
+            return team;
+        }));
+        toast.success("Budget Updated", { description: "Your budget allocations have been saved." });
+    };
+
+    const runStudentLifeInitiative = () => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+
+        const cost = 5000;
+        if (userTeam.financials.budgetAllocations["Student Life"] < cost) {
+            toast.error("Insufficient Student Life Budget", { description: `You need $${cost.toLocaleString()} in Student Life budget to run an initiative.` });
+            return;
+        }
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const updatedRoster = team.roster.map(player => {
+                    const updatedPlayer = { ...player };
+                    if (Math.random() > 0.5) { // 50% chance to improve morale
+                        updatedPlayer.morale = updateMorale(player.morale, 1);
+                    }
+                    return updatedPlayer;
+                });
+                return {
+                    ...team,
+                    roster: updatedRoster,
+                    financials: {
+                        ...team.financials,
+                        budgetAllocations: {
+                            ...team.financials.budgetAllocations,
+                            "Student Life": team.financials.budgetAllocations["Student Life"] - cost
+                        }
+                    }
+                };
+            }
+            return team;
+        }));
+        toast.success("Student Life Initiative Complete!", { description: "Players' morale has been boosted." });
+    };
+
+    const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
+        if (!userTeam) return;
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                return {
+                    ...team,
+                    roster: team.roster.map(player =>
+                        player.id === playerId ? { ...player, trainingFocus: focus } : player
+                    )
+                };
+            }
+            return team;
+        }));
+        toast.success("Training Focus Updated", { description: "Player's training focus has been set." });
+    };
+
+    const autoAssignTrainingFocuses = () => {
+        if (!userTeam) return;
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const updatedRoster = team.roster.map(player => {
+                    if (player.trainingFocus) return player; // Don't change if already set
+
+                    const isSkater = !player.positions.includes('G');
+                    const availableFocuses = isSkater ? skaterFocuses : goalieFocuses;
+
+                    // Simple auto-assign: pick a random focus
+                    const randomFocus = getRandomItem(availableFocuses);
+                    return { ...player, trainingFocus: randomFocus };
+                });
+                toast.success("Auto-Assigned Training Focuses", { description: "Unassigned players now have a training focus." });
+                return { ...team, roster: updatedRoster };
+            }
+            return team;
+        }));
+    };
+
+    return (
+        <TeamContext.Provider
+            value={{
+                teams,
+                updateTeam,
+                userTeam,
+                organizationFinancials,
+                organizationFacilities,
+                selectTeam,
+                scoutingPool,
+                recruitedPool,
+                transferPool,
+                fairHosted,
+                generateScoutingPool,
+                recruitPlayer,
+                assignPlayerToRoster,
+                discardRecruit,
+                updateBudgetAllocations,
+                runStudentLifeInitiative,
+                purchaseUpgrade,
+                currentDate,
+                advanceWeek,
+                developmentHistory,
+                updatePlayerTrainingFocus,
+                autoAssignTrainingFocuses,
+                processGameResults,
+                movePlayer,
+                requestPlayerTransfer,
+                managedOrganization,
+                isManagingOrg,
+                managedTeams,
+                selectOrganization,
+                setActiveTeam,
+                schedule,
+                gameForCurrentWeek,
+                nationalsData,
+                markGameAsCompleted,
+                seasonRecords,
+                careerRecords,
+                alumni,
+                playNationalsRound,
+                autoSimulateUserNationalsGame,
+                seasonHistory,
+                simulateFullNationalsTournament,
+                simulateSingleNationalsGame,
+                simulateAllNationalsTournaments,
+                saveGame,
+                loadGame,
+                deleteGame,
+                exitToMainMenu,
+                savedGames,
+            }}
+        >
+            {children}
+        </TeamContext.Provider>
+    );
+};
