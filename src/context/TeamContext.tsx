@@ -755,17 +755,20 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 }
                             } else if (roll < continueChance + transferChance) {
                                 // Player becomes a transfer prospect
+                                player.alumniStatus = 'Active Elsewhere'; // Mark as active elsewhere
+                                newAlumni.push(player); // Add to alumni list
+
                                 const transferProspect: Player = {
-                                    ...player,
+                                    ...player, // Use the original player as base
                                     source: 'Transfer',
-                                    jerseyNumber: 0,
-                                    morale: 'Content',
-                                    eligibility: 'Masters',
-                                    yearsLeftInProgram: 2,
+                                    jerseyNumber: 0, // Reset jersey number for transfer
+                                    morale: 'Content', // Reset morale for transfer
+                                    eligibility: 'Masters', // Default eligibility for transfers
+                                    yearsLeftInProgram: 2, // Default years for transfers
                                     recruitmentCost: 0, // Free for user, cost for AI is based on quality
-                                    captaincy: null,
-                                    currentStats: [],
-                                    isContinuingEducation: false,
+                                    captaincy: null, // Reset captaincy
+                                    currentStats: [], // Clear current stats for new season
+                                    isContinuingEducation: false, // Not continuing education
                                 };
                                 allTransferPlayers.push(transferProspect);
                                 if (isManaged) {
