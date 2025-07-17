@@ -392,7 +392,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     // Constants for staff retirement logic
-    const STAFF_RETIREMENT_MIN_AGE = 25;
+    const STAFF_RETIREMENT_MIN_AGE = 36; // Changed from 25 to 36
     const STAFF_RETIREMENT_MAX_AGE = 37;
     const STAFF_RETIREMENT_CHANCE_PER_YEAR_INCREASE = 0.08; // 8% increase per year after min age
 
