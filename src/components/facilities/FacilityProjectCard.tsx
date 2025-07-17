@@ -26,7 +26,7 @@ const getLiveBenefit = (project: FacilityProject) => {
 
   switch (project.id) {
     case 'merch_store_1':
-      return `Total Income Generated: $${project.incomeGenerated || 0}`;
+      return `Total Income Generated: $${project.incomeGenerated?.toLocaleString() || 0}`;
     case 'rink_ads_1':
       return `Provides $5000 at the start of each season.`;
     case 'team_bus_1':

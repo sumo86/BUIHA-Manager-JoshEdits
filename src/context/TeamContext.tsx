@@ -7,7 +7,7 @@ import { calculateCurrentAbility } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
 import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
 import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
-import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
+import { generateSeasonSchedule } => '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
@@ -624,6 +624,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setNationalsData(tempNationalsData);
     };
 
+    const markGameAsCompleted = (gameId: string, homeScore: number, awayScore: number) => {
+        setSchedule(prevSchedule =>
+            prevSchedule.map(game =>
+                game.id === gameId
+                    ? { ...game, status: 'completed', result: { homeScore, awayScore } }
+                    : game
+            )
+        );
+    };
+
     const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState, isNationalsGame: boolean = false, nationalsDivision?: string, gameId?: string) => {
         const { updatedUserTeam: updatedUserTeamResult, updatedOpponentTeam: updatedOpponentTeamResult } = processGameResultsEngine(userTeam, opponentTeam, gameState, isNationalsGame);
         
@@ -735,11 +745,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             // --- Home Team Costs & Revenue ---
             // Ice Time Cost
             const homeIceTimeCost = homeTeam.financials.iceTimeCostPerGame;
+            homeTeam.financials.totalBudget -= homeIceTimeCost;
             const homeIceTimeAllocated = homeTeam.financials.budgetAllocations["Ice Time"];
             const deductionFromIceAllocation = Math.min(homeIceTimeAllocated, homeIceTimeCost);
-            const remainingIceCost = homeIceTimeCost - deductionFromIceAllocation;
             homeTeam.financials.budgetAllocations["Ice Time"] -= deductionFromIceAllocation;
-            homeTeam.financials.totalBudget -= remainingIceCost; // Deduct shortfall from main budget
 
             // Ticket Revenue
             let ticketRevenue = homeTeam.financials.ticketRevenuePerHomeGame;
@@ -755,11 +764,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (awayTeam.facilities.some(f => f.id === 'team_bus_1' && f.status === 'Completed')) {
                 travelCost *= 0.5; // 50% reduction
             }
+            awayTeam.financials.totalBudget -= travelCost;
             const travelAllocated = awayTeam.financials.budgetAllocations.Travel;
             const deductionFromTravelAllocation = Math.min(travelAllocated, travelCost);
-            const remainingTravelCost = travelCost - deductionFromTravelAllocation;
             awayTeam.financials.budgetAllocations.Travel -= deductionFromTravelAllocation;
-            awayTeam.financials.totalBudget -= remainingTravelCost; // Deduct shortfall from main budget
         });
 
         const updateGameRecords = (homeTeam: Team, awayTeam: Team) => {
@@ -1172,10 +1180,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         const orgName = getOrganizationName(team.name);
                         const organization = allOrganizations.find(org => org.name === orgName);
 
-                        let newBaseBudget = 15000; // Default for single-team orgs
+                        let newBaseBudget = 40000; // Default for single-team orgs
                         if (organization && organization.teams.length > 1) {
-                            // Replicate the multi-team organization budget calculation
-                            const orgTotalBudget = 10000 + (organization.teams.length * 7500);
+                            const orgTotalBudget = 25000 + (organization.teams.length * 15000);
                             newBaseBudget = orgTotalBudget / organization.teams.length;
                         }
 
@@ -1254,42 +1261,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
             tempSchedule = generateSeasonSchedule(tempTeams, newDate);
             toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
-
-            tempTeams = tempTeams.map(team => {
-                const homeGames = tempSchedule.filter(g => g.homeTeam === team.name).length;
-                const awayGames = tempSchedule.filter(g => g.awayTeam === team.name).length;
-
-                const iceTimeCost = homeGames * team.financials.iceTimeCostPerGame;
-                const travelCost = awayGames * team.financials.travelCostPerAwayGame;
-                const totalOperationalCosts = iceTimeCost + travelCost;
-
-                if (team.financials.totalBudget >= totalOperationalCosts) {
-                    team.financials.budgetAllocations['Ice Time'] = iceTimeCost;
-                    team.financials.budgetAllocations['Travel'] = travelCost;
-                    team.financials.totalBudget -= totalOperationalCosts;
-
-                    if (managedTeamNames.includes(team.name)) {
-                        toast.info("Budgets Allocated", {
-                            description: `Automatically allocated $${iceTimeCost.toLocaleString()} for ice time and $${travelCost.toLocaleString()} for travel for the new season.`
-                        });
-                    }
-                } else {
-                    const affordableIceTime = Math.min(iceTimeCost, team.financials.totalBudget);
-                    team.financials.budgetAllocations['Ice Time'] = affordableIceTime;
-                    team.financials.totalBudget -= affordableIceTime;
-
-                    const affordableTravel = Math.min(travelCost, team.financials.totalBudget);
-                    team.financials.budgetAllocations['Travel'] = affordableTravel;
-                    team.financials.totalBudget -= affordableTravel;
-
-                    if (managedTeamNames.includes(team.name)) {
-                        toast.warning("Insufficient Funds for Full Allocation", {
-                            description: `Could not fully fund operational costs. Allocated $${(affordableIceTime + affordableTravel).toLocaleString()} of the required $${totalOperationalCosts.toLocaleString()}.`
-                        });
-                    }
-                }
-                return team;
-            });
         }
 
         if (newDate.month === 'May' && newDate.week === 1 && !(currentDate.month === 'May' && currentDate.week === 1)) {
@@ -1469,7 +1440,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const newToRoster = [...toTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 
             const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
-            const updatedToTeam = { ...toTeam, roster: newToRoster };
+            const updatedToTeam = { ...toTeam, roster: newToRster };
 
             return currentTeams.map(t => {
                 if (t.name === fromTeamName) return updatedFromTeam;
@@ -1518,16 +1489,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             else reasonText = `${player.name} is happy where they are and does not wish to move at this time.`;
             toast.error("Transfer Denied", { description: reasonText });
         }
-    };
-
-    const markGameAsCompleted = (gameId: string, homeScore: number, awayScore: number) => {
-        setSchedule(prevSchedule =>
-            prevSchedule.map(game =>
-                game.id === gameId
-                    ? { ...game, status: 'completed', result: { homeScore, awayScore } }
-                    : game
-            )
-        );
     };
 
     const simulateFullNationalsTournament = (division: string) => {
