@@ -1,100 +1,71 @@
+import { NavLink, useLocation } from "react-router-dom";
 import { useTeam } from "@/context/TeamContext";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  LayoutDashboard,
-  Users,
-  ClipboardList,
-  DollarSign,
-  Building,
-  Calendar,
-  BarChart3,
-  Trophy,
-  UserPlus,
-  Swords,
-  ChevronDown,
-  LogOut,
-  Settings,
-  Play,
-  Smile,
-  BookOpen,
-  Swords as NationalsIcon, // Renaming to avoid conflict
-} from "lucide-react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { toast } from 'sonner';
+import { Button } from "./ui/button";
+import { Home, Trophy, Users, BarChart2, Briefcase, DollarSign, Heart, Building, ClipboardList, BookOpen, Calendar, Dumbbell, GraduationCap, Globe, LogOut, Save } from "lucide-react";
+import { ExitGameDialog } from "./ExitGameDialog";
 
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/season-overview", label: "Season Overview", icon: Calendar }, // Added this back
-  { href: "/roster", label: "Roster", icon: Users },
-  { href: "/lineup", label: "Lineup", icon: ClipboardList },
-  { href: "/training", label: "Training", icon: BarChart3 },
-  { href: "/recruitment", label: "Recruitment", icon: UserPlus },
-  { href: "/finances", label: "Finances", icon: DollarSign },
-  { href: "/morale", label: "Morale", icon: Smile },
-  { href: "/facilities", label: "Facilities", icon: Building },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/standings", label: "Standings", icon: Trophy },
-  { href: "/history", label: "History", icon: BookOpen },
-  { href: "/alumni", label: "Alumni", icon: Users },
-  { href: "/nationals", label: "Nationals", icon: NationalsIcon },
-  { href: "/buiha-overview", label: "BUIHA", icon: Swords },
+const navLinks = [
+  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/season-overview", label: "Season", icon: Calendar },
+  { to: "/standings", label: "Standings", icon: BarChart2 },
+  { to: "/roster", label: "Roster", icon: Users },
+  { to: "/lineup", label: "Lineup", icon: ClipboardList },
+  { to: "/training", label: "Training", icon: Dumbbell },
+  { to: "/recruitment", label: "Recruitment", icon: Globe },
+  { to: "/finances", label: "Finances", icon: DollarSign },
+  { to: "/morale", label: "Morale", icon: Heart },
+  { to: "/facilities", label: "Facilities", icon: Building },
+  { to: "/history", label: "History", icon: BookOpen },
+  { to: "/alumni", label: "Alumni", icon: GraduationCap },
+  { to: "/nationals", label: "Nationals", icon: Trophy },
 ];
 
 const Sidebar = () => {
-  const { userTeam, advanceWeek, selectTeam, gameForCurrentWeek } = useTeam();
-  const navigate = useNavigate();
+  const { userTeam, saveGame, exitToMainMenu, isManagingOrg, managedOrganization } = useTeam();
+  const location = useLocation();
 
-  const handlePlayGame = () => {
-    if (gameForCurrentWeek) {
-      navigate(`/game/${gameForCurrentWeek.opponent}`);
-    }
+  if (!userTeam) return null;
+
+  const getNavLinkClass = (path: string) => {
+    return cn(
+      "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+      location.pathname === path && "bg-muted text-primary"
+    );
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 border-r bg-background p-4 flex flex-col">
-      <div className="flex items-center gap-3 mb-6">
-        {userTeam.logo && <img src={userTeam.logo} alt={userTeam.name} className="h-10 w-10 object-contain" />}
-        <h1 className="text-xl font-bold">{userTeam.name}</h1>
-      </div>
-      <div className="space-y-2 mb-6">
-        {gameForCurrentWeek && !gameForCurrentWeek.isNationals && (
-          <Button className="w-full justify-start" size="lg" onClick={handlePlayGame}>
-            <Play className="mr-2 h-4 w-4" />
-            Play Game vs {gameForCurrentWeek.opponent}
+    <aside className="hidden border-r bg-muted/40 md:block w-64">
+      <div className="flex h-full max-h-screen flex-col gap-2">
+        <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+          <div className="flex items-center gap-2 font-semibold">
+            <img src={userTeam.logo} alt={userTeam.name} className="h-6 w-6 object-contain" />
+            <span>{isManagingOrg ? managedOrganization : userTeam.name}</span>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+            {navLinks.map((link) => (
+              <NavLink key={link.to} to={link.to} className={getNavLinkClass(link.to)}>
+                <link.icon className="h-4 w-4" />
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+        <div className="mt-auto p-4 space-y-2 border-t">
+          <Button variant="outline" className="w-full justify-start gap-3" onClick={saveGame}>
+            <Save className="h-4 w-4" />
+            Save Game
           </Button>
-        )}
-        <Button variant="outline" className="w-full justify-start" onClick={advanceWeek}>
-          <Calendar className="mr-2 h-4 w-4" />
-          Advance Week
-        </Button>
+          <ExitGameDialog onConfirm={exitToMainMenu}>
+            <Button variant="destructive" className="w-full justify-start gap-3">
+              <LogOut className="h-4 w-4" />
+              Exit to Main Menu
+            </Button>
+          </ExitGameDialog>
+        </div>
       </div>
-      <ScrollArea className="flex-1">
-        <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.href}
-              to={item.href}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                  isActive && "text-primary bg-muted"
-                )
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </ScrollArea>
     </aside>
   );
 };
