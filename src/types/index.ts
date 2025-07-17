@@ -179,14 +179,16 @@ export type Financials = {
   budgetAllocations: BudgetAllocations;
 };
 
-export type FacilityProject = {
+export type UpgradeType = "Financial" | "Development" | "Medical" | "Morale" | "Recruiting";
+
+export type Upgrade = {
   id: string;
   name: string;
   description: string;
   cost: number;
-  status: 'Not Started' | 'In Progress' | 'Completed';
-  benefit: string;
-  weeksToComplete?: number;
+  type: UpgradeType;
+  benefitValue: number;
+  benefitDescription: string;
 };
 
 export type Team = {
@@ -205,7 +207,7 @@ export type Team = {
   lineup: Lineup;
   tactics: TacticsSelection;
   financials: Financials;
-  facilities: FacilityProject[];
+  upgrades: string[];
 };
 
 export type GameEvent = {
