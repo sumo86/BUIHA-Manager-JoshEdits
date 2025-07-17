@@ -15,7 +15,7 @@ const StandingsPage = () => {
   }, [teams]);
 
   const { displayedTeams, leaguePlayers } = useMemo(() => {
-    const leagueToDisplay = selectedLeague || leagues[0];
+    const leagueToDisplay = selectedLeague || (leagues.length > 0 ? leagues[0] : null); // Safeguard added
     if (!leagueToDisplay) return { displayedTeams: [], leaguePlayers: [] };
 
     const filteredTeams = teams.filter(team => team.leagueDivision === leagueToDisplay);
@@ -48,7 +48,7 @@ const StandingsPage = () => {
         <h1 className="text-3xl font-bold">League Standings</h1>
         <p className="text-muted-foreground">View team standings and player leaderboards.</p>
       </div>
-      <Select value={selectedLeague || leagues[0] || ''} onValueChange={setSelectedLeague}>
+      <Select value={selectedLeague || (leagues.length > 0 ? leagues[0] : '')} onValueChange={setSelectedLeague}>
         <SelectTrigger className="w-[280px]">
           <SelectValue placeholder="Select a league" />
         </SelectTrigger>

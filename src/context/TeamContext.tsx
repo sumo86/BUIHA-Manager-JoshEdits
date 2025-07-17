@@ -192,7 +192,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         return teams.find(t => t.name === activeTeamName) || null;
     }, [activeTeamName, teams]);
 
-    const organizationFinancials = useMemo(() => {
+    const organizationFinancials = useMemo((): Financials | null => {
         if (!managedOrganization || managedTeams.length === 0) return null;
         return {
             totalBudget: managedTeams.reduce((sum, t) => sum + t.financials.totalBudget, 0),
@@ -1383,7 +1383,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const saveGame = (saveName: string) => {
         const saveSlot: SaveGameSlot = {
             saveName,
-            savedAt: new Date().toLocaleString(),
+            savedAt: new Date().toISOString(),
             userTeamName: activeTeamName || 'No Team Selected',
             currentDate: currentDate,
         };
