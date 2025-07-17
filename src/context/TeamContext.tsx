@@ -8,11 +8,11 @@ import { trainingFocusesMap } from '@/data/trainingFocuses';
 import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
 import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
 import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
-import { simulateFullGame } => '@/lib/gameEngine';
+import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
 import { NationalsTournament } from '@/types';
-import { isRivalryGame } '@/lib/rivalries';
+import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { allUpgrades } from '@/data/upgrades';
 
