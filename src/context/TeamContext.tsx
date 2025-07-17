@@ -559,7 +559,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const hasSocialMedia = team.facilities.some(f => f.id === 'social_media_1' && f.status === 'Completed');
 
             if (hasMerchKiosk) {
-                let merchIncome = 150; // Base income
+                let merchIncome = 25; // Base income adjusted to £25
                 if (hasSocialMedia) {
                     merchIncome *= 1.2; // Social media boosts merch sales by 20%
                 }
@@ -771,8 +771,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 setFairHosted(false); // Reset fair hosted status
 
                 // Generate new schedule for the next season
+                console.log("Attempting to generate schedule for next year:", nextYear, "with", tempTeams.length, "teams.");
                 const newSchedule = generateSeasonSchedule(tempTeams, { month: 'August', week: 1, year: nextYear });
                 setSchedule(newSchedule);
+                console.log("Schedule generated:", newSchedule.length, "games.");
 
                 // Generate new recruits for the next season
                 generateScoutingPool();
@@ -1035,8 +1037,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (team.name === userTeam.name) {
                 const updatedRoster = team.roster.map(player => {
                     if (!player.trainingFocus) {
-                        // Correctly use the arrays directly, not Object.keys()
-                        const availableFocuses = player.positions.includes('G') ? goalieFocuses : skaterFocuses;
+                        const availableFocuses = player.positions.includes('G') ? Object.keys(goalieFocuses) : Object.keys(skaterFocuses);
                         const randomFocus = getRandomItem(availableFocuses) as TrainingFocus;
                         return { ...player, trainingFocus: randomFocus };
                     }
