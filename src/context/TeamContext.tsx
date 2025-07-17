@@ -1135,8 +1135,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         team.roster = remainingPlayers;
 
                         // --- NEW BUDGET LOGIC START ---
-                        const currentSpentFunds = Object.values(team.financials.budgetAllocations).reduce((sum, val) => sum + val, 0);
-                        const unspentFunds = team.financials.totalBudget - currentSpentFunds;
+                        const unspentFunds = team.financials.totalBudget; // This is now the correct remaining total
 
                         const orgName = getOrganizationName(team.name);
                         const organization = allOrganizations.find(org => org.name === orgName);
@@ -1148,7 +1147,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             newBaseBudget = orgTotalBudget / organization.teams.length;
                         }
 
-                        const newTotalBudget = newBaseBudget + unspentFunds;
+                        const newTotalBudget = newBaseBudget + unspentFunds; // Carry over unspent funds
                         const resetAllocations = { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 };
                         // --- NEW BUDGET LOGIC END ---
 
@@ -1599,7 +1598,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         const cost = playerToRecruit.recruitmentCost || 0;
         if (userTeam.financials.budgetAllocations.Recruiting < cost) {
-            toast.error("Insufficient Recruiting Budget", { description: `You need ${cost} in recruiting budget to sign ${playerToRecruit.name}.` });
+            toast.error("Insufficient Recruiting Budget", { description: `You need $${cost.toLocaleString()} in recruiting budget to sign ${playerToRecruit.name}.` });
+            return;
+        }
+        if (userTeam.financials.totalBudget < cost) {
+            toast.error("Insufficient Total Budget", { description: `You cannot afford to recruit ${playerToRecruit.name} as it would put you into debt.` });
             return;
         }
 
@@ -1609,6 +1612,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     ...team,
                     financials: {
                         ...team.financials,
+                        totalBudget: team.financials.totalBudget - cost,
                         budgetAllocations: {
                             ...team.financials.budgetAllocations,
                             Recruiting: team.financials.budgetAllocations.Recruiting - cost
@@ -1692,7 +1696,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
         const cost = 500; // Example cost
         if (userTeam.financials.budgetAllocations["Student Life"] < cost) {
-            toast.error("Insufficient Student Life Budget", { description: `You need ${cost} in student life budget to run an initiative.` });
+            toast.error("Insufficient Student Life Budget", { description: `You need $${cost.toLocaleString()} in student life budget to run an initiative.` });
+            return;
+        }
+        if (userTeam.financials.totalBudget < cost) {
+            toast.error("Insufficient Total Budget", { description: `You cannot afford this initiative as it would put you into debt.` });
             return;
         }
 
@@ -1707,6 +1715,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     roster: updatedRoster,
                     financials: {
                         ...team.financials,
+                        totalBudget: team.financials.totalBudget - cost,
                         budgetAllocations: {
                             ...team.financials.budgetAllocations,
                             "Student Life": team.financials.budgetAllocations["Student Life"] - cost
@@ -1734,7 +1743,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
         if (userTeam.financials.budgetAllocations.Facilities < project.cost) {
-            toast.error("Insufficient Facilities Budget", { description: `You need ${project.cost} in facilities budget to start this project.` });
+            toast.error("Insufficient Facilities Budget", { description: `You need $${project.cost.toLocaleString()} in your facilities budget to start this project.` });
+            return;
+        }
+        if (userTeam.financials.totalBudget < project.cost) {
+            toast.error("Insufficient Total Budget", { description: `You cannot afford this project as it would put you into debt.` });
             return;
         }
 
@@ -1745,6 +1758,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     facilities: [...team.facilities, { ...project, status: 'In Progress', weeksToComplete: project.weeksToComplete || 4 }],
                     financials: {
                         ...team.financials,
+                        totalBudget: team.financials.totalBudget - project.cost,
                         budgetAllocations: {
                             ...team.financials.budgetAllocations,
                             Facilities: team.financials.budgetAllocations.Facilities - project.cost
