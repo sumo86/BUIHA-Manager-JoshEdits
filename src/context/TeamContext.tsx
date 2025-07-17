@@ -7,7 +7,7 @@ import { calculateCurrentAbility } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
 import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
 import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
-import { generateSeasonSchedule } => '@/lib/scheduleGenerator';
+import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament, generatePlayoffBracket } from '@/lib/nationalsGenerator';
@@ -1440,7 +1440,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const newToRoster = [...toTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 
             const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
-            const updatedToTeam = { ...toTeam, roster: newToRster };
+            const updatedToTeam = { ...toTeam, roster: newToRoster };
 
             return currentTeams.map(t => {
                 if (t.name === fromTeamName) return updatedFromTeam;
