@@ -208,7 +208,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     }, [managedOrganization, managedTeams]);
 
     const organizationFacilities = useMemo((): FacilityProject[] | null => {
-        if (!managedOrganization || managedTeams.length === 0) return null;
+        if (!managedOrganization || managedTeams.length === 0) {
+            return null; // Explicitly return null here
+        }
         const uniqueFacilities = managedTeams.reduce((acc, team) => {
             team.facilities.forEach(project => {
                 if (!acc.some(p => p.id === project.id)) {
@@ -797,7 +799,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const generateScoutingPool = () => {
-        const newPool = generateRecruits(10); // Generate 10 new recruits
+        if (!userTeam) {
+            toast.error("Cannot generate scouting pool", { description: "Please select a team first." });
+            return;
+        }
+        // Pass userTeam's league division and all team names to generateRecruits
+        const allTeamNames = teams.map(team => team.name);
+        const newPool = generateRecruits(userTeam.leagueDivision, allTeamNames, 30); // Generate 30 new recruits
         setScoutingPool(newPool);
         setFairHosted(true);
         toast.success("Recruitment Fair Hosted!", { description: "A new pool of potential recruits is available." });
@@ -1150,7 +1158,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 // Update standings after all games in the round
                 const allTeamNamesInTournament = tournament.groups.flatMap(group => group.teams);
-                const updatedTournament = createNationalsTournament(division, allTeamNamesInTournament, currentDate.year, tournament.groupStageSchedule);
+                const teamsInTournament = teams.filter(t => allTeamNamesInTournament.includes(t.name)); // Get actual Team objects
+                const updatedTournament = createNationalsTournament(division, teamsInTournament, currentDate.year, currentDate.week); // Fixed: Pass currentDate.week
                 newData[currentDate.year][division].groups = updatedTournament.groups;
 
                 // Advance round or transition to playoffs
@@ -1159,8 +1168,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     toast.info(`Nationals Group Stage: Round ${newData[currentDate.year][division].currentRound} started for ${division}.`);
                 } else {
                     // Transition to playoffs
-                    const playoffBracket = generatePlayoffBracket(tournament.groups, currentDate);
-                    newData[currentDate.year][division].playoffSchedule = playoffBracket.playoffSchedule;
+                    const playoffSchedule = generatePlayoffBracket(tournament.groups, currentDate); // Fixed: No destructuring
+                    newData[currentDate.year][division].playoffSchedule = playoffSchedule;
                     newData[currentDate.year][division].status = 'gold-playoffs'; // Start with Gold playoffs
                     newData[currentDate.year][division].currentRound = 'Quarter-Final';
                     toast.success(`Nationals Group Stage Completed for ${division}! Playoffs begin!`);
@@ -1312,13 +1321,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         }
                     });
                     const allTeamNamesInTournament = tournament.groups.flatMap(group => group.teams);
-                    const updatedTournament = createNationalsTournament(division, allTeamNamesInTournament, currentDate.year, tournament.groupStageSchedule);
+                    const teamsInTournament = teams.filter(t => allTeamNamesInTournament.includes(t.name)); // Get actual Team objects
+                    const updatedTournament = createNationalsTournament(division, teamsInTournament, currentDate.year, currentDate.week); // Fixed: Pass currentDate.week
                     newData[currentDate.year][division].groups = updatedTournament.groups;
                     newData[currentDate.year][division].currentRound = (round as number) + 1;
                 }
                 // Transition to playoffs
-                const playoffBracket = generatePlayoffBracket(tournament.groups, currentDate);
-                newData[currentDate.year][division].playoffSchedule = playoffBracket.playoffSchedule;
+                const playoffSchedule = generatePlayoffBracket(tournament.groups, currentDate); // Fixed: No destructuring
+                newData[currentDate.year][division].playoffSchedule = playoffSchedule;
                 newData[currentDate.year][division].status = 'gold-playoffs';
                 newData[currentDate.year][division].currentRound = 'Quarter-Final';
             }
