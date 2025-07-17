@@ -177,6 +177,8 @@ export type Financials = {
   iceTimeCostPerGame: number;
   equipmentCost: number;
   budgetAllocations: BudgetAllocations;
+  travelCostPerAwayGame: number;
+  ticketRevenuePerHomeGame: number;
 };
 
 export type FacilityProject = {
@@ -187,6 +189,7 @@ export type FacilityProject = {
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
   weeksToComplete?: number;
+  incomeGenerated?: number;
 };
 
 export type Team = {
