@@ -391,6 +391,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         );
     };
 
+    // Constants for staff retirement logic
+    const STAFF_RETIREMENT_MIN_AGE = 25;
+    const STAFF_RETIREMENT_MAX_AGE = 37;
+    const STAFF_RETIREMENT_CHANCE_PER_YEAR_INCREASE = 0.08; // 8% increase per year after min age
+
     const advanceWeek = () => {
         if (gameForCurrentWeek && userTeam) {
             const validationError = validateLineup(userTeam);
@@ -707,30 +712,48 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     tempTeams = tempTeams.map(team => {
                         const graduatingPlayers: Player[] = [];
                         const remainingPlayers = team.roster.filter(player => {
-                            const eligibilityMap: { [key in Player['eligibility']]: Player['eligibility'] | null } = {
-                                "UG Year 1": "UG Year 2", "UG Year 2": "UG Year 3", "UG Year 3": "UG Year 4",
-                                "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
-                            };
-                            const nextEligibility = eligibilityMap[player.eligibility];
-                            
+                            // Age the player first
+                            player.age += 1;
+
+                            // Handle Masters/PhD players
                             if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
                                 player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
                                 if (player.yearsLeftInProgram <= 0) {
                                     graduatingPlayers.push(player);
-                                    return false;
+                                    return false; // Player leaves
+                                }
+                                return true; // Player stays for another year
+                            }
+
+                            // Handle Staff players (retirement logic)
+                            if (player.eligibility === 'Staff') {
+                                if (player.age >= STAFF_RETIREMENT_MIN_AGE) {
+                                    let retirementChance = (player.age - STAFF_RETIREMENT_MIN_AGE + 1) * STAFF_RETIREMENT_CHANCE_PER_YEAR_INCREASE;
+                                    retirementChance = Math.min(retirementChance, 1.0); // Cap at 100%
+
+                                    if (Math.random() < retirementChance) {
+                                        player.alumniStatus = 'Retired';
+                                        graduatingPlayers.push(player);
+                                        return false; // Staff player retires
+                                    }
+                                }
+                                return true; // Staff player stays
+                            }
+
+                            // Handle Undergraduate players
+                            if (player.eligibility.startsWith('UG Year')) {
+                                const currentYear = parseInt(player.eligibility.replace('UG Year ', ''), 10);
+                                if (currentYear < 4) {
+                                    player.eligibility = `UG Year ${currentYear + 1}` as Player['eligibility'];
+                                    return true; // UG player advances
+                                } else { // UG Year 4
+                                    graduatingPlayers.push(player);
+                                    return false; // UG Year 4 graduates
                                 }
                             }
 
-                            if (nextEligibility) {
-                                player.eligibility = nextEligibility;
-                                player.age += 1;
-                                return true;
-                            } else if (player.eligibility !== 'Staff') {
-                                graduatingPlayers.push(player);
-                                return false;
-                            }
-                            player.age += 1;
-                            return true; 
+                            // Fallback for any other unexpected eligibility (shouldn't happen if types are exhaustive)
+                            return true;
                         });
 
                         graduatingPlayers.forEach(player => {
@@ -746,7 +769,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const continueChance = 0.15 + (loyalty - 10) / 100;
                             const transferChance = 0.40 + (ambition - 10) / 100;
 
-                            if (roll < continueChance) {
+                            if (player.alumniStatus === 'Retired') { // Already marked as retired by staff logic
+                                newAlumni.push(player);
+                                if (isManaged) {
+                                    // No toast for staff retirement as per user request
+                                }
+                            } else if (roll < continueChance) {
                                 player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
                                 player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
                                 player.isContinuingEducation = true;
@@ -864,18 +892,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (newAlumni.length > 0) {
                         setAlumni(prev => [...prev, ...newAlumni]);
                     }
-
-                    // This final map is no longer needed for roster/stats reset as it's done inside the previous map
-                    // tempTeams = tempTeams.map(team => {
-                    //     const updatedRoster = team.roster.map(player => {
-                    //         if (player.currentStats.length > 0) {
-                    //             const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
-                    //             return { ...player, history: newHistory, currentStats: [] };
-                    //         }
-                    //         return player;
-                    //     });
-                    //     return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 };
-                    // });
                 }
                 month = months[nextMonthIndex];
             }
