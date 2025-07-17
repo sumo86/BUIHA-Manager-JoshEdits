@@ -701,7 +701,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     tempSeasonRecords = {}; 
                     
                     const newAlumni: Player[] = [];
-                    const newTransferPlayers: Player[] = [];
+                    const allTransferPlayers: Player[] = [];
 
                     tempTeams = tempTeams.map(team => {
                         const graduatingPlayers: Player[] = [];
@@ -754,21 +754,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
                                 }
                             } else if (roll < continueChance + transferChance) {
-                                const starRating = player.starRating;
-                                let quality: Player['estimatedQuality'];
-                                if (starRating >= 4.5) quality = 'Elite';
-                                else if (starRating >= 3.5) quality = 'Experienced';
-                                else if (starRating >= 2.5) quality = 'Intermediate';
-                                else if (starRating >= 1.5) quality = 'Moderate';
-                                else quality = 'Beginner';
-                            
-                                let cost: number;
-                                if (quality === 'Beginner') cost = getRandomValueInRange(75, 150);
-                                else if (quality === 'Moderate') cost = getRandomValueInRange(150, 300);
-                                else if (quality === 'Intermediate') cost = getRandomValueInRange(300, 500);
-                                else if (quality === 'Experienced') cost = getRandomValueInRange(500, 750);
-                                else cost = getRandomValueInRange(750, 1500);
-    
+                                // Player becomes a transfer prospect
                                 const transferProspect: Player = {
                                     ...player,
                                     source: 'Transfer',
@@ -776,16 +762,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     morale: 'Content',
                                     eligibility: 'Masters',
                                     yearsLeftInProgram: 2,
-                                    estimatedQuality: quality,
-                                    recruitmentCost: cost,
+                                    recruitmentCost: 0, // Free for user, cost for AI is based on quality
                                     captaincy: null,
                                     currentStats: [],
                                     isContinuingEducation: false,
                                 };
-                                newTransferPlayers.push(transferProspect);
-                            
-                                player.alumniStatus = 'Active Elsewhere';
-                                newAlumni.push(player);
+                                allTransferPlayers.push(transferProspect);
                                 if (isManaged) {
                                     toast.info(`${player.name} has graduated and is seeking opportunities at other universities.`);
                                 }
@@ -807,27 +789,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     setRecruitedPool([]);
                     setFairHosted(false);
 
-                    if (newTransferPlayers.length > 0) {
-                        for (let i = newTransferPlayers.length - 1; i > 0; i--) {
+                    if (allTransferPlayers.length > 0) {
+                        for (let i = allTransferPlayers.length - 1; i > 0; i--) {
                             const j = Math.floor(Math.random() * (i + 1));
-                            [newTransferPlayers[i], newTransferPlayers[j]] = [newTransferPlayers[j], newTransferPlayers[i]];
+                            [allTransferPlayers[i], allTransferPlayers[j]] = [allTransferPlayers[j], allTransferPlayers[i]];
                         }
 
-                        // Limit user transfers to 2-3 players
                         const maxUserTransfers = 3;
-                        const userPlayerCount = Math.min(maxUserTransfers, newTransferPlayers.length);
+                        const userPlayerCount = Math.min(maxUserTransfers, allTransferPlayers.length);
 
-                        const userTransfers = newTransferPlayers.slice(0, userPlayerCount);
-                        userTransfers.forEach(p => p.recruitmentCost = 0);
-
-                        const aiTransfers = newTransferPlayers.slice(userPlayerCount);
+                        const userTransfers = allTransferPlayers.slice(0, userPlayerCount);
+                        const aiTransfers = allTransferPlayers.slice(userPlayerCount);
                         const aiTeams = tempTeams.filter(t => !managedTeamNames.includes(t.name));
 
                         if (aiTransfers.length > 0 && aiTeams.length > 0) {
-                            aiTransfers.forEach((player, index) => {
-                                const targetTeamIndex = index % aiTeams.length;
-                                const targetTeamName = aiTeams[targetTeamIndex].name;
-                                const teamToUpdateIndex = tempTeams.findIndex(t => t.name === targetTeamName);
+                            aiTransfers.forEach((player) => {
+                                const targetTeam = getRandomItem(aiTeams);
+                                const teamToUpdateIndex = tempTeams.findIndex(t => t.name === targetTeam.name);
                                 if (teamToUpdateIndex !== -1) {
                                     const teamToUpdate = tempTeams[teamToUpdateIndex];
                                     const usedJerseyNumbers = new Set(teamToUpdate.roster.map(p => p.jerseyNumber));
@@ -835,9 +813,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     let newJerseyNumber = 1;
                                     while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
                                     player.jerseyNumber = newJerseyNumber;
-                                    usedJerseyNumbers.add(newJerseyNumber);
+                                    
                                     const isSkater = player.positions[0] !== 'G';
                                     player.starRating = calculateStarRating(player.currentAbility, isSkater, teamToUpdate.leagueDivision);
+                                    
+                                    tempTeams[teamToUpdateIndex].roster.push(player);
                                 }
                             });
                             toast.info("AI teams have recruited new players for the upcoming season.");
@@ -1327,9 +1307,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
 
         const recruitingBudget = userTeam.financials.budgetAllocations.Recruiting;
-        if (recruitingBudget < (playerToRecruit.recruitmentCost || 0)) {
+        const cost = playerToRecruit.recruitmentCost || 0;
+
+        if (recruitingBudget < cost) {
             toast.error("Insufficient Recruiting Budget", {
-                description: `You need £${(playerToRecruit.recruitmentCost || 0).toLocaleString()} to recruit ${playerToRecruit.name}. You only have £${recruitingBudget.toLocaleString()}.`,
+                description: `You need £${cost.toLocaleString()} to recruit ${playerToRecruit.name}. You only have £${recruitingBudget.toLocaleString()}.`,
             });
             return;
         }
@@ -1341,6 +1323,21 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
         
         setRecruitedPool(prev => [...prev, playerToRecruit]);
+
+        if (cost > 0) {
+            const updatedTeam = {
+                ...userTeam,
+                financials: {
+                    ...userTeam.financials,
+                    budgetAllocations: {
+                        ...userTeam.financials.budgetAllocations,
+                        Recruiting: userTeam.financials.budgetAllocations.Recruiting - cost,
+                    }
+                }
+            };
+            updateTeam(updatedTeam);
+        }
+
         toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been recruited.` });
     };
 
