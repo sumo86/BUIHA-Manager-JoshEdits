@@ -956,7 +956,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
 
                 // The new unallocated budget is the total wealth minus the new allocations
-                const newUnallocatedBudget = totalWealth - newlyAllocated;
+                // Ensure it never goes below zero
+                const newUnallocatedBudget = Math.max(0, totalWealth - newlyAllocated);
 
                 return {
                     ...team,
@@ -1198,10 +1199,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (homeTeam && awayTeam) {
                         const finalGameState = simulateFullGame(homeTeam, awayTeam, false);
                         markGameAsCompleted(game.id, finalGameState.userScore, finalGameState.opponentScore, true, division);
-                        setTeams(prevTeams => prevTeams.map(t => {
-                            if (t.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
-                            if (t.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
-                            return t;
+                        setTeams(prevTeams => prevTeams.map(team => {
+                            if (team.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
+                            if (team.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
+                            return team;
                         }));
                     }
                 });
@@ -1234,10 +1235,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         const awayTeam = teams.find(t => t.name === userGameResult.awayTeamName);
                         if (homeTeam && awayTeam) {
                             const finalGameState: GameState = { userScore: userGameResult.homeScore, opponentScore: userGameResult.awayScore, userShots: 0, opponentShots: 0, gameLog: [], injuries: [], isGameOver: true, isPaused: false, period: 3, possessionHolder: null, powerPlayState: { isActive: false, teamOnPowerPlay: null, timeLeft: 0 }, time: 0 };
-                            setTeams(prevTeams => prevTeams.map(t => {
-                                if (t.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
-                                if (t.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
-                                return t;
+                            setTeams(prevTeams => prevTeams.map(team => {
+                                if (team.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
+                                if (team.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
+                                return team;
                             }));
                         }
                     } else {
@@ -1250,10 +1251,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         if (homeTeam && awayTeam) {
                             const finalGameState = simulateFullGame(homeTeam, awayTeam, false);
                             markGameAsCompleted(game.id, finalGameState.userScore, finalGameState.opponentScore, true, division);
-                            setTeams(prevTeams => prevTeams.map(t => {
-                                if (t.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
-                                if (t.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
-                                return t;
+                            setTeams(prevTeams => prevTeams.map(team => {
+                                if (team.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
+                                if (team.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
+                                return team;
                             }));
                         }
                     }
@@ -1327,10 +1328,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (homeTeam && awayTeam) {
             const finalGameState = simulateFullGame(homeTeam, awayTeam, false);
             markGameAsCompleted(game.id, finalGameState.userScore, finalGameState.opponentScore, true, division);
-            setTeams(prevTeams => prevTeams.map(t => {
-                if (t.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
-                if (t.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
-                return t;
+            setTeams(prevTeams => prevTeams.map(team => {
+                if (team.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
+                if (team.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
+                return team;
             }));
             toast.info("Nationals Game Simulated", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
         }
@@ -1353,10 +1354,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         if (homeTeam && awayTeam) {
                             const finalGameState = simulateFullGame(homeTeam, awayTeam, false);
                             markGameAsCompleted(game.id, finalGameState.userScore, finalGameState.opponentScore, true, division);
-                            setTeams(prevTeams => prevTeams.map(t => {
-                                if (t.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
-                                if (t.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
-                                return t;
+                            setTeams(prevTeams => prevTeams.map(team => {
+                                if (team.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
+                                if (team.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
+                                return team;
                             }));
                         }
                     });
@@ -1390,10 +1391,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         if (homeTeam && awayTeam) {
                             const finalGameState = simulateFullGame(homeTeam, awayTeam, false);
                             markGameAsCompleted(game.id, finalGameState.userScore, finalGameState.opponentScore, true, division);
-                            setTeams(prevTeams => prevTeams.map(t => {
-                                if (t.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
-                                if (t.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
-                                return t;
+                            setTeams(prevTeams => prevTeams.map(team => {
+                                if (team.name === homeTeam.name) return processGameResultsEngine(homeTeam, awayTeam, finalGameState, true).updatedUserTeam;
+                                if (team.name === awayTeam.name) return processGameResultsEngine(awayTeam, homeTeam, { ...finalGameState, userScore: finalGameState.opponentScore, opponentScore: finalGameState.userScore }, true).updatedUserTeam;
+                                return team;
                             }));
                         }
                     });
