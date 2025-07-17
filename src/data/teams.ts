@@ -107,12 +107,12 @@ teamData.forEach(team => {
 
 export const teams: Team[] = Object.values(organizations).flatMap(org => {
     const isMultiTeamOrg = org.teamsData.length > 1;
-    const orgTotalBudget = 15000 + (org.teamsData.length * 5000);
+    const orgTotalBudget = 30000 + (org.teamsData.length * 10000);
 
     return org.teamsData.map(teamInfo => {
         const roster = generateRoster(teamInfo.leagueDivision, teamInfo.name);
         const lineup = populateLineup(roster);
-        const teamBudget = isMultiTeamOrg ? orgTotalBudget / org.teamsData.length : 10000;
+        const teamBudget = isMultiTeamOrg ? orgTotalBudget / org.teamsData.length : 20000;
 
         return {
             ...teamInfo,
