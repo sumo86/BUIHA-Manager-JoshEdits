@@ -704,9 +704,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 let nextMonthIndex = (monthIndex + 1) % months.length;
                 if (month === "July" && months[nextMonthIndex] === "August") {
                     year += 1;
-                    toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
+                    const endedSeasonString = `${prevDate.year}-${prevDate.year + 1}`;
+                    toast.info("Season Ended", { description: `The ${endedSeasonString} season has concluded. Stats are being archived.` });
 
-                    const seasonToArchive = `${prevDate.year}-${prevDate.year + 1}`;
+                    const seasonToArchive = endedSeasonString;
                     const standingsForYear: TeamSeasonHistory[] = tempTeams.map(t => ({
                         teamName: t.name,
                         leagueDivision: t.leagueDivision,
@@ -841,7 +842,22 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         }
 
                         const newTotalBudget = newBaseBudget + unspentBudget;
-                        const resetAllocations = { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 };
+                        
+                        const numberOfHomeGames = 13;
+                        const numberOfAwayGames = 13;
+                        const newIceTimeCost = numberOfHomeGames * team.financials.iceTimeCostPerGame;
+                        const newTravelCost = numberOfAwayGames * 200;
+                        const newEquipmentCost = team.financials.equipmentCost;
+
+                        const resetAllocations: BudgetAllocations = {
+                            "Travel": newTravelCost,
+                            "Equipment": newEquipmentCost,
+                            "Ice Time": newIceTimeCost,
+                            "Recruiting": 0,
+                            "Student Life": 0,
+                            "Facilities": 0,
+                        };
+
                         return {
                             ...team,
                             roster: team.roster,
