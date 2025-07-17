@@ -1,12 +1,14 @@
 import { useTeam } from "@/context/TeamContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BudgetAllocation } from "@/components/finance/BudgetAllocation";
+import { BudgetSummary } from "@/components/finance/BudgetSummary";
 import { Transactions } from "@/components/finance/Transactions";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { Building, Users, HandCoins } from "lucide-react";
 
 const Finances = () => {
-  const { userTeam, updateBudgetAllocations, managedOrganization, organizationFinancials } = useTeam();
+  const { userTeam, managedOrganization, organizationFinancials, runStudentLifeInitiative } = useTeam();
+  const navigate = useNavigate();
 
   if (!userTeam) {
     return <div>Loading team data...</div>;
@@ -17,10 +19,9 @@ const Finances = () => {
   if (!currentFinancials) {
     return <div>Financial data not available.</div>;
   }
-
-  const handleSaveAllocations = (newAllocations: typeof currentFinancials.budgetAllocations) => {
-    updateBudgetAllocations(newAllocations);
-    toast.success("Budget allocations updated!");
+  
+  const handleRunInitiative = () => {
+    runStudentLifeInitiative();
   };
 
   return (
@@ -28,33 +29,32 @@ const Finances = () => {
       <h1 className="text-3xl font-bold">{managedOrganization ? `${managedOrganization} Organization` : userTeam.name} Finances</h1>
       <p className="text-lg text-muted-foreground">Manage your team's budget and track financial transactions.</p>
 
+      <BudgetSummary financials={currentFinancials} />
+
       <Card>
         <CardHeader>
-          <CardTitle>Budget Summary</CardTitle>
+          <CardTitle>Discretionary Spending</CardTitle>
+          <p className="text-muted-foreground">Use your available budget to improve your team.</p>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-muted-foreground">Total Budget:</p>
-              <p className="text-2xl font-bold">£{currentFinancials.totalBudget.toLocaleString()}</p>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col items-start gap-4 p-4 border rounded-lg">
+                <div className="flex items-center gap-3">
+                    <Building className="h-8 w-8 text-primary" />
+                    <h3 className="text-xl font-semibold">Facilities</h3>
+                </div>
+                <p className="text-muted-foreground">Invest in long-term projects to upgrade your club's infrastructure.</p>
+                <Button onClick={() => navigate('/facilities')}>Go to Facilities</Button>
             </div>
-            <div>
-              <p className="text-muted-foreground">Ice Time Cost per Game:</p>
-              <p className="text-2xl font-bold">£{currentFinancials.iceTimeCostPerGame.toLocaleString()}</p>
+            <div className="flex flex-col items-start gap-4 p-4 border rounded-lg">
+                 <div className="flex items-center gap-3">
+                    <Users className="h-8 w-8 text-primary" />
+                    <h3 className="text-xl font-semibold">Student Life Initiative</h3>
+                </div>
+                <p className="text-muted-foreground">Spend £500 to organize a team-building event and boost morale.</p>
+                <Button onClick={handleRunInitiative} disabled={currentFinancials.currentBudget < 500}>Run Initiative</Button>
             </div>
-            <div>
-              <p className="text-muted-foreground">Equipment Cost:</p>
-              <p className="text-2xl font-bold">£{currentFinancials.equipmentCost.toLocaleString()}</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
-
-      <BudgetAllocation
-        initialAllocations={currentFinancials.budgetAllocations}
-        totalBudget={currentFinancials.totalBudget}
-        onSave={handleSaveAllocations}
-      />
 
       <Transactions />
     </div>

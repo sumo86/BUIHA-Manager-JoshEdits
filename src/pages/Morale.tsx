@@ -11,7 +11,8 @@ const MoralePage = () => {
     return <div>Loading team data...</div>;
   }
 
-  const studentLifeBudget = userTeam.financials.budgetAllocations["Student Life"];
+  // Use currentBudget for all spending
+  const currentBudget = userTeam.financials.currentBudget;
   const initiativeCost = 500;
 
   return (
@@ -37,10 +38,10 @@ const MoralePage = () => {
           <div>
             <p className="font-semibold">Cost: £{initiativeCost.toLocaleString()}</p>
             <p className="text-sm text-muted-foreground">
-              Available Budget: £{studentLifeBudget.toLocaleString()}
+              Available Budget: £{currentBudget.toLocaleString()}
             </p>
           </div>
-          <Button onClick={runStudentLifeInitiative} disabled={studentLifeBudget < initiativeCost}>
+          <Button onClick={runStudentLifeInitiative} disabled={currentBudget < initiativeCost}>
             <Heart className="mr-2 h-4 w-4" /> Run Initiative
           </Button>
         </CardContent>
