@@ -40,7 +40,7 @@ const UpgradeCard = ({ upgrade }: UpgradeCardProps) => {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between items-center">
-        <p className="text-lg font-bold">${upgrade.cost.toLocaleString()}</p>
+        <p className="text-lg font-bold">£{upgrade.cost.toLocaleString()}</p>
         {isPurchased ? (
           <div className="flex items-center gap-2 text-green-600">
             <CheckCircle className="w-5 h-5" />

@@ -8,8 +8,8 @@ export const allUpgrades: Upgrade[] = [
     description: 'Establishes a booster club with wealthy alumni, providing a steady income stream.',
     cost: 10000,
     type: 'Financial',
-    benefitValue: 500, // Weekly income
-    benefitDescription: '+$500 weekly income.',
+    benefitValue: 125, // Weekly income
+    benefitDescription: '+£125 weekly income.',
   },
   {
     id: 'financial_2',
@@ -17,8 +17,8 @@ export const allUpgrades: Upgrade[] = [
     description: 'Secure sponsorship deals with local businesses for jersey patches and rink ads.',
     cost: 20000,
     type: 'Financial',
-    benefitValue: 1200, // Weekly income
-    benefitDescription: '+$1200 weekly income.',
+    benefitValue: 300, // Weekly income
+    benefitDescription: '+£300 weekly income.',
   },
   // Development
   {

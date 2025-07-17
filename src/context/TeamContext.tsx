@@ -651,7 +651,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (weeklyIncome > 0) {
                 team.financials.totalBudget += weeklyIncome;
                 if (isUserManagedTeam) {
-                    toast.info(`+$${weeklyIncome.toLocaleString()} from upgrades`, { description: "Weekly income has been added to your budget." });
+                    toast.info(`+£${weeklyIncome.toLocaleString()} from upgrades`, { description: "Weekly income has been added to your budget." });
                 }
             }
 
@@ -1563,7 +1563,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         const cost = playerToRecruit.recruitmentCost || 0;
         if (userTeam.financials.budgetAllocations.Recruiting < cost) {
-            toast.error("Insufficient Recruiting Budget", { description: `You need $${cost.toLocaleString()} to recruit this player.` });
+            toast.error("Insufficient Recruiting Budget", { description: `You need £${cost.toLocaleString()} to recruit this player.` });
             return;
         }
 
@@ -1648,7 +1648,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
         if (userTeam.financials.budgetAllocations.Facilities < upgrade.cost) {
-            toast.error("Insufficient Facilities Budget", { description: `You need $${upgrade.cost.toLocaleString()} to purchase this.` });
+            toast.error("Insufficient Facilities Budget", { description: `You need £${upgrade.cost.toLocaleString()} to purchase this.` });
             return;
         }
 
@@ -1700,7 +1700,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         const cost = 5000;
         if (userTeam.financials.budgetAllocations["Student Life"] < cost) {
-            toast.error("Insufficient Student Life Budget", { description: `You need $${cost.toLocaleString()} in Student Life budget to run an initiative.` });
+            toast.error("Insufficient Student Life Budget", { description: `You need £${cost.toLocaleString()} in Student Life budget to run an initiative.` });
             return;
         }
 

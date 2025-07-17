@@ -27,11 +27,11 @@ const Upgrades = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 border rounded-lg">
                 <h3 className="text-sm font-medium text-muted-foreground">Remaining University Budget</h3>
-                <p className="text-2xl font-bold">${remainingBudget.toLocaleString()}</p>
+                <p className="text-2xl font-bold">£{remainingBudget.toLocaleString()}</p>
             </div>
             <div className="p-4 border rounded-lg bg-secondary">
                 <h3 className="text-sm font-medium text-muted-foreground">Allocated to Facilities</h3>
-                <p className="text-2xl font-bold">${facilitiesBudget.toLocaleString()}</p>
+                <p className="text-2xl font-bold">£{facilitiesBudget.toLocaleString()}</p>
             </div>
         </div>
         <p className="text-sm text-muted-foreground mt-2">You can change your budget allocations on the <NavLink to="/finances" className="underline hover:text-primary">Finances</NavLink> page.</p>
