@@ -615,13 +615,20 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (Math.random() < devChance) {
                         let attributesToDevelop: (keyof SkaterAttributes | keyof GoalieAttributes)[] = [];
 
-                        if (player.trainingFocus) {
-                            // Use trainingFocusesMap to get the correct attributes array
+                        // Safeguard: Ensure trainingFocusesMap[player.trainingFocus] is an array
+                        if (player.trainingFocus && trainingFocusesMap[player.trainingFocus]) {
                             attributesToDevelop = trainingFocusesMap[player.trainingFocus] as (keyof SkaterAttributes | keyof GoalieAttributes)[];
                         } else {
-                            // If no focus, pick a random attribute
+                            // If no focus or invalid focus, pick a random numeric attribute
                             const allAttrs = Object.keys(player.attributes) as (keyof SkaterAttributes | keyof GoalieAttributes)[];
-                            attributesToDevelop = [getRandomItem(allAttrs.filter(attr => typeof player.attributes[attr] === 'number'))];
+                            const numericAttrs = allAttrs.filter(attr => typeof player.attributes[attr] === 'number');
+                            if (numericAttrs.length > 0) {
+                                attributesToDevelop = [getRandomItem(numericAttrs)];
+                            } else {
+                                // Fallback if no numeric attributes found (shouldn't happen with current types)
+                                console.warn(`Player ${player.name} has no numeric attributes for development.`);
+                                attributesToDevelop = [];
+                            }
                         }
 
                         if (attributesToDevelop.length > 0) {
@@ -1028,7 +1035,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (team.name === userTeam.name) {
                 const updatedRoster = team.roster.map(player => {
                     if (!player.trainingFocus) {
-                        const availableFocuses = player.positions.includes('G') ? Object.keys(goalieFocuses) : Object.keys(skaterFocuses);
+                        // Correctly use the arrays directly, not Object.keys()
+                        const availableFocuses = player.positions.includes('G') ? goalieFocuses : skaterFocuses;
                         const randomFocus = getRandomItem(availableFocuses) as TrainingFocus;
                         return { ...player, trainingFocus: randomFocus };
                     }
