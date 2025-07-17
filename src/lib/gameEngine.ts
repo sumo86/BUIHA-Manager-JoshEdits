@@ -288,7 +288,18 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     } else if (eventType > 0.92) {
         possessionChange = true; // Stoppage of play
         const penaltyTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
+        
+        // Ensure roster is not empty before trying to select a player for a penalty
+        if (penaltyTeam.roster.length === 0) {
+            return { event: null, possessionChange: false, shotOnGoal: false }; 
+        }
         const player = penaltyTeam.roster[Math.floor(Math.random() * penaltyTeam.roster.length)];
+        
+        // Defensive check, though the above check should prevent player from being undefined
+        if (!player) {
+            return { event: null, possessionChange: false, shotOnGoal: false };
+        }
+
         const instructionMods = getInstructionModifiers(player);
         const roleMods = getRoleModifiers(player);
         const aggression = (player.attributes as SkaterAttributes).aggression || 10;
