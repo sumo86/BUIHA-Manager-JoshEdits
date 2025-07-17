@@ -19,7 +19,7 @@ const Layout = () => {
     managedTeams, 
     userTeam, 
     setActiveTeam,
-    isManagingOrg
+    isManagingOrg // Keep this for context, but not directly used in the condition below
   } = useTeam();
   const isMobile = useIsMobile();
 
@@ -48,24 +48,26 @@ const Layout = () => {
               <Calendar className="h-5 w-5" />
               <span>{currentDate.month} {currentDate.year}, Week {currentDate.week}</span>
             </div>
-            {managedOrganization && isManagingOrg && (
+            {managedOrganization && ( // Simplified condition: only check for managedOrganization
               <div className="flex items-center gap-2 flex-shrink min-w-0">
                 <span className="text-sm font-medium text-muted-foreground hidden md:inline">{managedOrganization}:</span>
-                <Select value={userTeam.name} onValueChange={setActiveTeam}>
-                  <SelectTrigger className="w-[180px] md:w-[220px] h-9">
-                    <SelectValue placeholder="Select team" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {managedTeams.map(team => (
-                      <SelectItem key={team.name} value={team.name}>
-                        <div className="flex items-center gap-2">
-                          {team.logo && <img src={team.logo} alt={team.name} className="h-5 w-5 object-contain" />}
-                          <span className="truncate">{team.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {userTeam && ( // Ensure userTeam exists before trying to access its properties
+                  <Select value={userTeam.name} onValueChange={setActiveTeam}>
+                    <SelectTrigger className="w-[180px] md:w-[220px] h-9">
+                      <SelectValue placeholder="Select team" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {managedTeams.map(team => (
+                        <SelectItem key={team.name} value={team.name}>
+                          <div className="flex items-center gap-2">
+                            {team.logo && <img src={team.logo} alt={team.name} className="h-5 w-5 object-contain" />}
+                            <span className="truncate">{team.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             )}
           </div>
