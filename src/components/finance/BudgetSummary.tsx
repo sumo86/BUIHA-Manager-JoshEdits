@@ -6,18 +6,18 @@ interface BudgetSummaryProps {
 }
 
 export const BudgetSummary = ({ financials }: BudgetSummaryProps) => {
-  const totalExpenses = financials.seasonBudget - financials.currentBudget;
-  const remainingBudget = financials.currentBudget;
+  const totalExpenses = 0; // Placeholder
+  const totalIncome = 0; // Placeholder
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Season Budget</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">£{financials.seasonBudget.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">Initial allocation for the season</p>
+          <div className="text-2xl font-bold">£{financials.totalBudget.toLocaleString()}</div>
+          <p className="text-xs text-muted-foreground">Season allocation</p>
         </CardContent>
       </Card>
       <Card>
@@ -26,16 +26,16 @@ export const BudgetSummary = ({ financials }: BudgetSummaryProps) => {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">£{totalExpenses.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">Spent so far this season</p>
+          <p className="text-xs text-muted-foreground">Spent this season</p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Remaining Budget</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Income</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">£{remainingBudget.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">Available to spend</p>
+          <div className="text-2xl font-bold">£{totalIncome.toLocaleString()}</div>
+          <p className="text-xs text-muted-foreground">Generated this season</p>
         </CardContent>
       </Card>
     </div>

@@ -166,11 +166,17 @@ export type TacticsSelection = {
   [key: string]: string;
 };
 
+export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities";
+
+export type BudgetAllocations = {
+  [key in BudgetCategory]: number;
+};
+
 export type Financials = {
-  seasonBudget: number;
-  currentBudget: number;
+  totalBudget: number;
   iceTimeCostPerGame: number;
   equipmentCost: number;
+  budgetAllocations: BudgetAllocations;
 };
 
 export type FacilityProject = {
@@ -181,9 +187,6 @@ export type FacilityProject = {
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
   weeksToComplete?: number;
-  department: string;
-  level: number;
-  prerequisites?: string[];
 };
 
 export type Team = {

@@ -1,74 +1,60 @@
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { FacilityProject } from "@/types";
-import { useTeam } from "@/context/TeamContext";
-import { Progress } from "@/components/ui/progress";
-import { CheckCircle, Hourglass, XCircle } from "lucide-react";
+import { useTeam } from '@/context/TeamContext';
+import { FacilityProject } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, Construction, Circle } from 'lucide-react';
 
 interface FacilityProjectCardProps {
   project: FacilityProject;
-  onStartProject: (projectId: string) => void;
+  onStartProject: (projectId: string) => void; // Added this prop
 }
 
+const statusDetails = {
+  'Not Started': { icon: Circle, color: 'text-muted-foreground', badge: 'secondary' },
+  'In Progress': { icon: Construction, color: 'text-yellow-500', badge: 'default' },
+  'Completed': { icon: CheckCircle, color: 'text-green-500', badge: 'outline' },
+};
+
 export const FacilityProjectCard = ({ project, onStartProject }: FacilityProjectCardProps) => {
-  const { userTeam, managedOrganization, organizationFacilities } = useTeam();
+  const { userTeam, managedOrganization, organizationFinancials } = useTeam();
+  
+  // Determine the correct facilities budget based on whether an organization is managed
+  const facilitiesBudget = managedOrganization 
+    ? (organizationFinancials?.budgetAllocations.Facilities || 0) 
+    : (userTeam?.financials.budgetAllocations.Facilities || 0);
 
-  const currentFinancials = managedOrganization ? userTeam?.financials : userTeam?.financials;
-  const currentBudget = currentFinancials?.currentBudget || 0;
+  const canAfford = facilitiesBudget >= project.cost;
+  const isNotStarted = project.status === 'Not Started';
 
-  const teamFacilities = managedOrganization ? organizationFacilities : userTeam?.facilities;
-
-  const isCompleted = teamFacilities?.some(f => f.id === project.id && f.status === 'Completed');
-  const isInProgress = teamFacilities?.some(f => f.id === project.id && f.status === 'In Progress');
-
-  const hasPrerequisites = project.prerequisites?.every(prereqId => 
-    teamFacilities?.some(f => f.id === prereqId && f.status === 'Completed')
-  ) || project.prerequisites?.length === 0;
-
-  const canAfford = currentBudget >= project.cost;
-  const canStart = !isCompleted && !isInProgress && canAfford && hasPrerequisites;
-
-  const getStatusIcon = () => {
-    if (isCompleted) return <CheckCircle className="h-5 w-5 text-green-500" />;
-    if (isInProgress) return <Hourglass className="h-5 w-5 text-yellow-500" />;
-    return <XCircle className="h-5 w-5 text-gray-400" />;
-  };
-
-  const getStatusText = () => {
-    if (isCompleted) return "Completed";
-    if (isInProgress) return `In Progress (${project.weeksToComplete} weeks left)`;
-    if (!hasPrerequisites) return "Prerequisites not met";
-    if (!canAfford) return "Insufficient funds";
-    return "Not Started";
-  };
+  const StatusIcon = statusDetails[project.status].icon;
 
   return (
     <Card className="flex flex-col">
       <CardHeader>
-        <CardTitle>{project.name}</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          <span>{project.name}</span>
+          <Badge variant={statusDetails[project.status].badge as any}>{project.status}</Badge>
+        </CardTitle>
         <CardDescription>{project.description}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow">
-        <p className="text-sm font-medium">Cost: £{project.cost.toLocaleString()}</p>
-        <p className="text-sm font-medium">Benefit: {project.benefit}</p>
-        {project.weeksToComplete && (
-          <p className="text-sm font-medium">Time to complete: {project.weeksToComplete} weeks</p>
-        )}
-        <div className="flex items-center mt-2 text-sm">
-          {getStatusIcon()}
-          <span className="ml-2">{getStatusText()}</span>
+      <CardContent className="flex-grow space-y-4">
+        <div>
+          <p className="text-sm font-semibold">Benefit</p>
+          <p className="text-sm text-muted-foreground">{project.benefit}</p>
         </div>
-        {isInProgress && project.weeksToComplete !== undefined && project.weeksToComplete > 0 && (
-          <Progress value={((project.weeksToComplete || 0) / (project.weeksToComplete + 1)) * 100} className="mt-2" />
-        )}
+        <div>
+          <p className="text-sm font-semibold">Cost</p>
+          <p className="text-sm text-muted-foreground">£{project.cost.toLocaleString()}</p>
+        </div>
       </CardContent>
       <CardFooter>
-        <Button
-          onClick={() => onStartProject(project.id)}
-          disabled={!canStart}
+        <Button 
           className="w-full"
+          onClick={() => onStartProject(project.id)} // Use the passed prop
+          disabled={!isNotStarted || !canAfford}
         >
-          Start Project
+          {isNotStarted ? (canAfford ? 'Start Project' : 'Insufficient Funds') : 'Project Completed'}
         </Button>
       </CardFooter>
     </Card>
