@@ -108,12 +108,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         // Migration logic for old budgetAllocations
                         if (team.financials && (team.financials as any).budgetAllocations) {
                             const { budgetAllocations, totalBudget, ...rest } = team.financials as any; // Cast to any for old structure
+                            const allocatedSum = Object.values(budgetAllocations as Record<string, unknown>)
+                                .filter((val): val is number => typeof val === 'number') // Filter to ensure only numbers are summed
+                                .reduce((acc: number, val: number) => acc + val, 0);
                             return {
                                 ...team,
                                 financials: {
                                     ...rest,
                                     seasonBudget: Number(totalBudget),
-                                    currentBudget: Number(totalBudget) - Object.values(budgetAllocations).reduce((acc: number, val: any) => acc + (Number(val) || 0), 0)
+                                    currentBudget: Number(totalBudget) - allocatedSum
                                 }
                             };
                         }
@@ -1448,7 +1451,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (allGamesInCurrentRoundCompleted) {
                 if (typeof tournament.currentRound === 'number' && tournament.currentRound <= 3) { // Ensure currentRound is a number for comparison
                     tournament.currentRound = (tournament.currentRound as number) + 1;
-                    toast.info(`Round ${tournament.currentRound - 1} of group stage completed for ${tournament.division}. Advancing to Round ${tournament.currentRound}.`);
+                    toast.info("Group Stage Update", { description: `Round ${tournament.currentRound - 1} of group stage completed for ${tournament.division}. Advancing to Round ${tournament.currentRound}.` });
                 }
             }
             
@@ -1771,7 +1774,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 while (tournamentToUpdate.status === 'group-stage' && typeof tournamentToUpdate.currentRound === 'number' && tournamentToUpdate.currentRound <= 3) {
                     _runNationalsRoundSimulation(tournamentToUpdate, allTeams);
                     if (tournamentToUpdate.groupStageSchedule.every(g => g.status === 'completed')) {
-                        tournamentToUpdate.playoffSchedule = generatePlayoffBracket(tournamentToUpdate.groups, tournamentToUpdate.groupStageSchedule[0].date);
+                        tournamentToUpdate.playoffSchedule = generatePlayoffBracket(tournamentToUpdate.groups, tournament.groupStageSchedule[0].date);
                         const silverPlayoffExists = tournamentToUpdate.playoffSchedule.some((m: NationalsPlayoffMatch) => m.bracket === 'Silver');
                         if (silverPlayoffExists) {
                             tournamentToUpdate.status = 'silver-playoffs';

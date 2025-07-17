@@ -78,17 +78,25 @@ const generateAttributesForAbility = (archetype: PlayerArchetype, targetAbility:
     let attempts = 0;
     while (diff !== 0 && attempts < 1000) {
         if (diff > 0) {
-            const keyToImprove = getRandomItem(visibleKeys.filter(k => (attributes as any)[k] < 20));
-            if (keyToImprove) {
+            const improvableKeys = visibleKeys.filter(k => (attributes as any)[k] < 20);
+            if (improvableKeys.length > 0) {
+                const keyToImprove = getRandomItem(improvableKeys);
                 (attributes as any)[keyToImprove]++;
                 diff--;
-            } else break;
+            } else {
+                // No attributes can be improved further, break the loop
+                break;
+            }
         } else {
-            const keyToNerf = getRandomItem(visibleKeys.filter(k => (attributes as any)[k] > 1));
-            if (keyToNerf) {
+            const nerfableKeys = visibleKeys.filter(k => (attributes as any)[k] > 1);
+            if (nerfableKeys.length > 0) {
+                const keyToNerf = getRandomItem(nerfableKeys);
                 (attributes as any)[keyToNerf]--;
                 diff++;
-            } else break;
+            } else {
+                // No attributes can be nerfed further, break the loop
+                break;
+            }
         }
         attempts++;
     }
