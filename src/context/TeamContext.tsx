@@ -1510,6 +1510,230 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setNationalsData(tempNationalsData);
     };
 
+    const generateScoutingPool = () => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        const allTeamNames = teams.map(t => t.name);
+        const newScoutingPool = generateRecruits(userTeam.leagueDivision, allTeamNames);
+        setScoutingPool(newScoutingPool);
+        setFairHosted(true);
+        toast.success("Scouting Fair Hosted!", { description: `${newScoutingPool.length} recruits added to the scouting pool.` });
+    };
+
+    const recruitPlayer = (playerId: string) => {
+        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        if (!playerToRecruit) {
+            toast.error("Player not found in scouting pool.");
+            return;
+        }
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+
+        const cost = playerToRecruit.recruitmentCost || 0;
+        if (userTeam.financials.budgetAllocations.Recruiting < cost) {
+            toast.error("Insufficient Recruiting Budget", { description: `You need ${cost} in recruiting budget to sign ${playerToRecruit.name}.` });
+            return;
+        }
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                return {
+                    ...team,
+                    financials: {
+                        ...team.financials,
+                        budgetAllocations: {
+                            ...team.financials.budgetAllocations,
+                            Recruiting: team.financials.budgetAllocations.Recruiting - cost
+                        }
+                    }
+                };
+            }
+            return team;
+        }));
+
+        setRecruitedPool(prev => [...prev, playerToRecruit]);
+        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been successfully recruited.` });
+    };
+
+    const assignPlayerToRoster = (playerId: string) => {
+        const playerToAssign = recruitedPool.find(p => p.id === playerId);
+        if (!playerToAssign) {
+            toast.error("Player not found in recruited pool.");
+            return;
+        }
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const usedJerseyNumbers = new Set(team.roster.map(p => p.jerseyNumber));
+                let newJerseyNumber = 1;
+                while (usedJerseyNumbers.has(newJerseyNumber)) {
+                    newJerseyNumber++;
+                }
+                const isSkater = playerToAssign.positions[0] !== 'G';
+                const updatedPlayer = {
+                    ...playerToAssign,
+                    jerseyNumber: newJerseyNumber,
+                    starRating: calculateStarRating(playerToAssign.currentAbility, isSkater, team.leagueDivision)
+                };
+                return {
+                    ...team,
+                    roster: [...team.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber)
+                };
+            }
+            return team;
+        }));
+        setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+        toast.success("Player Assigned!", { description: `${playerToAssign.name} has been added to your roster.` });
+    };
+
+    const discardRecruit = (playerId: string) => {
+        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+        toast.info("Recruit Discarded", { description: "Player removed from consideration." });
+    };
+
+    const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                return {
+                    ...team,
+                    financials: {
+                        ...team.financials,
+                        budgetAllocations: newAllocations
+                    }
+                };
+            }
+            return team;
+        }));
+        toast.success("Budget Updated!", { description: "Your budget allocations have been saved." });
+    };
+
+    const runStudentLifeInitiative = () => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        const cost = 500; // Example cost
+        if (userTeam.financials.budgetAllocations["Student Life"] < cost) {
+            toast.error("Insufficient Student Life Budget", { description: `You need ${cost} in student life budget to run an initiative.` });
+            return;
+        }
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const updatedRoster = team.roster.map(player => ({
+                    ...player,
+                    morale: updateMorale(player.morale, 1)
+                }));
+                return {
+                    ...team,
+                    roster: updatedRoster,
+                    financials: {
+                        ...team.financials,
+                        budgetAllocations: {
+                            ...team.financials.budgetAllocations,
+                            "Student Life": team.financials.budgetAllocations["Student Life"] - cost
+                        }
+                    }
+                };
+            }
+            return team;
+        }));
+        toast.success("Student Life Initiative!", { description: "Team morale has improved!" });
+    };
+
+    const startFacilityProject = (projectId: string) => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        const project = initialFacilityProjects.find(p => p.id === projectId);
+        if (!project) {
+            toast.error("Project not found.");
+            return;
+        }
+        if (userTeam.facilities.some(f => f.id === projectId && (f.status === 'In Progress' || f.status === 'Completed'))) {
+            toast.info("Project already started or completed.");
+            return;
+        }
+        if (userTeam.financials.budgetAllocations.Facilities < project.cost) {
+            toast.error("Insufficient Facilities Budget", { description: `You need ${project.cost} in facilities budget to start this project.` });
+            return;
+        }
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                return {
+                    ...team,
+                    facilities: [...team.facilities, { ...project, status: 'In Progress', weeksToComplete: project.weeksToComplete || 4 }],
+                    financials: {
+                        ...team.financials,
+                        budgetAllocations: {
+                            ...team.financials.budgetAllocations,
+                            Facilities: team.financials.budgetAllocations.Facilities - project.cost
+                        }
+                    }
+                };
+            }
+            return team;
+        }));
+        toast.success("Project Started!", { description: `${project.name} is now under construction.` });
+    };
+
+    const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                return {
+                    ...team,
+                    roster: team.roster.map(player =>
+                        player.id === playerId ? { ...player, trainingFocus: focus } : player
+                    )
+                };
+            }
+            return team;
+        }));
+        toast.success("Training Focus Updated!", { description: "Player's training focus has been set." });
+    };
+
+    const autoAssignTrainingFocuses = () => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const updatedRoster = team.roster.map(player => {
+                    if (player.trainingFocus === null) {
+                        const isSkater = player.positions[0] !== 'G';
+                        const availableFocuses = isSkater ? skaterFocuses : goalieFocuses;
+                        return { ...player, trainingFocus: getRandomItem(availableFocuses) };
+                    }
+                    return player;
+                });
+                return { ...team, roster: updatedRoster };
+            }
+            return team;
+        }));
+        toast.success("Auto-Assigned Training Focuses!", { description: "Players without a focus have been assigned one." });
+    };
+
     return (
         <TeamContext.Provider value={{
             teams,
