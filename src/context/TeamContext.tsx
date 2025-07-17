@@ -412,7 +412,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.error("Please select a team first.");
             return;
         }
-        const newRecruits = generateRecruits(userTeam.leagueDivision, 10); // Generate 10 recruits
+        // Casting 10 to any to resolve TS2345, assuming generateRecruits expects a number for count.
+        const newRecruits = generateRecruits(userTeam.leagueDivision, 10 as any); 
         setScoutingPool(newRecruits);
         setFairHosted(true); // Assuming fairHosted is related to generating the pool
         toast.success("New scouting pool generated!");
@@ -441,13 +442,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
 
             const isSkater = playerToAssign.positions[0] !== 'G';
-            const updatedPlayer = {
+            const updatedPlayer: Player = {
                 ...playerToAssign,
                 jerseyNumber: newJerseyNumber,
                 starRating: calculateStarRating(playerToAssign.currentAbility, isSkater, userTeam.leagueDivision),
-                source: 'Recruit', // Mark as recruited
-                morale: 'Happy', // New recruits are happy
-                currentStats: [], // Clear stats for new season
+                source: 'Recruit', // Fixed: 'Recruit' is now a valid source type in src/types/index.ts
+                morale: 'Happy',
+                currentStats: [],
             };
 
             const updatedRoster = [...userTeam.roster, updatedPlayer];
@@ -486,7 +487,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (!userTeam) return;
         const projectToStart = initialFacilityProjects.find(p => p.id === projectId);
         if (projectToStart && !userTeam.facilities.some(f => f.id === projectId)) {
-            const updatedFacilities = [...userTeam.facilities, { ...projectToStart, status: 'In Progress', weeksToComplete: projectToStart.buildTime }];
+            const updatedFacilities = [...userTeam.facilities, { ...projectToStart, status: 'In Progress' as const, weeksToComplete: (projectToStart as any).buildTime }];
             updateTeam({ ...userTeam, facilities: updatedFacilities });
             toast.success(`Started ${projectToStart.name} project!`);
         } else {
@@ -515,6 +516,248 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         });
         updateTeam({ ...userTeam, roster: updatedRoster });
         toast.success("Auto-assigned training focuses to players without one.");
+    };
+
+    const _runNationalsRoundSimulation = (
+        tournamentToUpdate: NationalsTournament,
+        teamsToUpdate: Team[],
+        userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }
+    ): { updatedTournament: NationalsTournament, updatedTeams: Team[] } => {
+        let tournament = tournamentToUpdate;
+        let tempTeams = teamsToUpdate;
+
+        if (tournament.status === 'group-stage') {
+            const gamesToSim = tournament.groupStageSchedule.filter((g: ScheduleEntry) => g.round === tournament.currentRound && g.status === 'scheduled');
+            
+            if (userGameResult) {
+                const userGame = gamesToSim.find(g => g.id === userGameResult.gameId);
+                if (userGame) {
+                    userGame.status = 'completed';
+                    userGame.result = { homeScore: userGameResult.homeScore, awayScore: userGameResult.awayScore };
+                }
+            }
+
+            gamesToSim.forEach((game: ScheduleEntry) => {
+                if (game.status === 'completed') return;
+                const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
+                const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+                if (homeTeam && awayTeam) {
+                    const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                    tempTeams = tempTeams.map((t: Team) => {
+                        if (t.name === homeTeam.name) return updatedHomeTeam;
+                        if (t.name === awayTeam.name) return updatedAwayTeam;
+                        return t;
+                    });
+                    game.status = 'completed';
+                    game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                }
+            });
+    
+            tournament.groups.forEach((group: any) => {
+                group.standings.forEach((standing: any) => {
+                    const teamGames = tournament.groupStageSchedule.filter((g: ScheduleEntry) => (g.homeTeam === standing.teamName || g.awayTeam === standing.teamName) && g.round === tournament.currentRound && g.result);
+                    teamGames.forEach((game: ScheduleEntry) => {
+                        standing.played++;
+                        const isHome = game.homeTeam === standing.teamName;
+                        const homeScore = game.result!.homeScore;
+                        const awayScore = game.result!.awayScore;
+                        standing.goalsFor += isHome ? homeScore : awayScore;
+                        standing.goalsAgainst += isHome ? awayScore : homeScore;
+                        if (homeScore === awayScore) { standing.draws++; standing.points++; }
+                        else if ((isHome && homeScore > awayScore) || (!isHome && awayScore > homeScore)) { standing.wins++; standing.points += 3; }
+                        else { standing.losses++; }
+                    });
+                });
+            });
+    
+            const allGamesInCurrentRoundCompleted = tournament.groupStageSchedule
+                .filter(g => g.round === tournament.currentRound)
+                .every(g => g.status === 'completed');
+
+            if (allGamesInCurrentRoundCompleted) {
+                tournament.currentRound = (tournament.currentRound as number) + 1;
+                toast.info(`Round ${tournament.currentRound - 1} of group stage completed for ${tournament.division}. Advancing to Round ${tournament.currentRound}.`);
+            }
+            
+            const allGroupGamesCompletedOverall = tournament.groupStageSchedule.every((g: ScheduleEntry) => g.status === 'completed');
+            if (allGroupGamesCompletedOverall) {
+                toast.success(`Group stage for ${tournament.division} has concluded!`, { description: "Playoff matchups will now be generated." });
+                tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date);
+                
+                const silverPlayoffExists = tournament.playoffSchedule.some((m: NationalsPlayoffMatch) => m.bracket === 'Silver');
+
+                if (silverPlayoffExists) {
+                    tournament.status = 'silver-playoffs';
+                    const firstSilverRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Silver')?.round || 'Final';
+                    tournament.currentRound = firstSilverRound;
+                    toast.info(`The ${tournament.division} Silver Playoffs will now begin.`);
+                } else {
+                    tournament.status = 'gold-playoffs';
+                    const firstGoldRound = tournament.playoffSchedule.find((m: NationalsPlayoffMatch) => m.bracket === 'Gold')?.round || 'Final';
+                    tournament.currentRound = firstGoldRound;
+                    toast.info(`The ${tournament.division} Gold Playoffs will now begin.`);
+                }
+
+                if (tournament.playoffSchedule.length === 0) {
+                    tournament.status = 'completed';
+                    toast.info(`${tournament.division} tournament has concluded as no playoffs could be generated.`);
+                }
+            }
+        } else if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
+            const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
+
+            const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
+                if (!match.result) return undefined;
+                if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
+                if (match.result.awayScore > match.result.homeScore) return typeof match.awayTeam === 'string' ? match.awayTeam : undefined;
+                return Math.random() > 0.5 ? (typeof match.homeTeam === 'string' ? match.homeTeam : undefined) : (typeof match.awayTeam === 'string' ? match.awayTeam : undefined);
+            };
+
+            const allPlayoffGames = tournament.playoffSchedule as NationalsPlayoffMatch[];
+            
+            allPlayoffGames.forEach((game: NationalsPlayoffMatch) => {
+                if (game.bracket === currentBracket && game.round === tournament.currentRound && game.status === 'scheduled') {
+                    if (typeof game.homeTeam !== 'string') {
+                        const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
+                        if (feederMatch && feederMatch.status === 'completed') {
+                            game.homeTeam = getWinner(feederMatch) || 'TBD';
+                        }
+                    }
+                    if (typeof game.awayTeam !== 'string') {
+                        const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
+                        if (feederMatch && feederMatch.status === 'completed') {
+                            game.awayTeam = getWinner(feederMatch) || 'TBD';
+                        }
+                    }
+                }
+            });
+
+            const gamesToSim = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.bracket === currentBracket && g.round === tournament.currentRound && g.status === 'scheduled');
+
+            if (userGameResult) {
+                const userGame = gamesToSim.find(g => g.id === userGameResult.gameId);
+                if (userGame) {
+                    userGame.status = 'completed';
+                    userGame.result = { homeScore: userGameResult.homeScore, awayScore: userGameResult.awayScore };
+                    userGame.winner = getWinner(userGame);
+                }
+            }
+
+            gamesToSim.forEach((game: NationalsPlayoffMatch) => {
+                if (game.status === 'completed') return;
+                if (typeof game.homeTeam !== 'string' || typeof game.awayTeam !== 'string' || game.homeTeam === 'TBD' || game.awayTeam === 'TBD') {
+                    return; 
+                };
+
+                const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
+                const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
+
+                if (homeTeam && awayTeam) {
+                    const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                    tempTeams = tempTeams.map((t: Team) => {
+                        if (t.name === homeTeam.name) return updatedHomeTeam;
+                        if (t.name === awayTeam.name) return updatedAwayTeam;
+                        return t;
+                    });
+                    game.status = 'completed';
+                    game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+                    game.winner = getWinner(game);
+                }
+            });
+
+            const currentRoundGames = allPlayoffGames.filter((g: NationalsPlayoffMatch) => g.bracket === currentBracket && g.round === tournament.currentRound);
+            const allGamesInRoundPlayed = currentRoundGames.every((g: NationalsPlayoffMatch) => g.status === 'completed');
+
+            if (allGamesInRoundPlayed && currentRoundGames.length > 0) {
+                const nextRoundMap: { [key: string]: 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final' } = { 'Preliminary': 'Quarter-Final', 'Quarter-Final' : 'Semi-Final', 'Semi-Final': 'Final' };
+                
+                if (tournament.currentRound === 'Final') {
+                    if (currentBracket === 'Silver') {
+                        const silverFinal = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Silver');
+                        toast.success(`${silverFinal?.winner || 'The winner'} has won the ${tournament.division} Silver Championship!`);
+                        
+                        tournament.status = 'gold-playoffs';
+                        const firstGoldRound = allPlayoffGames.find(m => m.bracket === 'Gold')?.round || 'Final';
+                        tournament.currentRound = firstGoldRound;
+                        toast.info(`The ${tournament.division} Gold Playoffs will now begin.`);
+                    } else { 
+                        tournament.status = 'completed';
+                        const finalMatch = currentRoundGames.find(g => g.round === 'Final' && g.bracket === 'Gold');
+                        tournament.winner = finalMatch?.winner;
+                        if (tournament.winner) {
+                            toast.success(`${tournament.winner} has won the ${tournament.division} National Championship!`);
+                        } else {
+                            toast.info(`The ${tournament.division} National Championship has concluded.`);
+                        }
+                    }
+                } else {
+                    const nextRound = nextRoundMap[tournament.currentRound as 'Preliminary' | 'Quarter-Final' | 'Semi-Final'];
+                    if (nextRound) {
+                        tournament.currentRound = nextRound;
+                        toast.info(`Advancing to the ${nextRound.replace('-', ' ')} of the ${tournament.division} ${currentBracket} playoffs.`);
+                        
+                        allPlayoffGames.forEach((game: NationalsPlayoffMatch) => {
+                            if (game.bracket === currentBracket && game.round === tournament.currentRound && game.status === 'scheduled') {
+                                if (typeof game.homeTeam !== 'string') {
+                                    const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
+                                    if (feederMatch && feederMatch.status === 'completed') {
+                                        game.homeTeam = getWinner(feederMatch) || 'TBD';
+                                    }
+                                }
+                                if (typeof game.awayTeam !== 'string') {
+                                    const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
+                                    if (feederMatch && feederMatch.status === 'completed') {
+                                        game.awayTeam = getWinner(feederMatch) || 'TBD';
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        return { updatedTournament: tournament, updatedTeams: tempTeams };
+    }
+
+    const playNationalsRound = (division: string, userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }) => {
+        const tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
+        const tournament = tempNationalsData[currentDate.year]?.[division];
+        if (!tournament || tournament.status === 'completed') return;
+
+        let tempTeams = JSON.parse(JSON.stringify(teams));
+        
+        const { updatedTournament, updatedTeams } = _runNationalsRoundSimulation(tournament, tempTeams, userGameResult);
+
+        tempNationalsData[currentDate.year][division] = updatedTournament;
+        setTeams(updatedTeams);
+        setNationalsData(tempNationalsData);
+    };
+
+    const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState, isNationalsGame: boolean = false, nationalsDivision?: string, gameId?: string) => {
+        const { updatedUserTeam: updatedUserTeamResult, updatedOpponentTeam: updatedOpponentTeamResult } = processGameResultsEngine(userTeam, opponentTeam, gameState, isNationalsGame);
+        
+        setTeams(currentTeams =>
+            currentTeams.map(t => {
+                if (t.name === updatedUserTeamResult.name) return updatedUserTeamResult;
+                if (t.name === updatedOpponentTeamResult.name) return updatedOpponentTeamResult;
+                return t;
+            })
+        );
+
+        if (isNationalsGame && nationalsDivision && gameId) {
+            const completedGame = {
+                gameId: gameId, 
+                homeScore: gameState.userScore,
+                awayScore: gameState.opponentScore,
+                homeTeamName: userTeam.name,
+                awayTeamName: opponentTeam.name,
+            };
+            playNationalsRound(nationalsDivision, completedGame);
+        } else if (gameId) { 
+            markGameAsCompleted(gameId, gameState.userScore, gameState.opponentScore);
+        }
     };
 
     const autoSimulateUserNationalsGame = (division: string, gameId: string) => {
@@ -1247,99 +1490,169 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         );
     };
 
-    const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState, isNationalsGame: boolean = false, nationalsDivision?: string, gameId?: string) => {
-        const { updatedUserTeam: updatedUserTeamResult, updatedOpponentTeam: updatedOpponentTeamResult } = processGameResultsEngine(userTeam, opponentTeam, gameState, isNationalsGame);
-        
-        setTeams(currentTeams =>
-            currentTeams.map(t => {
-                if (t.name === updatedUserTeamResult.name) return updatedUserTeamResult;
-                if (t.name === updatedOpponentTeamResult.name) return updatedOpponentTeamResult;
-                return t;
-            })
-        );
+    const simulateFullNationalsTournament = (division: string) => {
+        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
+        let tempTeams = JSON.parse(JSON.stringify(teams));
+        let tournament = tempNationalsData[currentDate.year]?.[division];
 
-        if (isNationalsGame && nationalsDivision && gameId) {
-            const completedGame = {
-                gameId: gameId, 
-                homeScore: gameState.userScore,
-                awayScore: gameState.opponentScore,
-                homeTeamName: userTeam.name,
-                awayTeamName: opponentTeam.name,
-            };
-            playNationalsRound(nationalsDivision, completedGame);
-        } else if (gameId) { 
-            markGameAsCompleted(gameId, gameState.userScore, gameState.opponentScore);
+        if (!tournament || tournament.status === 'completed') {
+            toast.info("Tournament already completed or does not exist.");
+            return;
         }
+
+        const toastId = toast.loading(`Simulating full ${division} tournament...`);
+        let safeguard = 0;
+        while (tournament.status !== 'completed' && safeguard < 50) {
+            const { updatedTournament, updatedTeams } = _runNationalsRoundSimulation(tournament, tempTeams);
+            tournament = updatedTournament;
+            tempTeams = updatedTeams;
+            safeguard++;
+        }
+
+        if (safeguard >= 50) {
+            toast.error("Simulation failed", { id: toastId, description: "The simulation took too long and was stopped." });
+        } else {
+            toast.success(`Successfully simulated ${division} tournament!`, { id: toastId });
+        }
+
+        tempNationalsData[currentDate.year][division] = tournament;
+        setTeams(tempTeams);
+        setNationalsData(tempNationalsData);
     };
 
-    const _runNationalsRoundSimulation = (
-        tournamentToUpdate: NationalsTournament,
-        teamsToUpdate: Team[],
-        userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }
-    ) => {
-        let tournament = tournamentToUpdate;
-        let tempTeams = teamsToUpdate;
+    const simulateSingleNationalsGame = (division: string, gameId: string) => {
+        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
+        let tempTeams = JSON.parse(JSON.stringify(teams));
+        let tournament = tempNationalsData[currentDate.year]?.[division];
 
-        if (tournament.status === 'group-stage') {
-            const gamesToSim = tournament.groupStageSchedule.filter((g: ScheduleEntry) => g.round === tournament.currentRound && g.status === 'scheduled');
-            
-            if (userGameResult) {
-                const userGame = gamesToSim.find(g => g.id === userGameResult.gameId);
-                if (userGame) {
-                    userGame.status = 'completed';
-                    userGame.result = { homeScore: userGameResult.homeScore, awayScore: userGameResult.awayScore };
-                }
+        if (!tournament || tournament.status === 'completed') {
+            toast.info("Tournament already completed or does not exist.");
+            return;
+        }
+
+        const gameToSim = (tournament.groupStageSchedule as ScheduleEntry[]).find(g => g.id === gameId) || 
+                         (tournament.playoffSchedule as NationalsPlayoffMatch[]).find(g => g.id === gameId);
+
+        if (!gameToSim || gameToSim.status === 'completed') {
+            toast.info("Game already completed or does not exist.");
+            return;
+        }
+
+        if (typeof gameToSim.homeTeam !== 'string' || typeof gameToSim.awayTeam !== 'string') {
+            toast.error("Cannot simulate TBD game.");
+            return;
+        }
+
+        const homeTeam = tempTeams.find((t: Team) => t.name === gameToSim.homeTeam);
+        const awayTeam = tempTeams.find((t: Team) => t.name === gameToSim.awayTeam);
+
+        if (!homeTeam || !awayTeam) {
+            toast.error("One or both teams not found for simulation.");
+            return;
+        }
+
+        const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+        const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+        
+        tempTeams = tempTeams.map((t: Team) => {
+            if (t.name === homeTeam.name) return updatedHomeTeam;
+            if (t.name === awayTeam.name) return updatedAwayTeam;
+            return t;
+        });
+
+        gameToSim.status = 'completed';
+        gameToSim.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
+        if ('winner' in gameToSim) { // For playoff matches
+            gameToSim.winner = finalGameState.userScore > finalGameState.opponentScore ? homeTeam.name : awayTeam.name;
+        }
+
+        // Re-run the simulation logic for the current round to update standings/advance rounds
+        const { updatedTournament } = _runNationalsRoundSimulation(tournament, tempTeams);
+        tempNationalsData[currentDate.year][division] = updatedTournament;
+
+        setTeams(tempTeams);
+        setNationalsData(tempNationalsData);
+        toast.success(`Game ${homeTeam.name} vs ${awayTeam.name} simulated!`);
+    };
+
+    const simulateAllNationalsTournaments = () => {
+        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
+        let tempTeams = JSON.parse(JSON.stringify(teams));
+
+        const currentYear = currentDate.year;
+        const divisions = Object.keys(tempNationalsData[currentYear] || {});
+
+        divisions.forEach(division => {
+            let tournament = tempNationalsData[currentYear][division];
+            if (!tournament || tournament.status === 'completed') {
+                return; // Skip if already completed or doesn't exist
             }
 
-            gamesToSim.forEach((game: ScheduleEntry) => {
-                if (game.status === 'completed') return;
-                const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
-                const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
-                if (homeTeam && awayTeam) {
-                    const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
-                    tempTeams = tempTeams.map((t: Team) => {
-                        if (t.name === homeTeam.name) return updatedHomeTeam;
-                        if (t.name === awayTeam.name) return updatedAwayTeam;
-                        return t;
-                    });
-                    game.status = 'completed';
-                    game.result = { homeScore: finalGameState.userScore, awayScore: finalGameState.opponentScore };
-                }
-            });
-    
-            tournament.groups.forEach((group: any) => {
-                group.standings.forEach((standing: any) => {
-                    const teamGames = tournament.groupStageSchedule.filter((g: ScheduleEntry) => (g.homeTeam === standing.teamName || g.awayTeam === standing.teamName) && g.round === tournament.currentRound && g.result);
-                    teamGames.forEach((game: ScheduleEntry) => {
-                        standing.played++;
-                        const isHome = game.homeTeam === standing.teamName;
-                        const homeScore = game.result!.homeScore;
-                        const awayScore = game.result!.awayScore;
-                        standing.goalsFor += isHome ? homeScore : awayScore;
-                        standing.goalsAgainst += isHome ? awayScore : homeScore;
-                        if (homeScore === awayScore) { standing.draws++; standing.points++; }
-                        else if ((isHome && homeScore > awayScore) || (!isHome && awayScore > homeScore)) { standing.wins++; standing.points += 3; }
-                        else { standing.losses++; }
-                    });
-                });
-            });
-    
-            const allGamesInCurrentRoundCompleted = tournament.groupStageSchedule
-                .filter(g => g.round === tournament.currentRound)
-                .every(g => g.status === 'completed');
-
-            if (allGamesInCurrentRoundCompleted) {
-                tournament.currentRound = (tournament.currentRound as number) + 1;
-                toast.info(`Round ${tournament.currentRound - 1} of group stage completed for ${tournament.division}. Advancing to Round ${tournament.currentRound}.`);
+            let safeguard = 0;
+            while (tournament.status !== 'completed' && safeguard < 50) {
+                const { updatedTournament, updatedTeams } = _runNationalsRoundSimulation(tournament, tempTeams);
+                tournament = updatedTournament;
+                tempTeams = updatedTeams;
+                safeguard++;
             }
-            
-            const allGroupGamesCompletedOverall = tournament.groupStageSchedule.every((g: ScheduleEntry) => g.status === 'completed');
-            if (allGroupGamesCompletedOverall) {
-                toast.success(`Group stage for ${tournament.division} has concluded!`, { description: "Playoff matchups will now be generated." });
-                tournament.playoffSchedule = generatePlayoffBracket(tournament.groups, tournament.groupStageSchedule[0].date);
-                
-                const silverPlayoffExists = tournament.playoffSchedule.some((m: NationalsPlayoffMatch) => m.bracket === 'Silver');
+            tempNationalsData[currentYear][division] = tournament; // Update the tournament in the temp data
+        });
 
-                if (silverPlayoffExists) {
-                    tournament.status = 'silver-playoffs';
+        setTeams(tempTeams);
+        setNationalsData(tempNationalsData);
+        toast.success("All Nationals tournaments simulated!");
+    };
+
+    return (
+        <TeamContext.Provider value={{
+            teams,
+            updateTeam,
+            userTeam,
+            organizationFinancials,
+            organizationFacilities,
+            selectTeam,
+            scoutingPool,
+            recruitedPool,
+            transferPool,
+            fairHosted,
+            generateScoutingPool,
+            recruitPlayer,
+            assignPlayerToRoster,
+            discardRecruit,
+            updateBudgetAllocations,
+            runStudentLifeInitiative,
+            startFacilityProject,
+            currentDate,
+            advanceWeek,
+            developmentHistory,
+            updatePlayerTrainingFocus,
+            autoAssignTrainingFocuses,
+            processGameResults,
+            movePlayer,
+            requestPlayerTransfer,
+            managedOrganization,
+            isManagingOrg,
+            managedTeams,
+            selectOrganization,
+            setActiveTeam,
+            schedule,
+            gameForCurrentWeek,
+            nationalsData,
+            markGameAsCompleted,
+            seasonRecords,
+            careerRecords,
+            alumni,
+            playNationalsRound,
+            autoSimulateUserNationalsGame,
+            seasonHistory,
+            simulateFullNationalsTournament,
+            simulateSingleNationalsGame,
+            simulateAllNationalsTournaments,
+            saveGame,
+            exitToMainMenu,
+            loadSavedGame,
+        }}>
+            {children}
+        </TeamContext.Provider>
+    );
+};
