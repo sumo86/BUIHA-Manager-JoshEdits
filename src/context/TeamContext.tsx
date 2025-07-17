@@ -702,6 +702,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     
                     const newAlumni: Player[] = [];
                     const allTransferPlayers: Player[] = [];
+                    const allOrganizations = getTeamOrganizations(); // Get the base organization structure
 
                     tempTeams = tempTeams.map(team => {
                         const graduatingPlayers: Player[] = [];
@@ -784,7 +785,35 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         });
 
                         team.roster = remainingPlayers;
-                        return team;
+
+                        // --- NEW BUDGET LOGIC START ---
+                        const currentSpentFunds = Object.values(team.financials.budgetAllocations).reduce((sum, val) => sum + val, 0);
+                        const unspentFunds = team.financials.totalBudget - currentSpentFunds;
+
+                        const orgName = getOrganizationName(team.name);
+                        const organization = allOrganizations.find(org => org.name === orgName);
+
+                        let newBaseBudget = 15000; // Default for single-team orgs
+                        if (organization && organization.teams.length > 1) {
+                            // Replicate the multi-team organization budget calculation
+                            const orgTotalBudget = 10000 + (organization.teams.length * 7500);
+                            newBaseBudget = orgTotalBudget / organization.teams.length;
+                        }
+
+                        const newTotalBudget = newBaseBudget + unspentFunds;
+                        const resetAllocations = { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 };
+                        // --- NEW BUDGET LOGIC END ---
+
+                        return {
+                            ...team,
+                            roster: team.roster, // Already updated above
+                            financials: {
+                                ...team.financials,
+                                totalBudget: newTotalBudget,
+                                budgetAllocations: resetAllocations,
+                            },
+                            wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 // existing reset
+                        };
                     });
 
                     setTransferPool([]);
@@ -836,16 +865,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         setAlumni(prev => [...prev, ...newAlumni]);
                     }
 
-                    tempTeams = tempTeams.map(team => {
-                        const updatedRoster = team.roster.map(player => {
-                            if (player.currentStats.length > 0) {
-                                const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
-                                return { ...player, history: newHistory, currentStats: [] };
-                            }
-                            return player;
-                        });
-                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 };
-                    });
+                    // This final map is no longer needed for roster/stats reset as it's done inside the previous map
+                    // tempTeams = tempTeams.map(team => {
+                    //     const updatedRoster = team.roster.map(player => {
+                    //         if (player.currentStats.length > 0) {
+                    //             const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
+                    //             return { ...player, history: newHistory, currentStats: [] };
+                    //         }
+                    //         return player;
+                    //     });
+                    //     return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 };
+                    // });
                 }
                 month = months[nextMonthIndex];
             }
