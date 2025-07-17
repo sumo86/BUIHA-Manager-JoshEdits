@@ -1,4 +1,4 @@
-import { Team, GameState, Player, SkaterAttributes, GoalieAttributes, PlayerSeasonStats } from '@/types';
+import { Team, GameState, Player, SkaterAttributes, GoalieAttributes, PlayerSeasonStats, GameDate } from '@/types';
 
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
 
@@ -44,10 +44,14 @@ const findOrCreateStatLine = (player: Player, team: Team, season: string): Playe
     return statLine;
 };
 
-export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState, isNationalsGame: boolean = false) => {
+export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState, gameDate: GameDate, isNationalsGame: boolean = false) => {
     const updatedUserTeam = JSON.parse(JSON.stringify(userTeam));
     const updatedOpponentTeam = JSON.parse(JSON.stringify(opponentTeam));
-    const season = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+    
+    const seasonYear = ['august', 'september', 'october', 'november', 'december'].includes(gameDate.month.toLowerCase())
+        ? gameDate.year
+        : gameDate.year - 1;
+    const season = `${seasonYear}-${seasonYear + 1}`;
 
     const processPlayerStats = (team: Team, opponent: Team, teamScore: number, opponentScore: number, teamShots: number) => {
         const participatingIds = getParticipatingPlayerIds(team);

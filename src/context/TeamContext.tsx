@@ -250,7 +250,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 localStorage.setItem('isManagingOrg', 'true');
                 setManagedOrganization(orgName);
                 setActiveTeamName(mainTeam.name);
-                setIsManagingOrg(true);
             }
         } else {
             localStorage.removeItem('managedOrganization');
@@ -521,7 +520,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     });
                 }
 
-                const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, false);
+                const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, currentDate, false);
                 tempTeams[homeTeamIndex] = updatedHomeTeam;
                 tempTeams[awayTeamIndex] = updatedAwayTeam;
                 updateGameRecords(updatedHomeTeam, updatedAwayTeam);
@@ -828,8 +827,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                         team.roster = remainingPlayers;
 
-                        // Budget carryover: totalBudget is carried over, allocations are reset
-                        const unspentBudget = team.financials.totalBudget;
+                        // Calculate unspent (unallocated) budget
+                        const allocatedBudget = Object.values(team.financials.budgetAllocations).reduce((sum, val) => sum + val, 0);
+                        const unspentBudget = team.financials.totalBudget - allocatedBudget;
 
                         const orgName = getOrganizationName(team.name);
                         const organization = allOrganizations.find(org => org.name === orgName);
@@ -1154,7 +1154,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState, isNationalsGame: boolean = false, nationalsDivision?: string, gameId?: string) => {
-        const { updatedUserTeam: updatedUserTeamResult, updatedOpponentTeam: updatedOpponentTeamResult } = processGameResultsEngine(userTeam, opponentTeam, gameState, isNationalsGame);
+        const { updatedUserTeam: updatedUserTeamResult, updatedOpponentTeam: updatedOpponentTeamResult } = processGameResultsEngine(userTeam, opponentTeam, gameState, currentDate, isNationalsGame);
 
         setTeams(currentTeams =>
             currentTeams.map(t => {
@@ -1203,7 +1203,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
                 if (homeTeam && awayTeam) {
                     const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, currentDate, true);
                     tempTeams = tempTeams.map((t: Team) => {
                         if (t.name === homeTeam.name) return updatedHomeTeam;
                         if (t.name === awayTeam.name) return updatedAwayTeam;
@@ -1315,7 +1315,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 if (homeTeam && awayTeam) {
                     const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, true);
+                    const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, currentDate, true);
                     tempTeams = tempTeams.map((t: Team) => {
                         if (t.name === homeTeam.name) return updatedHomeTeam;
                         if (t.name === awayTeam.name) return updatedAwayTeam;
