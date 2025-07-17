@@ -24,7 +24,7 @@ export function ExitGameDialog({ children, onConfirm }: ExitGameDialogProps) {
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to exit?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will delete your current game progress and return you to the main menu. This action cannot be undone.
+            Your game is saved automatically. This will return you to the main menu, where you can load your saved game.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
