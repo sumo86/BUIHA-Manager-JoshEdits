@@ -4,7 +4,6 @@ import { BudgetAllocation } from "@/components/finance/BudgetAllocation";
 import { Transactions } from "@/components/finance/Transactions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useMemo } from "react";
 
 const Finances = () => {
   const { userTeam, updateBudgetAllocations, managedOrganization, organizationFinancials } = useTeam();
@@ -18,14 +17,6 @@ const Finances = () => {
   if (!currentFinancials) {
     return <div>Financial data not available.</div>;
   }
-
-  // Calculate the team's total wealth to be used for budget allocation
-  const totalWealth = useMemo(() => {
-    if (!currentFinancials) return 0;
-    const allocated = Object.values(currentFinancials.budgetAllocations).reduce((sum, val) => sum + val, 0);
-    // Total wealth is the unallocated funds (totalBudget) + all the money in allocated pots
-    return currentFinancials.totalBudget + allocated;
-  }, [currentFinancials]);
 
   const handleSaveAllocations = (newAllocations: typeof currentFinancials.budgetAllocations) => {
     updateBudgetAllocations(newAllocations);
@@ -44,7 +35,7 @@ const Finances = () => {
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-muted-foreground">Total Unallocated Funds:</p>
+              <p className="text-muted-foreground">Total Budget:</p>
               <p className="text-2xl font-bold">£{currentFinancials.totalBudget.toLocaleString()}</p>
             </div>
             <div>
@@ -61,7 +52,7 @@ const Finances = () => {
 
       <BudgetAllocation
         initialAllocations={currentFinancials.budgetAllocations}
-        totalBudget={totalWealth}
+        totalBudget={currentFinancials.totalBudget}
         onSave={handleSaveAllocations}
       />
 

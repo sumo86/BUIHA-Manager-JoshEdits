@@ -11,7 +11,6 @@ const shuffleArray = <T>(array: T[]): T[] => {
 };
 
 export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): ScheduleEntry[] => {
-    console.log("generateSeasonSchedule called with teams:", teams.length, "teams. First team:", teams[0]?.name);
     const seasonMonths = ["September", "October", "November", "December", "January", "February", "March", "April"];
     const gameWeeks: GameDate[] = [];
     
@@ -153,6 +152,5 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
         return a.date.week - b.date.week;
     });
 
-    console.log("Generated schedule length:", schedule.length);
     return schedule;
 };

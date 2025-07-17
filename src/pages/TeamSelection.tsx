@@ -3,7 +3,7 @@ import { getTeamOrganizations } from '@/data/teams';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { format, isValid } from 'date-fns'; // Import isValid
+import { format } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 
 const TeamSelection = () => {
@@ -37,7 +37,7 @@ const TeamSelection = () => {
                                                 {game.userTeamName} - {game.currentDate.month} {game.currentDate.year}, Week {game.currentDate.week}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                Saved: {isValid(new Date(game.savedAt)) ? format(new Date(game.savedAt), "PPP p") : "Invalid Date"}
+                                                Saved: {format(new Date(game.savedAt), "PPP p")}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">

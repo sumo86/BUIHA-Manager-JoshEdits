@@ -115,17 +115,13 @@ export const processGameResults = (userTeam: Team, opponentTeam: Team, gameState
     if (!isNationalsGame) {
         if (gameState.userScore > gameState.opponentScore) {
             updatedUserTeam.wins += 1;
-            updatedUserTeam.points += 3;
             updatedOpponentTeam.losses += 1;
         } else if (gameState.opponentScore > gameState.userScore) {
             updatedOpponentTeam.wins += 1;
-            updatedOpponentTeam.points += 3;
             updatedUserTeam.losses += 1;
         } else {
             updatedUserTeam.draws += 1;
-            updatedUserTeam.points += 1;
             updatedOpponentTeam.draws += 1;
-            updatedOpponentTeam.points += 1;
         }
         updatedUserTeam.goalsFor += gameState.userScore;
         updatedUserTeam.goalsAgainst += gameState.opponentScore;

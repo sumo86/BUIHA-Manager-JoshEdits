@@ -36,7 +36,7 @@ const SeasonOverview = () => {
 
     const divisionTeams = useMemo(() => teams
         .filter(t => t.leagueDivision === userTeam.leagueDivision)
-        .sort((a, b) => b.points - a.points), [teams, userTeam.leagueDivision]);
+        .sort((a, b) => (b.wins * 2 + b.draws) - (a.wins * 2 + a.draws)), [teams, userTeam.leagueDivision]);
 
     const divisionPlayers = useMemo(() => 
         teams
@@ -145,7 +145,7 @@ const SeasonOverview = () => {
                                         {team.logo && <img src={team.logo} alt={team.name} className="h-6 w-6 object-contain" />}
                                         {team.name}
                                     </TableCell>
-                                    <TableCell>{team.points}</TableCell>
+                                    <TableCell>{team.wins * 2 + team.draws}</TableCell>
                                     <TableCell>{team.wins}</TableCell>
                                     <TableCell>{team.losses}</TableCell>
                                     <TableCell>{team.draws}</TableCell>
