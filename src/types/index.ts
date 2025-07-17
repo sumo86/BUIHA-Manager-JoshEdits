@@ -1,5 +1,3 @@
-File to edit: src/types/index.ts
-        <edit-description>Updating type definitions for player stats and game state to resolve compile errors.</edit-description>
 export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
 
 export type Instruction = "Encourage" | "Discipline" | "Praise" | "Push Harder" | "Calm Down";

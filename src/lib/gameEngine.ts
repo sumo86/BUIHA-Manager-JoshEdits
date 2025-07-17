@@ -425,6 +425,8 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
             teamOnPowerPlay: null,
             timeLeft: 0,
         },
+        userTeamStats: { playerStats: {} },
+        opponentTeamStats: { playerStats: {} },
     };
 
     let currentHomeTeam = JSON.parse(JSON.stringify(homeTeam));
