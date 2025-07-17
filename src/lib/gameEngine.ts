@@ -51,11 +51,14 @@ const getInstructionModifiers = (player: Player) => {
         penaltyChance: 1.0,
     };
 
-    if (!player.activeInstructions || player.activeInstructions.length === 0) {
+    // Ensure activeInstructions is an array, even if it's undefined or null
+    const activeInstructions = player.activeInstructions || [];
+
+    if (activeInstructions.length === 0) {
         return modifiers;
     }
 
-    for (const instruction of player.activeInstructions) {
+    for (const instruction of activeInstructions) {
         switch (instruction.type) {
             case 'Encourage':
                 modifiers.morale += 0.02;
