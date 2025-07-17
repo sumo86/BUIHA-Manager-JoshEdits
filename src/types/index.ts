@@ -139,7 +139,7 @@ export type Player = {
   trainingFocus: TrainingFocus;
   currentStats: PlayerSeasonStats[];
   activeInstructions: ActiveInstruction[];
-  source?: 'Local' | 'International' | 'Transfer' | 'Recruit';
+  source?: 'Local' | 'International' | 'Transfer';
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
   recruitmentCost?: number;
   alumniStatus?: 'Retired' | 'Active Elsewhere';
@@ -187,7 +187,6 @@ export type FacilityProject = {
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
   weeksToComplete?: number;
-  buildTime?: number; // Added buildTime to FacilityProject type
 };
 
 export type Team = {
