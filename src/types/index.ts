@@ -177,8 +177,6 @@ export type Financials = {
   iceTimeCostPerGame: number;
   equipmentCost: number;
   budgetAllocations: BudgetAllocations;
-  travelCostPerAwayGame: number;
-  ticketRevenuePerHomeGame: number;
 };
 
 export type FacilityProject = {
@@ -189,8 +187,6 @@ export type FacilityProject = {
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
   weeksToComplete?: number;
-  buildTimeWeeks?: number; // Added this property
-  incomeGenerated?: number;
 };
 
 export type Team = {
@@ -234,6 +230,7 @@ export type GameState = {
   time: number;
   gameLog: GameEvent[];
   isGameOver: boolean;
+  isPaused: boolean;
   injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
   possessionHolder: string | null;
   powerPlayState: PowerPlayState;
@@ -253,7 +250,6 @@ export type ScheduleEntry = {
   status: 'scheduled' | 'completed';
   result?: { homeScore: number; awayScore: number };
   round?: number;
-  isNationals?: boolean; // Added this property
 };
 
 export type DevelopmentLog = {
@@ -356,30 +352,9 @@ export type SeasonHistory = {
   [season: string]: TeamSeasonHistory[];
 };
 
-// Type for the actual game data saved to localStorage
-export type SavedGameData = {
-    teams: Team[];
-    alumni: Player[];
-    seasonHistory: SeasonHistory;
-    activeTeamName: string | null;
-    managedOrganization: string | null;
-    isManagingOrg: boolean;
-    schedule: ScheduleEntry[];
-    nationalsData: { [year: number]: { [division: string]: NationalsTournament } };
-    seasonRecords: { [key in RecordCategory]?: TeamRecord };
-    careerRecords: { [key in RecordCategory]?: TeamRecord };
-    scoutingPool: Player[];
-    recruitedPool: Player[];
-    fairHosted: boolean;
-    transferPool: Player[];
-    currentDate: GameDate;
-    developmentHistory: DevelopmentLog[];
-};
-
-// Type for the metadata stored in the list of saved games
 export type SaveGameSlot = {
-  saveName: string; // Renamed from 'name'
-  savedAt: string; // Renamed from 'timestamp'
+  saveName: string;
+  savedAt: string;
   userTeamName: string;
   currentDate: GameDate;
 };

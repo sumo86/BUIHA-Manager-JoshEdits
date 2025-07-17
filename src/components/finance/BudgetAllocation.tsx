@@ -36,10 +36,29 @@ export const BudgetAllocation = ({ initialAllocations, totalBudget, onSave }: Bu
   const { userTeam, runStudentLifeInitiative } = useTeam();
   const [allocations, setAllocations] = useState<BudgetAllocations>(initialAllocations);
 
+  const numberOfHomeGames = 13;
+  const numberOfAwayGames = 13;
+  
+  // Use userTeam.financials for specific team costs, not consolidated org costs
+  const iceTimeCost = useMemo(() => numberOfHomeGames * (userTeam?.financials.iceTimeCostPerGame || 0), [userTeam?.financials.iceTimeCostPerGame]);
+  const travelCost = useMemo(() => numberOfAwayGames * 200, []);
+  const equipmentCost = useMemo(() => userTeam?.financials.equipmentCost || 0, [userTeam?.financials.equipmentCost]);
+
   useEffect(() => {
     // Only update if the initialAllocations prop changes, to avoid resetting user input
     setAllocations(initialAllocations);
   }, [initialAllocations]);
+
+  useEffect(() => {
+    // Auto-calculate fixed costs and update allocations
+    setAllocations(prev => ({ 
+      ...prev, 
+      "Ice Time": Math.round(iceTimeCost),
+      "Travel": Math.round(travelCost),
+      "Equipment": Math.round(equipmentCost),
+    }));
+  }, [iceTimeCost, travelCost, equipmentCost]);
+
 
   const handleAllocationChange = (category: BudgetCategory, value: string) => {
     const numberValue = parseInt(value, 10);
