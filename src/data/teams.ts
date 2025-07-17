@@ -125,6 +125,7 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
             financials: {
                 totalBudget: teamBudget,
                 iceTimeCostPerGame: 350,
+                travelCostPerAwayGame: 500,
                 equipmentCost: Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500,
                 budgetAllocations: { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 },
             },

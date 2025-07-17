@@ -736,9 +736,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             // Ice Time Cost
             const homeIceTimeCost = homeTeam.financials.iceTimeCostPerGame;
             const homeIceTimeAllocated = homeTeam.financials.budgetAllocations["Ice Time"];
-            const homeIceTimeDeduction = Math.min(homeIceTimeAllocated, homeIceTimeCost);
-            homeTeam.financials.budgetAllocations["Ice Time"] -= homeIceTimeDeduction;
-            homeTeam.financials.totalBudget -= homeIceTimeCost;
+            const deductionFromIceAllocation = Math.min(homeIceTimeAllocated, homeIceTimeCost);
+            const remainingIceCost = homeIceTimeCost - deductionFromIceAllocation;
+            homeTeam.financials.budgetAllocations["Ice Time"] -= deductionFromIceAllocation;
+            homeTeam.financials.totalBudget -= remainingIceCost; // Deduct shortfall from main budget
 
             // Ticket Revenue
             let ticketRevenue = homeTeam.financials.ticketRevenuePerHomeGame;
@@ -749,22 +750,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
 
             // --- Away Team Costs ---
-            // Ice Time Cost
-            const awayIceTimeCost = awayTeam.financials.iceTimeCostPerGame;
-            const awayIceTimeAllocated = awayTeam.financials.budgetAllocations["Ice Time"];
-            const awayIceTimeDeduction = Math.min(awayIceTimeAllocated, awayIceTimeCost);
-            awayTeam.financials.budgetAllocations["Ice Time"] -= awayIceTimeDeduction;
-            awayTeam.financials.totalBudget -= awayIceTimeCost;
-
             // Travel Cost
             let travelCost = awayTeam.financials.travelCostPerAwayGame;
             if (awayTeam.facilities.some(f => f.id === 'team_bus_1' && f.status === 'Completed')) {
                 travelCost *= 0.5; // 50% reduction
             }
             const travelAllocated = awayTeam.financials.budgetAllocations.Travel;
-            const travelDeduction = Math.min(travelAllocated, travelCost);
-            awayTeam.financials.budgetAllocations.Travel -= travelDeduction;
-            awayTeam.financials.totalBudget -= travelCost;
+            const deductionFromTravelAllocation = Math.min(travelAllocated, travelCost);
+            const remainingTravelCost = travelCost - deductionFromTravelAllocation;
+            awayTeam.financials.budgetAllocations.Travel -= deductionFromTravelAllocation;
+            awayTeam.financials.totalBudget -= remainingTravelCost; // Deduct shortfall from main budget
         });
 
         const updateGameRecords = (homeTeam: Team, awayTeam: Team) => {
@@ -858,7 +853,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             // --- Weekly Facility Income ---
             const merchKiosk = newFacilities.find(f => f.id === 'merch_store_1');
             if (merchKiosk && merchKiosk.status === 'Completed') {
-                let weeklyIncome = 50; // Base income
+                let weeklyIncome = 25; // Base income
                 if (team.facilities.some(f => f.id === 'social_media_1' && f.status === 'Completed')) {
                     weeklyIncome *= 1.15; // 15% bonus from social media intern
                 }
@@ -1255,9 +1250,46 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         })(currentDate);
 
         if (newDevelopmentLogs.length > 0) setDevelopmentHistory(prev => [...newDevelopmentLogs, ...prev].slice(0, 200));
+        
         if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
             tempSchedule = generateSeasonSchedule(tempTeams, newDate);
             toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
+
+            tempTeams = tempTeams.map(team => {
+                const homeGames = tempSchedule.filter(g => g.homeTeam === team.name).length;
+                const awayGames = tempSchedule.filter(g => g.awayTeam === team.name).length;
+
+                const iceTimeCost = homeGames * team.financials.iceTimeCostPerGame;
+                const travelCost = awayGames * team.financials.travelCostPerAwayGame;
+                const totalOperationalCosts = iceTimeCost + travelCost;
+
+                if (team.financials.totalBudget >= totalOperationalCosts) {
+                    team.financials.budgetAllocations['Ice Time'] = iceTimeCost;
+                    team.financials.budgetAllocations['Travel'] = travelCost;
+                    team.financials.totalBudget -= totalOperationalCosts;
+
+                    if (managedTeamNames.includes(team.name)) {
+                        toast.info("Budgets Allocated", {
+                            description: `Automatically allocated $${iceTimeCost.toLocaleString()} for ice time and $${travelCost.toLocaleString()} for travel for the new season.`
+                        });
+                    }
+                } else {
+                    const affordableIceTime = Math.min(iceTimeCost, team.financials.totalBudget);
+                    team.financials.budgetAllocations['Ice Time'] = affordableIceTime;
+                    team.financials.totalBudget -= affordableIceTime;
+
+                    const affordableTravel = Math.min(travelCost, team.financials.totalBudget);
+                    team.financials.budgetAllocations['Travel'] = affordableTravel;
+                    team.financials.totalBudget -= affordableTravel;
+
+                    if (managedTeamNames.includes(team.name)) {
+                        toast.warning("Insufficient Funds for Full Allocation", {
+                            description: `Could not fully fund operational costs. Allocated $${(affordableIceTime + affordableTravel).toLocaleString()} of the required $${totalOperationalCosts.toLocaleString()}.`
+                        });
+                    }
+                }
+                return team;
+            });
         }
 
         if (newDate.month === 'May' && newDate.week === 1 && !(currentDate.month === 'May' && currentDate.week === 1)) {
