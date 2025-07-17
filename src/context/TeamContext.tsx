@@ -742,13 +742,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const homeTeam = tempTeams[homeTeamIndex];
             const awayTeam = tempTeams[awayTeamIndex];
 
+            // Skip budget deductions for Nationals games
+            if (game.isNationals) return;
+
             // --- Home Team Costs & Revenue ---
             // Ice Time Cost
             const homeIceTimeCost = homeTeam.financials.iceTimeCostPerGame;
-            homeTeam.financials.totalBudget -= homeIceTimeCost;
-            const homeIceTimeAllocated = homeTeam.financials.budgetAllocations["Ice Time"];
-            const deductionFromIceAllocation = Math.min(homeIceTimeAllocated, homeIceTimeCost);
-            homeTeam.financials.budgetAllocations["Ice Time"] -= deductionFromIceAllocation;
+            homeTeam.financials.budgetAllocations["Ice Time"] -= homeIceTimeCost;
 
             // Ticket Revenue
             let ticketRevenue = homeTeam.financials.ticketRevenuePerHomeGame;
@@ -764,10 +764,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             if (awayTeam.facilities.some(f => f.id === 'team_bus_1' && f.status === 'Completed')) {
                 travelCost *= 0.5; // 50% reduction
             }
-            awayTeam.financials.totalBudget -= travelCost;
-            const travelAllocated = awayTeam.financials.budgetAllocations.Travel;
-            const deductionFromTravelAllocation = Math.min(travelAllocated, travelCost);
-            awayTeam.financials.budgetAllocations.Travel -= deductionFromTravelAllocation;
+            awayTeam.financials.budgetAllocations.Travel -= travelCost;
         });
 
         const updateGameRecords = (homeTeam: Team, awayTeam: Team) => {
@@ -1261,6 +1258,29 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
             tempSchedule = generateSeasonSchedule(tempTeams, newDate);
             toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
+
+            tempTeams = tempTeams.map(team => {
+                const homeGames = tempSchedule.filter(g => g.homeTeam === team.name && !g.isNationals).length;
+                const awayGames = tempSchedule.filter(g => g.awayTeam === team.name && !g.isNationals).length;
+
+                const totalIceTimeCost = homeGames * team.financials.iceTimeCostPerGame;
+                const totalTravelCost = awayGames * team.financials.travelCostPerAwayGame;
+                
+                // Deduct from totalBudget upfront
+                team.financials.totalBudget -= totalIceTimeCost;
+                team.financials.totalBudget -= totalTravelCost;
+
+                // Set the allocated amounts
+                team.financials.budgetAllocations['Ice Time'] = totalIceTimeCost;
+                team.financials.budgetAllocations['Travel'] = totalTravelCost;
+
+                if (managedTeamNames.includes(team.name)) {
+                    toast.info("Operational Budgets Allocated", {
+                        description: `Automatically allocated $${totalIceTimeCost.toLocaleString()} for ice time and $${totalTravelCost.toLocaleString()} for travel for the new season.`
+                    });
+                }
+                return team;
+            });
         }
 
         if (newDate.month === 'May' && newDate.week === 1 && !(currentDate.month === 'May' && currentDate.week === 1)) {

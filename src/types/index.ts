@@ -253,6 +253,7 @@ export type ScheduleEntry = {
   status: 'scheduled' | 'completed';
   result?: { homeScore: number; awayScore: number };
   round?: number;
+  isNationals?: boolean; // Added this property
 };
 
 export type DevelopmentLog = {
