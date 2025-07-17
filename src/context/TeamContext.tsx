@@ -1180,9 +1180,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         const orgName = getOrganizationName(team.name);
                         const organization = allOrganizations.find(org => org.name === orgName);
 
-                        let newBaseBudget = 40000; // Default for single-team orgs
+                        let newBaseBudget = 10000; // Default for single-team orgs
                         if (organization && organization.teams.length > 1) {
-                            const orgTotalBudget = 25000 + (organization.teams.length * 15000);
+                            const orgTotalBudget = 15000 + (organization.teams.length * 5000);
                             newBaseBudget = orgTotalBudget / organization.teams.length;
                         }
 
@@ -1704,6 +1704,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.error("No active team selected.");
             return;
         }
+
+        const totalAllocated = Object.values(newAllocations).reduce((sum, val) => sum + val, 0);
+        if (totalAllocated > userTeam.financials.totalBudget) {
+            toast.error("Allocation Failed", {
+                description: `You cannot allocate more than your total budget of $${userTeam.financials.totalBudget.toLocaleString()}.`
+            });
+            return;
+        }
+
         setTeams(prevTeams => prevTeams.map(team => {
             if (team.name === userTeam.name) {
                 return {
