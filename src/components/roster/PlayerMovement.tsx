@@ -8,29 +8,14 @@ import {
     DropdownMenuContent, 
     DropdownMenuItem, 
     DropdownMenuTrigger,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
+    DropdownMenuSub, // Added for sub-menus
+    DropdownMenuSubContent, // Added for sub-menus
+    DropdownMenuSubTrigger, // Added for sub-menus
 } from "@/components/ui/dropdown-menu";
 import { ArrowLeftRight, ChevronUp, ChevronDown, Star, StarHalf } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-
-const getDivisionLevel = (division: string): number => {
-    const parts = division.split(' ');
-    let level = 0;
-    // Checking is higher than Non-Checking
-    if (parts.includes('Checking')) {
-        level += 10;
-    }
-    // Lower division number is higher level
-    const num = parseInt(parts[parts.length - 1], 10);
-    if (!isNaN(num)) {
-        level += (5 - num); // Assuming 1 is highest, so 5-1=4, 5-2=3, etc.
-    }
-    return level;
-};
 
 const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
@@ -52,23 +37,15 @@ export const PlayerMovement = () => {
 
     const organizationTeams = useMemo(() => {
         if (!userTeam) return [];
-        
-        let teamsToSort: Team[] = [];
+        // If managing an organization, use managedTeams directly
         if (managedOrganization) {
-            teamsToSort = managedTeams;
-        } else {
-            const orgName = getOrganizationName(userTeam.name);
-            teamsToSort = teams.filter(t => getOrganizationName(t.name) === orgName);
+            return managedTeams.sort((a, b) => a.name.localeCompare(b.name));
         }
-
-        return teamsToSort.sort((a, b) => {
-            const levelA = getDivisionLevel(a.leagueDivision);
-            const levelB = getDivisionLevel(b.leagueDivision);
-            if (levelB !== levelA) {
-                return levelB - levelA; // Sort descending by level
-            }
-            return a.name.localeCompare(b.name); // Fallback to alphabetical
-        });
+        // Otherwise, filter by organization name (for single team mode)
+        const orgName = getOrganizationName(userTeam.name);
+        return teams
+            .filter(t => getOrganizationName(t.name) === orgName)
+            .sort((a, b) => a.name.localeCompare(b.name));
     }, [userTeam, teams, managedOrganization, managedTeams]);
 
     if (!userTeam || organizationTeams.length <= 1) {
@@ -149,7 +126,8 @@ export const PlayerMovement = () => {
                                                         <>
                                                             {canCallUp && (
                                                                 <DropdownMenuItem onClick={() => {
-                                                                    requestPlayerTransfer(player.id, team.name, userTeam.name);
+                                                                    movePlayer(player.id, team.name, userTeam.name);
+                                                                    toast.success(`${player.name} has been called up to ${userTeam.name}.`);
                                                                 }}>
                                                                     <ChevronUp className="mr-2 h-4 w-4" /> Call Up to {userTeam.name}
                                                                 </DropdownMenuItem>
