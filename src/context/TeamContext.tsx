@@ -783,11 +783,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             let isNewRecord = false;
             if (cat === 'GAA') {
                 // Lower GAA is better, and must be greater than 0 to be a valid record
+                // Also, ensure gamesPlayed is considered for goalies
                 if (!allTimeBest || (currentBest.value < allTimeBest.value && currentBest.value > 0 && currentBest.gamesPlayed && currentBest.gamesPlayed >= 5)) {
                     isNewRecord = true;
                 }
             } else if (cat === 'SavePercentage') {
                 // Higher SavePercentage is better
+                // Also, ensure gamesPlayed is considered for goalies
                 if (!allTimeBest || (currentBest.value > allTimeBest.value && currentBest.gamesPlayed && currentBest.gamesPlayed >= 5)) {
                     isNewRecord = true;
                 }
@@ -800,6 +802,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
             if (isNewRecord) {
                 updatedRecords[cat] = currentBest;
+                // Add a toast notification for new records
                 toast.success("NEW SEASON RECORD!", {
                     description: `${currentBest.playerName} (${currentBest.teamName}) set a new season record for ${cat} with ${currentBest.value} in ${currentBest.season}!`
                 });
@@ -854,8 +857,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         const currentYear = currentDate.year;
 
-        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as { [year: number]: { [division: string]: NationalsTournament } };
         let tempCareerRecords = JSON.parse(JSON.stringify(careerRecords)) as { [key in RecordCategory]?: TeamRecord };
+        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as { [year: number]: { [division: string]: NationalsTournament } };
         let tempCurrentSeasonStatsAccumulator = JSON.parse(JSON.stringify(currentSeasonStatsAccumulator)) as { [key in RecordCategory]?: TeamRecord };
 
 
@@ -867,7 +870,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
         }
 
-        const updateGameRecords = (homeTeam: Team, awayTeam: Team, currentSeasonAccumulator: { [key in RecordCategory]?: TeamRecord }) => {
+        const updateGameRecords = (homeTeam: Team, awayTeam: Team, currentSeasonAccumulator: { [key in RecordCategory]?: TeamRecord }, careerRecordsAccumulator: { [key in RecordCategory]?: TeamRecord }) => {
             const allPlayers = [...homeTeam.roster, ...awayTeam.roster];
             
             allPlayers.forEach(player => {
@@ -908,15 +911,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 
                 // Career records logic (remains the same as it's not season-specific)
                 const careerGoals = (player.history?.reduce((acc, s) => acc + (s.goals || 0), 0) || 0) + (playerCurrentSeasonStats.goals || 0);
-                if (careerGoals > (tempCareerRecords['Goals']?.value || 0)) tempCareerRecords['Goals'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerGoals };
+                if (careerGoals > (careerRecordsAccumulator['Goals']?.value || 0)) careerRecordsAccumulator['Goals'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerGoals };
                 const careerAssists = (player.history?.reduce((acc, s) => acc + (s.assists || 0), 0) || 0) + (playerCurrentSeasonStats.assists || 0);
-                if (careerAssists > (tempCareerRecords['Assists']?.value || 0)) tempCareerRecords['Assists'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerAssists };
+                if (careerAssists > (careerRecordsAccumulator['Assists']?.value || 0)) careerRecordsAccumulator['Assists'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerAssists };
                 const careerPoints = (player.history?.reduce((acc, s) => acc + (s.points || 0), 0) || 0) + (playerCurrentSeasonStats.points || 0);
-                if (careerPoints > (tempCareerRecords['Points']?.value || 0)) tempCareerRecords['Points'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerPoints };
+                if (careerPoints > (careerRecordsAccumulator['Points']?.value || 0)) careerRecordsAccumulator['Points'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerPoints };
                 const careerPims = (player.history?.reduce((acc, s) => acc + (s.penaltyMinutes || 0), 0) || 0) + (playerCurrentSeasonStats.penaltyMinutes || 0);
-                if (careerPims > (tempCareerRecords['PenaltyMinutes']?.value || 0)) tempCareerRecords['PenaltyMinutes'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerPims };
+                if (careerPims > (careerRecordsAccumulator['PenaltyMinutes']?.value || 0)) careerRecordsAccumulator['PenaltyMinutes'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerPims };
                 const careerShutouts = (player.history?.reduce((acc, s) => acc + (s.shutouts || 0), 0) || 0) + (playerCurrentSeasonStats.shutouts || 0);
-                if (careerShutouts > (tempCareerRecords['Shutouts']?.value || 0)) tempCareerRecords['Shutouts'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerShutouts };
+                if (careerShutouts > (careerRecordsAccumulator['Shutouts']?.value || 0)) careerRecordsAccumulator['Shutouts'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerShutouts };
             });
         };
 
@@ -957,7 +960,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, season, false);
                 tempTeams[homeTeamIndex] = updatedHomeTeam;
                 tempTeams[awayTeamIndex] = updatedAwayTeam;
-                updateGameRecords(updatedHomeTeam, updatedAwayTeam, tempCurrentSeasonStatsAccumulator); // Pass accumulator
+                updateGameRecords(updatedHomeTeam, updatedAwayTeam, tempCurrentSeasonStatsAccumulator, tempCareerRecords); // Pass accumulators
             });
         }
 
@@ -1137,6 +1140,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     // Update all-time season records with the bests from the just-concluded season
                     const updatedAllTimeSeasonRecords = compareAndSetSeasonRecords(tempCurrentSeasonStatsAccumulator, seasonRecords);
                     setSeasonRecords(updatedAllTimeSeasonRecords);
+                    
+                    // Reset current season accumulator for the new season
+                    tempCurrentSeasonStatsAccumulator = {}; 
                     
                     const newAlumni: Player[] = [];
                     const allTransferPlayers: Player[] = [];
