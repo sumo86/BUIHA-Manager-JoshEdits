@@ -116,21 +116,19 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
 
         return {
             ...teamInfo,
-            id: teamInfo.name,
             nationalsDivision: getNationalsDivision(teamInfo.leagueDivision),
             roster: roster,
             lineup: lineup,
             tactics: defaultTactics,
-            wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0,
+            wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, // Changed otLosses to draws
             logo: teamLogos[org.name],
             financials: {
                 totalBudget: teamBudget,
                 iceTimeCostPerGame: 350,
                 equipmentCost: Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500,
-                budgetAllocations: { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Upgrades: 0 },
+                budgetAllocations: { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 },
             },
             facilities: initialFacilityProjects.map(p => ({ ...p })),
-            upgrades: [],
         };
     });
 });
