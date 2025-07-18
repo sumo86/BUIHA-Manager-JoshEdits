@@ -1115,16 +1115,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
 
-        const isInternalTransfer = managedOrganization &&
-            managedTeams.some(t => t.name === fromTeamName) &&
-            managedTeams.some(t => t.name === toTeamName);
-
-        if (isInternalTransfer) {
-            movePlayer(playerId, fromTeamName, toTeamName);
-            toast.success(`${player.name} moved to ${toTeamName}.`);
-            return;
-        }
-
         // New logic for transfer success chance
         const baseSuccessChance = 0.5; // Lowered base chance
         const loyaltyModifier = (player.attributes.loyalty - 10) / 15; // Increased impact
