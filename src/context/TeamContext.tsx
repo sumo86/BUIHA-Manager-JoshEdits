@@ -938,6 +938,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         let tempCareerRecords = JSON.parse(JSON.stringify(careerRecords)) as { [key in RecordCategory]?: TeamRecord };
         let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as { [year: number]: { [division: string]: NationalsTournament } };
         let tempCurrentSeasonStatsAccumulator = JSON.parse(JSON.stringify(currentSeasonStatsAccumulator)) as { [key in RecordCategory]?: TeamRecord };
+        let tempSeasonRecords = JSON.parse(JSON.stringify(seasonRecords));
 
 
         if (currentDate.month === 'May' && currentDate.week === 4) {
@@ -1163,8 +1164,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     setSeasonHistory(prev => ({ ...prev, [seasonToArchive]: standingsForYear }));
 
                     // Update all-time season records with the bests from the just-concluded season
-                    const updatedAllTimeSeasonRecords = compareAndSetSeasonRecords(tempCurrentSeasonStatsAccumulator, seasonRecords);
-                    setSeasonRecords(updatedAllTimeSeasonRecords);
+                    tempSeasonRecords = compareAndSetSeasonRecords(tempCurrentSeasonStatsAccumulator, tempSeasonRecords);
                     
                     // Reset current season accumulator for the new season
                     tempCurrentSeasonStatsAccumulator = {}; 
@@ -1408,8 +1408,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setTeams(tempTeams);
         setSchedule(tempSchedule);
         setCurrentDate(newDate);
-        setCurrentSeasonStatsAccumulator(tempCurrentSeasonStatsAccumulator); // Update state with accumulated stats
+        setCurrentSeasonStatsAccumulator(tempCurrentSeasonStatsAccumulator);
         setCareerRecords(tempCareerRecords);
+        setSeasonRecords(tempSeasonRecords);
     };
 
     const saveGame = (saveName: string) => {
