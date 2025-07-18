@@ -1697,11 +1697,20 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const recruitPlayer = (playerId: string) => {
         if (!userTeam) return;
-        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+
+        let playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        let sourcePool = 'scouting';
+
         if (!playerToRecruit) {
-            toast.error("Player not found in scouting pool.");
+            playerToRecruit = transferPool.find(p => p.id === playerId);
+            sourcePool = 'transfer';
+        }
+
+        if (!playerToRecruit) {
+            toast.error("Player not found.");
             return;
         }
+        
         if (userTeam.roster.length >= 25) {
             toast.error("Roster full", { description: "Your roster is at its maximum capacity (25 players)." });
             return;
@@ -1735,7 +1744,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         };
 
         setRecruitedPool(prev => [...prev, updatedPlayer]);
-        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        
+        if (sourcePool === 'scouting') {
+            setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        } else {
+            setTransferPool(prev => prev.filter(p => p.id !== playerId));
+        }
+
         updateTeam({ ...userTeam, financials: updatedFinancials });
         toast.success(`${playerToRecruit.name} has been recruited!`, { description: "Assign them a jersey number in the Roster tab." });
     };
