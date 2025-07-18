@@ -32,13 +32,13 @@ const renderStars = (rating: number) => {
   };
 
 export const PlayerMovement = () => {
-    const { userTeam, teams, movePlayer, requestPlayerTransfer, managedOrganization, managedTeams } = useTeam();
+    const { userTeam, teams, movePlayer, requestPlayerTransfer, managedOrganization, managedTeams, isManagingOrg } = useTeam();
     const navigate = useNavigate();
 
     const organizationTeams = useMemo(() => {
         if (!userTeam) return [];
         // If managing an organization, use managedTeams directly
-        if (managedOrganization) {
+        if (isManagingOrg) {
             return managedTeams.sort((a, b) => a.name.localeCompare(b.name));
         }
         // Otherwise, filter by organization name (for single team mode)
@@ -46,7 +46,7 @@ export const PlayerMovement = () => {
         return teams
             .filter(t => getOrganizationName(t.name) === orgName)
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [userTeam, teams, managedOrganization, managedTeams]);
+    }, [userTeam, teams, isManagingOrg, managedTeams]);
 
     if (!userTeam || organizationTeams.length <= 1) {
         return (
@@ -82,7 +82,7 @@ export const PlayerMovement = () => {
                                 const canRequestDown = !isUserPlayer && teamIndex < userTeamIndex;
                                 const sendDownOptions = isUserPlayer ? organizationTeams.filter((_, index) => index > userTeamIndex) : [];
 
-                                const hasOptions = managedOrganization || canCallUp || canRequestDown || sendDownOptions.length > 0;
+                                const hasOptions = isManagingOrg || canCallUp || canRequestDown || sendDownOptions.length > 0;
 
                                 return (
                                     <div key={player.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
@@ -101,7 +101,7 @@ export const PlayerMovement = () => {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent>
-                                                    {managedOrganization ? (
+                                                    {isManagingOrg ? (
                                                         <DropdownMenuSub>
                                                             <DropdownMenuSubTrigger>
                                                                 <ArrowLeftRight className="mr-2 h-4 w-4" /> Move Player
