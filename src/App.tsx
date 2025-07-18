@@ -26,6 +26,7 @@ import TeamHistory from "./pages/TeamHistory";
 import NationalsPage from "./pages/Nationals";
 import AlumniPage from "./pages/Alumni";
 import NationalsGame from "./pages/NationalsGame";
+import UpgradesPage from "./pages/Upgrades";
 
 const queryClient = new QueryClient();
 
@@ -41,7 +42,7 @@ const router = createBrowserRouter(
       <Route path="/recruitment" element={<Recruitment />} />
       <Route path="/finances" element={<Finances />} />
       <Route path="/morale" element={<MoralePage />} />
-      <Route path="/facilities" element={<Facilities />} />
+      <Route path="/upgrades" element={<UpgradesPage />} />
       <Route path="/lineup" element={<Lineup />} />
       <Route path="/training" element={<Training />} />
       <Route path="/history" element={<TeamHistory />} />

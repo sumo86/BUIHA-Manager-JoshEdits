@@ -19,7 +19,8 @@ import {
   Play,
   Smile,
   BookOpen,
-  Swords as NationalsIcon, // Renaming to avoid conflict
+  Swords as NationalsIcon,
+  TrendingUp,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -32,14 +33,14 @@ import { toast } from 'sonner';
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/season-overview", label: "Season Overview", icon: Calendar }, // Added this back
+  { href: "/season-overview", label: "Season Overview", icon: Calendar },
   { href: "/roster", label: "Roster", icon: Users },
   { href: "/lineup", label: "Lineup", icon: ClipboardList },
   { href: "/training", label: "Training", icon: BarChart3 },
   { href: "/recruitment", label: "Recruitment", icon: UserPlus },
   { href: "/finances", label: "Finances", icon: DollarSign },
   { href: "/morale", label: "Morale", icon: Smile },
-  { href: "/facilities", label: "Facilities", icon: Building },
+  { href: "/upgrades", label: "Upgrades", icon: TrendingUp },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/standings", label: "Standings", icon: Trophy },
   { href: "/history", label: "History", icon: BookOpen },

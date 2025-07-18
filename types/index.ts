@@ -166,7 +166,7 @@ export type TacticsSelection = {
   [key: string]: string;
 };
 
-export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities";
+export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Upgrades";
 
 export type BudgetAllocations = {
   [key in BudgetCategory]: number;
@@ -189,6 +189,33 @@ export type FacilityProject = {
   weeksToComplete?: number;
 };
 
+export type UpgradeEffect = {
+  type: 'weekly_income' | 'development_boost' | 'injury_recovery_boost' | 'morale_boost' | 'recruitment_boost' | 'injury_prevention';
+  value: number;
+  scope?: 'skating' | 'shooting' | 'playmaking' | 'defense' | 'mental' | 'physical' | 'goaltending' | 'all';
+};
+
+export type UpgradeLevel = {
+  level: number;
+  cost: number;
+  effects: UpgradeEffect[];
+  description: string;
+};
+
+export type Upgrade = {
+  id: string;
+  name: string;
+  category: 'Financial' | 'Player Development' | 'Health & Wellness' | 'Recruitment';
+  description: string;
+  maxLevel: number;
+  levels: UpgradeLevel[];
+};
+
+export type TeamUpgrade = {
+  upgradeId: string;
+  level: number;
+};
+
 export type Team = {
   id: string;
   name: string;
@@ -205,6 +232,7 @@ export type Team = {
   tactics: TacticsSelection;
   financials: Financials;
   facilities: FacilityProject[];
+  upgrades: TeamUpgrade[];
 };
 
 export type GameEvent = {
@@ -332,4 +360,27 @@ export type NationalsTournament = {
   status: 'pending' | 'group-stage' | 'silver-playoffs' | 'gold-playoffs' | 'completed';
   winner?: string;
   currentRound: number | 'Quarter-Final' | 'Semi-Final' | 'Final';
+};
+
+export type SeasonHistory = {
+  [season: string]: TeamSeasonHistory[];
+};
+
+export type TeamSeasonHistory = {
+  teamName: string;
+  leagueDivision: string;
+  nationalsDivision: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+};
+
+export type SaveGameSlot = {
+  saveName: string;
+  savedAt: string;
+  userTeamName: string;
+  currentDate: GameDate;
 };

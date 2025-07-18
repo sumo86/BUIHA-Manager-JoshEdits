@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BudgetAllocations, BudgetCategory } from '@/types';
 import { toast } from 'sonner';
-import { Plane, Box, Calendar, UserPlus, Users, Building, Info } from 'lucide-react';
+import { Plane, Box, Calendar, UserPlus, Users, TrendingUp, Info } from 'lucide-react';
 
 interface BudgetAllocationProps {
   initialAllocations: BudgetAllocations;
@@ -20,7 +20,7 @@ const categoryDetails: Record<BudgetCategory, { icon: React.ElementType, descrip
   "Ice Time": { icon: Calendar, description: "Rental costs for home games and practices", tooltip: "This is an auto-calculated fixed cost based on your home games." },
   "Recruiting": { icon: UserPlus, description: "Player recruitment and scouting", tooltip: "Funds for scouting trips and hosting potential recruits." },
   "Student Life": { icon: Users, description: "Improves player morale through team events", tooltip: "Budget for team-building activities, dinners, and social events." },
-  "Facilities": { icon: Building, description: "Upgrades and new construction", tooltip: "Long-term investments in improving team facilities." },
+  "Upgrades": { icon: TrendingUp, description: "Permanent team and player improvements", tooltip: "Long-term investments in your team's capabilities and income." },
 };
 
 const categoryColors: Record<BudgetCategory, string> = {
@@ -29,7 +29,7 @@ const categoryColors: Record<BudgetCategory, string> = {
   "Ice Time": "bg-indigo-100 text-indigo-800",
   "Recruiting": "bg-green-100 text-green-800",
   "Student Life": "bg-pink-100 text-pink-800",
-  "Facilities": "bg-purple-100 text-purple-800",
+  "Upgrades": "bg-purple-100 text-purple-800",
 };
 
 export const BudgetAllocation = ({ initialAllocations, totalBudget, onSave }: BudgetAllocationProps) => {

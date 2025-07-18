@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, SeasonHistory, TeamSeasonHistory, SaveGameSlot } from '@/types';
+import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, SeasonHistory, TeamSeasonHistory, SaveGameSlot, TeamUpgrade, Upgrade } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
 import { generateRecruits, generatePlayer, calculateStarRating } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ import { NationalsTournament } from '@/types';
 import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { initialFacilityProjects } from '@/data/facilities';
+import { initialUpgrades } from '@/data/upgrades';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -46,6 +47,7 @@ interface TeamContextType {
     updateBudgetAllocations: (newAllocations: BudgetAllocations) => void;
     runStudentLifeInitiative: () => void;
     startFacilityProject: (projectId: string) => void;
+    purchaseUpgrade: (upgradeId: string, level: number, cost: number) => void;
     currentDate: GameDate;
     advanceWeek: () => void;
     developmentHistory: DevelopmentLog[];
@@ -201,7 +203,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     acc[key] = Math.round((acc[key] || 0) + t.financials.budgetAllocations[key]);
                 });
                 return acc;
-            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations),
+            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Upgrades: 0 } as BudgetAllocations),
             iceTimeCostPerGame: managedTeams.reduce((sum, t) => sum + t.financials.iceTimeCostPerGame, 0),
             equipmentCost: managedTeams.reduce((sum, t) => sum + t.financials.equipmentCost, 0),
         };
@@ -550,13 +552,73 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             let newFacilities = [...team.facilities];
             const isUserManagedTeam = team.name === userTeam?.name || managedTeamNames.includes(team.name);
 
+            // Apply upgrade effects
+            let weeklyIncomeBonus = 0;
+            team.upgrades.forEach(teamUpgrade => {
+                const upgradeData = initialUpgrades.find(u => u.id === teamUpgrade.upgradeId);
+                if (!upgradeData) return;
+
+                const currentLevelData = upgradeData.levels.find(l => l.level === teamUpgrade.level);
+                if (!currentLevelData) return;
+
+                currentLevelData.effects.forEach(effect => {
+                    if (effect.type === 'weekly_income') {
+                        weeklyIncomeBonus += effect.value;
+                    }
+                });
+            });
+
+            if (weeklyIncomeBonus > 0) {
+                team.financials.totalBudget += weeklyIncomeBonus;
+                if (team.name === userTeam?.name) {
+                    toast.info(`Received £${weeklyIncomeBonus.toLocaleString()} from upgrades.`);
+                }
+            }
+
+            let moraleBoostChance = 0;
+            team.upgrades.forEach(teamUpgrade => {
+                const upgradeData = initialUpgrades.find(u => u.id === teamUpgrade.upgradeId);
+                if (!upgradeData) return;
+                const currentLevelData = upgradeData.levels.find(l => l.level === teamUpgrade.level);
+                if (!currentLevelData) return;
+                currentLevelData.effects.forEach(effect => {
+                    if (effect.type === 'morale_boost') {
+                        moraleBoostChance += effect.value * 0.05; // e.g., level 1 = 5% chance, level 3 = 15% chance per week
+                    }
+                });
+            });
+
+            if (moraleBoostChance > 0 && Math.random() < moraleBoostChance) {
+                newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
+                if (team.name === userTeam?.name) {
+                    toast.success("Morale Boost!", { description: "A recent team upgrade has boosted team morale." });
+                }
+            }
+
             newRoster = newRoster.map(player => {
                 let playerChanged = false;
                 const isSkater = !player.positions.includes('G');
 
                 if (player.injury && player.injury.duration > 0) {
+                    let recoveryBoost = 1.0;
+                    team.upgrades.forEach(teamUpgrade => {
+                        const upgradeData = initialUpgrades.find(u => u.id === teamUpgrade.upgradeId);
+                        if (!upgradeData) return;
+                        const currentLevelData = upgradeData.levels.find(l => l.level === teamUpgrade.level);
+                        if (!currentLevelData) return;
+                        currentLevelData.effects.forEach(effect => {
+                            if (effect.type === 'injury_recovery_boost') {
+                                recoveryBoost = Math.max(recoveryBoost, effect.value); // Use the best boost
+                            }
+                        });
+                    });
+
                     const hasPhysio = team.facilities.some(f => f.id === 'physio_office_1' && f.status === 'Completed');
-                    player.injury.duration -= (hasPhysio ? 2 : 1);
+                    let recoveryAmount = (hasPhysio ? 2 : 1);
+                    if (recoveryBoost > 1.0) {
+                        recoveryAmount = Math.ceil(recoveryAmount * recoveryBoost);
+                    }
+                    player.injury.duration -= recoveryAmount;
 
                     const regression = (Math.random() * 0.1) + 0.02; 
                     if (Math.random() < regression) {
@@ -606,10 +668,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 const attrToImprove = getRandomItem(attributesToDevelop);
                                 const currentAttrValue = player.attributes[attrToImprove as keyof typeof player.attributes] as number;
                                 if (currentAttrValue < 20) {
+                                    let developmentBoost = 1.0;
+                                    team.upgrades.forEach(teamUpgrade => {
+                                        const upgradeData = initialUpgrades.find(u => u.id === teamUpgrade.upgradeId);
+                                        if (!upgradeData) return;
+                                        const currentLevelData = upgradeData.levels.find(l => l.level === teamUpgrade.level);
+                                        if (!currentLevelData) return;
+                                        currentLevelData.effects.forEach(effect => {
+                                            if (effect.type === 'development_boost') {
+                                                developmentBoost += effect.value;
+                                            }
+                                        });
+                                    });
+
                                     let moraleModifier = 1.0;
                                     if ((player as Player).morale === 'Happy') moraleModifier = 1.2;
                                     else if ((player as Player).morale === 'Unhappy') moraleModifier = 0.5;
-                                    const improvement = ((Math.random() * 0.2) + (devRate / 100)) * moraleModifier;
+                                    const improvement = ((Math.random() * 0.2) + (devRate / 100)) * moraleModifier * developmentBoost;
                                     const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                     (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                     playerChanged = true;
@@ -843,7 +918,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         }
 
                         const newTotalBudget = newBaseBudget + unspentFunds;
-                        const resetAllocations = { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 };
+                        const resetAllocations = { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Upgrades: 0 };
                         // --- NEW BUDGET LOGIC END ---
 
                         return {
@@ -1674,8 +1749,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.info("Project already started or completed.");
             return;
         }
-        if (userTeam.financials.budgetAllocations.Facilities < project.cost) {
-            toast.error("Insufficient Facilities Budget", { description: `You need ${project.cost} in facilities budget to start this project.` });
+        if (userTeam.financials.budgetAllocations.Upgrades < project.cost) {
+            toast.error("Insufficient Upgrades Budget", { description: `You need ${project.cost} in upgrades budget to start this project.` });
             return;
         }
 
@@ -1688,7 +1763,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         ...team.financials,
                         budgetAllocations: {
                             ...team.financials.budgetAllocations,
-                            Facilities: team.financials.budgetAllocations.Facilities - project.cost
+                            Upgrades: team.financials.budgetAllocations.Upgrades - project.cost
                         }
                     }
                 };
@@ -1696,6 +1771,47 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return team;
         }));
         toast.success("Project Started!", { description: `${project.name} is now under construction.` });
+    };
+
+    const purchaseUpgrade = (upgradeId: string, level: number, cost: number) => {
+        if (!userTeam) {
+            toast.error("No active team selected.");
+            return;
+        }
+        if (userTeam.financials.budgetAllocations.Upgrades < cost) {
+            toast.error("Insufficient Upgrades Budget", { description: `You need £${cost.toLocaleString()} to purchase this upgrade.` });
+            return;
+        }
+
+        setTeams(prevTeams => prevTeams.map(team => {
+            if (team.name === userTeam.name) {
+                const existingUpgradeIndex = team.upgrades.findIndex(u => u.upgradeId === upgradeId);
+                let newUpgrades: TeamUpgrade[];
+
+                if (existingUpgradeIndex > -1) {
+                    newUpgrades = team.upgrades.map((u, index) => 
+                        index === existingUpgradeIndex ? { ...u, level } : u
+                    );
+                } else {
+                    newUpgrades = [...team.upgrades, { upgradeId, level }];
+                }
+
+                return {
+                    ...team,
+                    upgrades: newUpgrades,
+                    financials: {
+                        ...team.financials,
+                        budgetAllocations: {
+                            ...team.financials.budgetAllocations,
+                            Upgrades: team.financials.budgetAllocations.Upgrades - cost,
+                        },
+                    },
+                };
+            }
+            return team;
+        }));
+        const upgradeName = initialUpgrades.find(u => u.id === upgradeId)?.name || 'Upgrade';
+        toast.success("Upgrade Purchased!", { description: `${upgradeName} has been upgraded to level ${level}.` });
     };
 
     const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
@@ -1758,6 +1874,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             updateBudgetAllocations,
             runStudentLifeInitiative,
             startFacilityProject,
+            purchaseUpgrade,
             currentDate,
             advanceWeek,
             developmentHistory,
