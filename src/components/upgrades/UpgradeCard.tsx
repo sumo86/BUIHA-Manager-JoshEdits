@@ -1,73 +1,71 @@
-import { Upgrade, TeamUpgrade } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Upgrade, TeamUpgrade } from '@/types';
+import { DollarSign, TrendingUp, Heart, Users, Brain } from 'lucide-react';
 
 interface UpgradeCardProps {
   upgrade: Upgrade;
-  teamUpgrades: TeamUpgrade[];
-  upgradesBudget: number;
+  currentLevel: number;
   onPurchase: (upgradeId: string, level: number, cost: number) => void;
+  canAfford: boolean;
 }
 
-export const UpgradeCard = ({ upgrade, teamUpgrades, upgradesBudget, onPurchase }: UpgradeCardProps) => {
-  const currentTeamUpgrade = teamUpgrades.find(u => u.upgradeId === upgrade.id);
-  const currentLevel = currentTeamUpgrade?.level || 0;
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case 'Financial':
+      return <DollarSign className="h-5 w-5" />;
+    case 'Player Development':
+      return <TrendingUp className="h-5 w-5" />;
+    case 'Health & Wellness':
+      return <Heart className="h-5 w-5" />;
+    case 'Recruitment':
+      return <Users className="h-5 w-5" />;
+    default:
+      return <Brain className="h-5 w-5" />;
+  }
+};
+
+const UpgradeCard: React.FC<UpgradeCardProps> = ({ upgrade, currentLevel, onPurchase, canAfford }) => {
+  const nextLevelData = upgrade.levels.find(level => level.level === currentLevel + 1);
   const isMaxLevel = currentLevel >= upgrade.maxLevel;
-
-  const nextLevelInfo = !isMaxLevel ? upgrade.levels.find(l => l.level === currentLevel + 1) : null;
-
-  const handlePurchase = () => {
-    if (nextLevelInfo) {
-      onPurchase(upgrade.id, nextLevelInfo.level, nextLevelInfo.cost);
-    }
-  };
 
   return (
     <Card className="flex flex-col">
-      <CardHeader>
-        <CardTitle className="flex justify-between items-start">
-          <span>{upgrade.name}</span>
-          <Badge variant="secondary">
-            Lvl {currentLevel} / {upgrade.maxLevel}
-          </Badge>
-        </CardTitle>
-        <CardDescription>{upgrade.description}</CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-lg font-medium">{upgrade.name}</CardTitle>
+        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+          {getCategoryIcon(upgrade.category)}
+        </div>
       </CardHeader>
-      <CardContent className="flex-grow space-y-4">
+      <CardContent className="flex-grow flex flex-col justify-between">
         <div>
-          <h4 className="font-semibold text-sm mb-1">Current Bonus</h4>
-          <p className="text-sm text-muted-foreground">
-            {currentLevel > 0 ? upgrade.levels.find(l => l.level === currentLevel)?.description : 'None'}
-          </p>
-        </div>
-        {nextLevelInfo && (
-          <div>
-            <h4 className="font-semibold text-sm mb-1">Next Level ({nextLevelInfo.level})</h4>
-            <p className="text-sm text-muted-foreground">
-              {nextLevelInfo.description}
-            </p>
+          <p className="text-sm text-muted-foreground mb-2">{upgrade.description}</p>
+          <div className="mb-4">
+            <p className="text-sm font-medium">Current Level: {currentLevel}</p>
+            <Progress value={(currentLevel / upgrade.maxLevel) * 100} className="w-full" />
           </div>
-        )}
-        {isMaxLevel && (
-            <p className="text-sm font-semibold text-green-600">Max level reached!</p>
-        )}
-      </CardContent>
-      <CardFooter className="flex flex-col items-start gap-4">
-        <div className="w-full">
-            <Progress value={(currentLevel / upgrade.maxLevel) * 100} className="h-2" />
+          {isMaxLevel ? (
+            <p className="text-sm text-green-600 font-semibold">Max Level Reached!</p>
+          ) : (
+            <>
+              <p className="text-sm font-medium">Next Level ({nextLevelData?.level}):</p>
+              <p className="text-sm text-muted-foreground">{nextLevelData?.description}</p>
+              <p className="text-lg font-bold mt-2">Cost: £{nextLevelData?.cost.toLocaleString()}</p>
+            </>
+          )}
         </div>
-        {nextLevelInfo && (
-          <Button 
-            onClick={handlePurchase} 
-            disabled={upgradesBudget < nextLevelInfo.cost}
-            className="w-full"
-          >
-            Upgrade for £{nextLevelInfo.cost.toLocaleString()}
-          </Button>
-        )}
-      </CardFooter>
+        <Button
+          onClick={() => nextLevelData && onPurchase(upgrade.id, nextLevelData.level, nextLevelData.cost)}
+          disabled={isMaxLevel || !canAfford}
+          className="mt-4 w-full"
+        >
+          {isMaxLevel ? 'Fully Upgraded' : `Purchase Level ${nextLevelData?.level}`}
+        </Button>
+      </CardContent>
     </Card>
   );
 };
+
+export default UpgradeCard;

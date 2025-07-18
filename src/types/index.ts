@@ -166,7 +166,7 @@ export type TacticsSelection = {
   [key: string]: string;
 };
 
-export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities";
+export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities" | "Upgrades";
 
 export type BudgetAllocations = {
   [key in BudgetCategory]: number;
@@ -189,6 +189,33 @@ export type FacilityProject = {
   weeksToComplete?: number;
 };
 
+export type UpgradeEffect = {
+  type: 'weekly_income' | 'development_boost' | 'injury_recovery_boost' | 'injury_prevention' | 'morale_boost' | 'recruitment_boost';
+  value: number;
+  scope?: 'all'; // For development_boost
+};
+
+export type UpgradeLevel = {
+  level: number;
+  cost: number;
+  effects: UpgradeEffect[];
+  description: string;
+};
+
+export type Upgrade = {
+  id: string;
+  name: string;
+  category: 'Financial' | 'Player Development' | 'Health & Wellness' | 'Recruitment';
+  description: string;
+  maxLevel: number;
+  levels: UpgradeLevel[];
+};
+
+export type TeamUpgrade = {
+  upgradeId: string;
+  level: number;
+};
+
 export type Team = {
   id: string;
   name: string;
@@ -206,6 +233,7 @@ export type Team = {
   tactics: TacticsSelection;
   financials: Financials;
   facilities: FacilityProject[];
+  upgrades: TeamUpgrade[]; // Added upgrades property
 };
 
 export type GameEvent = {

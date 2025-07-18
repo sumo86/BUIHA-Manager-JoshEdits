@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BudgetAllocations, BudgetCategory } from '@/types';
 import { toast } from 'sonner';
-import { Plane, Box, Calendar, UserPlus, Users, TrendingUp, Info } from 'lucide-react';
+import { Plane, Box, Calendar, UserPlus, Users, TrendingUp, Info, Building } from 'lucide-react';
 
 interface BudgetAllocationProps {
   initialAllocations: BudgetAllocations;
@@ -21,6 +21,7 @@ const categoryDetails: Record<BudgetCategory, { icon: React.ElementType, descrip
   "Recruiting": { icon: UserPlus, description: "Player recruitment and scouting", tooltip: "Funds for scouting trips and hosting potential recruits." },
   "Student Life": { icon: Users, description: "Improves player morale through team events", tooltip: "Budget for team-building activities, dinners, and social events." },
   "Upgrades": { icon: TrendingUp, description: "Permanent team and player improvements", tooltip: "Long-term investments in your team's capabilities and income." },
+  "Facilities": { icon: Building, description: "Invest in new or improved team facilities", tooltip: "Funds for building or upgrading physical facilities like locker rooms, gyms, or medical centers." },
 };
 
 const categoryColors: Record<BudgetCategory, string> = {
@@ -30,6 +31,7 @@ const categoryColors: Record<BudgetCategory, string> = {
   "Recruiting": "bg-green-100 text-green-800",
   "Student Life": "bg-pink-100 text-pink-800",
   "Upgrades": "bg-purple-100 text-purple-800",
+  "Facilities": "bg-yellow-100 text-yellow-800",
 };
 
 export const BudgetAllocation = ({ initialAllocations, totalBudget, onSave }: BudgetAllocationProps) => {
