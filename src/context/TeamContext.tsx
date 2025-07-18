@@ -1116,10 +1116,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
 
         // New logic for transfer success chance
-        const baseSuccessChance = 0.5; // Lowered base chance
+        const baseSuccessChance = 0.65; // Increased base chance
         const loyaltyModifier = (player.attributes.loyalty - 10) / 15; // Increased impact
         const ambitionModifier = (player.attributes.ambition - 10) / 15; // Increased impact
-        const starRatingPenalty = (player.starRating / 5) * 0.6; // Increased impact
+        const starRatingPenalty = (player.starRating / 5) * 0.4; // Reduced impact
 
         let successChance = baseSuccessChance - starRatingPenalty - loyaltyModifier + ambitionModifier;
         successChance = Math.max(0, Math.min(1, successChance)); // Clamp between 0 and 1
