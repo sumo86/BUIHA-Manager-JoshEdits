@@ -890,21 +890,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const advanceWeek = () => {
-        if (currentDate.month === 'August' && currentDate.week === 1 && userTeam) {
+        if (userTeam) {
             const validationError = validateLineup(userTeam);
             if (validationError) {
-                toast.error("Invalid Lineup for New Season", {
-                    description: `Your lineup is invalid after player graduation: ${validationError}. Please fix your lineup before advancing.`
-                });
-                return;
-            }
-        }
-
-        if (gameForCurrentWeek && userTeam) {
-            const validationError = validateLineup(userTeam);
-            if (validationError) {
-                toast.error("Cannot Advance Week", {
-                    description: `Your lineup is invalid: ${validationError}`,
+                toast.error("Cannot Advance Week: Invalid Lineup", {
+                    description: validationError,
                 });
                 return;
             }
