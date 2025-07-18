@@ -1125,24 +1125,79 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
 
-        const baseSuccessChance = 0.3;
-        const loyaltyModifier = (player.attributes.loyalty - 10) / 25; 
-        const ambitionModifier = (player.attributes.ambition - 10) / 25; 
-        
-        const successChance = baseSuccessChance - loyaltyModifier + ambitionModifier;
+        const getDivisionLevel = (division: string): number => {
+            const parts = division.split(' ');
+            let level = 0;
+            if (parts.includes('Checking')) level += 10;
+            const num = parseInt(parts[parts.length - 1], 10);
+            if (!isNaN(num)) level += (5 - num);
+            return level;
+        };
 
-        if (Math.random() < successChance) {
+        const fromLevel = getDivisionLevel(fromTeam.leagueDivision);
+        const toLevel = getDivisionLevel(toTeam.leagueDivision);
+        const isSendingDown = fromLevel > toLevel;
+
+        if (isSendingDown) {
+            // Player's willingness to move down
+            const ambition = player.attributes.ambition || 10;
+            const loyalty = player.attributes.loyalty || 10;
+            const morale = player.morale;
+
+            let moraleModifier = 1.0;
+            if (morale === 'Unhappy') moraleModifier = 1.5;
+            else if (morale === 'Angry') moraleModifier = 2.0;
+            else if (morale === 'Happy') moraleModifier = 0.5;
+
+            // Base chance is low, modified by player personality
+            const playerConsentChance = 0.4 * ((20 - ambition) / 20) * ((20 - loyalty) / 20) * moraleModifier;
+
+            if (Math.random() > playerConsentChance) {
+                let reasonText: string;
+                if (ambition > 15 && Math.random() < 0.5) {
+                    reasonText = `${player.name} feels a move to ${toTeam.name} would be a step back for their career and has rejected the transfer.`;
+                } else if (loyalty > 15) {
+                    reasonText = `${player.name} is loyal to ${fromTeam.name} and does not wish to leave at this time.`;
+                } else {
+                    reasonText = `${player.name} is happy where they are and does not wish to move at this time.`;
+                }
+                toast.error("Transfer Denied", { description: reasonText });
+                return;
+            }
+
+            // Coach's willingness to let the player go
+            const playerRating = player.starRating;
+            const coachApprovalChance = 0.8 * ((5 - playerRating) / 5);
+
+            if (Math.random() > coachApprovalChance) {
+                toast.error("Transfer Denied", { description: `The manager of ${fromTeam.name} has blocked the transfer, believing ${player.name} is too important for their squad.` });
+                return;
+            }
+
             toast.success("Transfer Approved!", {
                 description: `${player.name} has agreed to the move and their coach has approved the transfer.`
             });
             movePlayer(playerId, fromTeamName, toTeamName);
         } else {
-            const reasonRoll = Math.random();
-            let reasonText: string;
-            if (reasonRoll < 0.4) reasonText = `The manager of ${fromTeamName} has blocked the transfer, wanting to keep the player.`;
-            else if (reasonRoll < 0.8) reasonText = `${player.name} has declined the offer to move to ${toTeamName}, citing loyalty to their current team.`;
-            else reasonText = `${player.name} is happy where they are and does not wish to move at this time.`;
-            toast.error("Transfer Denied", { description: reasonText });
+            // Original logic for calling up or lateral moves
+            const baseSuccessChance = 0.5; // Increased base chance for call-ups
+            const loyaltyModifier = (player.attributes.loyalty - 10) / 25;
+            const ambitionModifier = (player.attributes.ambition - 10) / 25;
+            
+            const successChance = baseSuccessChance - loyaltyModifier + ambitionModifier;
+
+            if (Math.random() < successChance) {
+                toast.success("Transfer Approved!", {
+                    description: `${player.name} has agreed to the move and their coach has approved the transfer.`
+                });
+                movePlayer(playerId, fromTeamName, toTeamName);
+            } else {
+                const reasonRoll = Math.random();
+                let reasonText: string;
+                if (reasonRoll < 0.5) reasonText = `The manager of ${fromTeam.name} has blocked the transfer, wanting to keep the player on their current development path.`;
+                else reasonText = `${player.name} is happy where they are and does not wish to move at this time.`;
+                toast.error("Transfer Denied", { description: reasonText });
+            }
         }
     };
 
