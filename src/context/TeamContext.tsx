@@ -178,6 +178,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => { localStorage.setItem('seasonRecords', JSON.stringify(seasonRecords)); }, [seasonRecords]);
     useEffect(() => { localStorage.setItem('careerRecords', JSON.stringify(careerRecords)); }, [careerRecords]);
 
+    // New state for current season's best performances
+    const [currentSeasonStatsAccumulator, setCurrentSeasonStatsAccumulator] = useState<{ [key in RecordCategory]?: TeamRecord }>(() => {
+        try { const saved = localStorage.getItem('currentSeasonStatsAccumulator'); return saved ? JSON.parse(saved) : {}; } catch (error) { return {}; }
+    });
+
+    useEffect(() => { localStorage.setItem('currentSeasonStatsAccumulator', JSON.stringify(currentSeasonStatsAccumulator)); }, [currentSeasonStatsAccumulator]);
+
+
     const managedTeams = useMemo(() => {
         if (!managedOrganization) return [];
         const organizations = getTeamOrganizations();
@@ -263,7 +271,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 localStorage.setItem('isManagingOrg', 'true');
                 setManagedOrganization(orgName);
                 setActiveTeamName(mainTeam.name);
-                setIsManagingOrg(true);
             }
         } else {
             localStorage.removeItem('managedOrganization');
@@ -759,6 +766,48 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         });
     };
 
+    // Helper function to compare and update all-time season records
+    const compareAndSetSeasonRecords = (
+        currentSeasonBests: { [key in RecordCategory]?: TeamRecord },
+        allTimeRecords: { [key in RecordCategory]?: TeamRecord }
+    ): { [key in RecordCategory]?: TeamRecord } => {
+        const updatedRecords = { ...allTimeRecords };
+
+        for (const category in currentSeasonBests) {
+            const cat = category as RecordCategory;
+            const currentBest = currentSeasonBests[cat];
+            const allTimeBest = allTimeRecords[cat];
+
+            if (!currentBest) continue;
+
+            let isNewRecord = false;
+            if (cat === 'GAA') {
+                // Lower GAA is better, and must be greater than 0 to be a valid record
+                if (!allTimeBest || (currentBest.value < allTimeBest.value && currentBest.value > 0 && currentBest.gamesPlayed && currentBest.gamesPlayed >= 5)) {
+                    isNewRecord = true;
+                }
+            } else if (cat === 'SavePercentage') {
+                // Higher SavePercentage is better
+                if (!allTimeBest || (currentBest.value > allTimeBest.value && currentBest.gamesPlayed && currentBest.gamesPlayed >= 5)) {
+                    isNewRecord = true;
+                }
+            } else {
+                // Higher value is better for other stats
+                if (!allTimeBest || currentBest.value > allTimeBest.value) {
+                    isNewRecord = true;
+                }
+            }
+
+            if (isNewRecord) {
+                updatedRecords[cat] = currentBest;
+                toast.success("NEW SEASON RECORD!", {
+                    description: `${currentBest.playerName} (${currentBest.teamName}) set a new season record for ${cat} with ${currentBest.value} in ${currentBest.season}!`
+                });
+            }
+        }
+        return updatedRecords;
+    };
+
     const advanceWeek = () => {
         if (gameForCurrentWeek && userTeam) {
             const validationError = validateLineup(userTeam);
@@ -806,8 +855,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const currentYear = currentDate.year;
 
         let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as { [year: number]: { [division: string]: NationalsTournament } };
-        let tempSeasonRecords = JSON.parse(JSON.stringify(seasonRecords)) as { [key in RecordCategory]?: TeamRecord };
         let tempCareerRecords = JSON.parse(JSON.stringify(careerRecords)) as { [key in RecordCategory]?: TeamRecord };
+        let tempCurrentSeasonStatsAccumulator = JSON.parse(JSON.stringify(currentSeasonStatsAccumulator)) as { [key in RecordCategory]?: TeamRecord };
+
 
         if (currentDate.month === 'May' && currentDate.week === 4) {
             const allTournamentsCompleted = Object.values(tempNationalsData[currentYear] || {}).every(t => t.status === 'completed');
@@ -817,46 +867,56 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
         }
 
-        const updateGameRecords = (homeTeam: Team, awayTeam: Team) => {
+        const updateGameRecords = (homeTeam: Team, awayTeam: Team, currentSeasonAccumulator: { [key in RecordCategory]?: TeamRecord }) => {
             const allPlayers = [...homeTeam.roster, ...awayTeam.roster];
-            const teamsMap = { [homeTeam.name]: homeTeam, [awayTeam.name]: awayTeam };
-        
+            
             allPlayers.forEach(player => {
-                const team = teamsMap[player.history[player.history.length - 1]?.team || homeTeam.name];
-                if (!team) return;
-
                 const isSkater = !player.positions.includes('G');
                 const season = `${currentDate.year}-${currentDate.year + 1}`;
-        
-                if (isSkater) {
-                    const stats = player.currentStats[player.currentStats.length - 1];
-                    if (!stats) return;
-                    if ((stats.goals || 0) > (tempSeasonRecords['Goals']?.value || 0)) tempSeasonRecords['Goals'] = { playerName: player.name, teamName: team.name, value: stats.goals || 0, season };
-                    if ((stats.assists || 0) > (tempSeasonRecords['Assists']?.value || 0)) tempSeasonRecords['Assists'] = { playerName: player.name, teamName: team.name, value: stats.assists || 0, season };
-                    if ((stats.points || 0) > (tempSeasonRecords['Points']?.value || 0)) tempSeasonRecords['Points'] = { playerName: player.name, teamName: team.name, value: stats.points || 0, season };
-                    if ((stats.penaltyMinutes || 0) > (tempSeasonRecords['PenaltyMinutes']?.value || 0)) tempSeasonRecords['PenaltyMinutes'] = { playerName: player.name, teamName: team.name, value: stats.penaltyMinutes || 0, season };
-                    
-                    const careerGoals = (player.history?.reduce((acc, s) => acc + (s.goals || 0), 0) || 0) + (stats.goals || 0);
-                    if (careerGoals > (tempCareerRecords['Goals']?.value || 0)) tempCareerRecords['Goals'] = { playerName: player.name, teamName: team.name, value: careerGoals };
-                    const careerAssists = (player.history?.reduce((acc, s) => acc + (s.assists || 0), 0) || 0) + (stats.assists || 0);
-                    if (careerAssists > (tempCareerRecords['Assists']?.value || 0)) tempCareerRecords['Assists'] = { playerName: player.name, teamName: team.name, value: careerAssists };
-                    const careerPoints = (player.history?.reduce((acc, s) => acc + (s.points || 0), 0) || 0) + (stats.points || 0);
-                    if (careerPoints > (tempCareerRecords['Points']?.value || 0)) tempCareerRecords['Points'] = { playerName: player.name, teamName: team.name, value: careerPoints };
-                    const careerPims = (player.history?.reduce((acc, s) => acc + (s.penaltyMinutes || 0), 0) || 0) + (stats.penaltyMinutes || 0);
-                    if (careerPims > (tempCareerRecords['PenaltyMinutes']?.value || 0)) tempCareerRecords['PenaltyMinutes'] = { playerName: player.name, teamName: team.name, value: careerPims };
 
-                } else { 
-                    const stats = player.currentStats[player.currentStats.length - 1];
-                    if (!stats) return;
-                    if (stats.gamesPlayed >= 5) { 
-                        if (!tempSeasonRecords['GAA'] || ((stats.goalsAgainstAverage || 99) < tempSeasonRecords['GAA'].value)) tempSeasonRecords['GAA'] = { playerName: player.name, teamName: team.name, value: stats.goalsAgainstAverage || 99, season };
-                        if ((stats.savePercentage || 0) > (tempSeasonRecords['SavePercentage']?.value || 0)) tempSeasonRecords['SavePercentage'] = { playerName: player.name, teamName: team.name, value: stats.savePercentage || 0, season };
+                // Get the player's stats for the current season (from currentStats array)
+                const playerCurrentSeasonStats = player.currentStats.find(s => s.season === season && s.team === (homeTeam.roster.some(p => p.id === player.id) ? homeTeam.name : awayTeam.name));
+                if (!playerCurrentSeasonStats) return; 
+
+                // Update currentSeasonAccumulator based on playerCurrentSeasonStats
+                if (isSkater) {
+                    if ((playerCurrentSeasonStats.goals || 0) > (currentSeasonAccumulator['Goals']?.value || 0)) {
+                        currentSeasonAccumulator['Goals'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: playerCurrentSeasonStats.goals || 0, season, gamesPlayed: playerCurrentSeasonStats.gamesPlayed };
                     }
-                    if ((stats.shutouts || 0) > (tempSeasonRecords['Shutouts']?.value || 0)) tempSeasonRecords['Shutouts'] = { playerName: player.name, teamName: team.name, value: stats.shutouts || 0, season };
-                    
-                    const careerShutouts = (player.history?.reduce((acc, s) => acc + (s.shutouts || 0), 0) || 0) + (stats.shutouts || 0);
-                    if (careerShutouts > (tempCareerRecords['Shutouts']?.value || 0)) tempCareerRecords['Shutouts'] = { playerName: player.name, teamName: team.name, value: careerShutouts };
+                    if ((playerCurrentSeasonStats.assists || 0) > (currentSeasonAccumulator['Assists']?.value || 0)) {
+                        currentSeasonAccumulator['Assists'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: playerCurrentSeasonStats.assists || 0, season, gamesPlayed: playerCurrentSeasonStats.gamesPlayed };
+                    }
+                    if ((playerCurrentSeasonStats.points || 0) > (currentSeasonAccumulator['Points']?.value || 0)) {
+                        currentSeasonAccumulator['Points'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: playerCurrentSeasonStats.points || 0, season, gamesPlayed: playerCurrentSeasonStats.gamesPlayed };
+                    }
+                    if ((playerCurrentSeasonStats.penaltyMinutes || 0) > (currentSeasonAccumulator['PenaltyMinutes']?.value || 0)) {
+                        currentSeasonAccumulator['PenaltyMinutes'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: playerCurrentSeasonStats.penaltyMinutes || 0, season, gamesPlayed: playerCurrentSeasonStats.gamesPlayed };
+                    }
+                } else { // Goalie stats
+                    if (playerCurrentSeasonStats.gamesPlayed >= 5) {
+                        if (!currentSeasonAccumulator['GAA'] || ((playerCurrentSeasonStats.goalsAgainstAverage || 99) < (currentSeasonAccumulator['GAA']?.value || 99) && (playerCurrentSeasonStats.goalsAgainstAverage || 99) > 0)) {
+                            currentSeasonAccumulator['GAA'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: playerCurrentSeasonStats.goalsAgainstAverage || 99, season, gamesPlayed: playerCurrentSeasonStats.gamesPlayed };
+                        }
+                        if ((playerCurrentSeasonStats.savePercentage || 0) > (currentSeasonAccumulator['SavePercentage']?.value || 0)) {
+                            currentSeasonAccumulator['SavePercentage'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: playerCurrentSeasonStats.savePercentage || 0, season, gamesPlayed: playerCurrentSeasonStats.gamesPlayed };
+                        }
+                    }
+                    if ((playerCurrentSeasonStats.shutouts || 0) > (currentSeasonAccumulator['Shutouts']?.value || 0)) {
+                        currentSeasonAccumulator['Shutouts'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: playerCurrentSeasonStats.shutouts || 0, season, gamesPlayed: playerCurrentSeasonStats.gamesPlayed };
+                    }
                 }
+                
+                // Career records logic (remains the same as it's not season-specific)
+                const careerGoals = (player.history?.reduce((acc, s) => acc + (s.goals || 0), 0) || 0) + (playerCurrentSeasonStats.goals || 0);
+                if (careerGoals > (tempCareerRecords['Goals']?.value || 0)) tempCareerRecords['Goals'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerGoals };
+                const careerAssists = (player.history?.reduce((acc, s) => acc + (s.assists || 0), 0) || 0) + (playerCurrentSeasonStats.assists || 0);
+                if (careerAssists > (tempCareerRecords['Assists']?.value || 0)) tempCareerRecords['Assists'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerAssists };
+                const careerPoints = (player.history?.reduce((acc, s) => acc + (s.points || 0), 0) || 0) + (playerCurrentSeasonStats.points || 0);
+                if (careerPoints > (tempCareerRecords['Points']?.value || 0)) tempCareerRecords['Points'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerPoints };
+                const careerPims = (player.history?.reduce((acc, s) => acc + (s.penaltyMinutes || 0), 0) || 0) + (playerCurrentSeasonStats.penaltyMinutes || 0);
+                if (careerPims > (tempCareerRecords['PenaltyMinutes']?.value || 0)) tempCareerRecords['PenaltyMinutes'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerPims };
+                const careerShutouts = (player.history?.reduce((acc, s) => acc + (s.shutouts || 0), 0) || 0) + (playerCurrentSeasonStats.shutouts || 0);
+                if (careerShutouts > (tempCareerRecords['Shutouts']?.value || 0)) tempCareerRecords['Shutouts'] = { playerName: player.name, teamName: playerCurrentSeasonStats.team, value: careerShutouts };
             });
         };
 
@@ -897,11 +957,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, season, false);
                 tempTeams[homeTeamIndex] = updatedHomeTeam;
                 tempTeams[awayTeamIndex] = updatedAwayTeam;
-                updateGameRecords(updatedHomeTeam, updatedAwayTeam);
-
-                if (game.homeTeam === userTeam?.name || game.awayTeam === userTeam?.name) {
-                    toast.info("Game Auto-Simulated", { description: `${homeTeam.name} ${finalGameState.userScore} - ${awayTeam.name} ${finalGameState.opponentScore}` });
-                }
+                updateGameRecords(updatedHomeTeam, updatedAwayTeam, tempCurrentSeasonStatsAccumulator); // Pass accumulator
             });
         }
 
@@ -1078,7 +1134,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }));
                     setSeasonHistory(prev => ({ ...prev, [seasonToArchive]: standingsForYear }));
 
-                    tempSeasonRecords = {}; 
+                    // Update all-time season records with the bests from the just-concluded season
+                    const updatedAllTimeSeasonRecords = compareAndSetSeasonRecords(tempCurrentSeasonStatsAccumulator, seasonRecords);
+                    setSeasonRecords(updatedAllTimeSeasonRecords);
                     
                     const newAlumni: Player[] = [];
                     const allTransferPlayers: Player[] = [];
@@ -1319,7 +1377,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setTeams(tempTeams);
         setSchedule(tempSchedule);
         setCurrentDate(newDate);
-        setSeasonRecords(tempSeasonRecords);
+        setCurrentSeasonStatsAccumulator(tempCurrentSeasonStatsAccumulator); // Update state with accumulated stats
         setCareerRecords(tempCareerRecords);
     };
 
@@ -1346,6 +1404,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             transferPool,
             currentDate,
             developmentHistory,
+            currentSeasonStatsAccumulator, // Save the new state variable
         };
 
         localStorage.setItem(`savegame_${saveName}`, JSON.stringify(gameState));
@@ -1399,6 +1458,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             setTransferPool(savedState.transferPool || []);
             setCurrentDate(savedState.currentDate);
             setDevelopmentHistory(savedState.developmentHistory || []);
+            setCurrentSeasonStatsAccumulator(savedState.currentSeasonStatsAccumulator || {}); // Load the new state variable
 
             toast.success("Game Loaded!", { description: `Successfully loaded "${saveName}".` });
         } catch (error) {
@@ -1422,7 +1482,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             'teams', 'alumni', 'seasonHistory', 'activeTeamName', 'managedOrganization',
             'isManagingOrg', 'schedule', 'nationalsData', 'seasonRecords', 'careerRecords',
             'scoutingPool', 'recruitedPool', 'fairHosted', 'transferPool', 'currentDate',
-            'developmentHistory'
+            'developmentHistory', 'currentSeasonStatsAccumulator' // Clear the new state variable
         ];
         keysToRemove.forEach(key => localStorage.removeItem(key));
 
@@ -1442,6 +1502,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setCurrentDate({ month: 'August', week: 1, year: new Date().getFullYear() });
         setDevelopmentHistory([]);
         setTransferPool([]); // Ensure transfer pool is also cleared
+        setCurrentSeasonStatsAccumulator({}); // Clear the new state variable
 
         toast.info("Exited to Main Menu");
     };

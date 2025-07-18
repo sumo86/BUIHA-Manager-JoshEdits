@@ -281,6 +281,7 @@ export type TeamRecord = {
   teamName: string;
   value: number;
   season?: string;
+  gamesPlayed?: number; // Added this line
 };
 
 export type RecordCategory = 'Goals' | 'Assists' | 'Points' | 'PenaltyMinutes' | 'GAA' | 'SavePercentage' | 'Shutouts';
