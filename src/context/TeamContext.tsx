@@ -1126,10 +1126,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
 
         // New logic for transfer success chance
-        const baseSuccessChance = 0.7; // Increased base chance
-        const loyaltyModifier = (player.attributes.loyalty - 10) / 25; // Higher loyalty decreases chance
-        const ambitionModifier = (player.attributes.ambition - 10) / 25; // Higher ambition increases chance
-        const starRatingPenalty = (player.starRating / 5) * 0.4; // Higher star rating decreases chance
+        const baseSuccessChance = 0.5; // Lowered base chance
+        const loyaltyModifier = (player.attributes.loyalty - 10) / 15; // Increased impact
+        const ambitionModifier = (player.attributes.ambition - 10) / 15; // Increased impact
+        const starRatingPenalty = (player.starRating / 5) * 0.6; // Increased impact
 
         let successChance = baseSuccessChance - starRatingPenalty - loyaltyModifier + ambitionModifier;
         successChance = Math.max(0, Math.min(1, successChance)); // Clamp between 0 and 1
@@ -1140,19 +1140,22 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             });
             movePlayer(playerId, fromTeamName, toTeamName);
         } else {
-            const reasonRoll = Math.random();
             let reasonText: string;
-            // Adjust reason text based on player attributes and star rating
-            if (player.starRating > 3.5 && reasonRoll < 0.5) { // High star player more likely to refuse for personal reasons
-                reasonText = `${player.name} is happy where they are and does not wish to move at this time, citing personal comfort and team fit.`;
-            } else if (player.attributes.loyalty > 15 && reasonRoll < 0.7) { // High loyalty player
-                reasonText = `${player.name} has declined the offer to move to ${toTeamName}, citing strong loyalty to their current team.`;
-            } else if (player.attributes.ambition < 5 && reasonRoll < 0.8) { // Low ambition player
-                reasonText = `${player.name} prefers stability and is not looking for a change at this time.`;
-            } else if (reasonRoll < 0.4) {
+            const playerLoyalty = player.attributes.loyalty || 10;
+            const playerAmbition = player.attributes.ambition || 10;
+            const playerStarRating = player.starRating;
+
+            const managerBlockChance = 0.3; // 30% chance manager blocks it
+            if (Math.random() < managerBlockChance) {
                 reasonText = `The manager of ${fromTeamName} has blocked the transfer, wanting to keep the player.`;
+            } else if (playerLoyalty > 15 && Math.random() < 0.7) { // High loyalty
+                reasonText = `${player.name} has declined the offer to move to ${toTeamName}, citing strong loyalty to their current team.`;
+            } else if (playerStarRating > 3.5 && Math.random() < 0.6) { // High star player, happy where they are
+                reasonText = `${player.name} is happy where they are and does not wish to move at this time, citing personal comfort and team fit.`;
+            } else if (playerAmbition < 5 && Math.random() < 0.5) { // Low ambition
+                reasonText = `${player.name} prefers stability and is not looking for a change at this time.`;
             } else {
-                reasonText = `${player.name} has declined the offer to move to ${toTeamName}, citing loyalty to their current team.`;
+                reasonText = `${player.name} has declined the offer to move to ${toTeamName}.`; // Generic player refusal
             }
             toast.error("Transfer Denied", { description: reasonText });
         }
