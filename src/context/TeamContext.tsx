@@ -799,6 +799,19 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const allOrganizations = getTeamOrganizations(); // Get the base organization structure
 
                     tempTeams = tempTeams.map(team => {
+                        // Archive stats for all players and reset for new season
+                        team.roster = team.roster.map(p => {
+                            const newHistory = [...p.history];
+                            if (p.currentStats && p.currentStats.length > 0) {
+                                newHistory.push(...p.currentStats);
+                            }
+                            return {
+                                ...p,
+                                history: newHistory,
+                                currentStats: [],
+                            };
+                        });
+
                         const graduatingPlayers: Player[] = [];
                         const remainingPlayers = team.roster.filter(player => {
                             // Age the player first
@@ -846,11 +859,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         });
 
                         graduatingPlayers.forEach(player => {
-                            if (player.currentStats.length > 0) {
-                                player.history.push(...player.currentStats);
-                                player.currentStats = [];
-                            }
-
                             const isManaged = managedTeamNames.includes(team.name);
                             const ambition = player.attributes.ambition || 10;
                             const loyalty = player.attributes.loyalty || 10;
@@ -1603,22 +1611,29 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const recruitPlayer = (playerId: string) => {
-        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        let playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        let fromScoutingPool = true;
+    
         if (!playerToRecruit) {
-            toast.error("Player not found in scouting pool.");
+            playerToRecruit = transferPool.find(p => p.id === playerId);
+            fromScoutingPool = false;
+        }
+    
+        if (!playerToRecruit) {
+            toast.error("Player not found in scouting or transfer pools.");
             return;
         }
         if (!userTeam) {
             toast.error("No active team selected.");
             return;
         }
-
+    
         const cost = playerToRecruit.recruitmentCost || 0;
         if (userTeam.financials.budgetAllocations.Recruiting < cost) {
-            toast.error("Insufficient Recruiting Budget", { description: `You need ${cost} in recruiting budget to sign ${playerToRecruit.name}.` });
+            toast.error("Insufficient Recruiting Budget", { description: `You need £${cost.toLocaleString()} in recruiting budget to sign ${playerToRecruit.name}.` });
             return;
         }
-
+    
         setTeams(prevTeams => prevTeams.map(team => {
             if (team.name === userTeam.name) {
                 return {
@@ -1634,9 +1649,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
             return team;
         }));
-
+    
         setRecruitedPool(prev => [...prev, playerToRecruit]);
-        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        if (fromScoutingPool) {
+            setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        } else {
+            setTransferPool(prev => prev.filter(p => p.id !== playerId));
+        }
         toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been successfully recruited.` });
     };
 
