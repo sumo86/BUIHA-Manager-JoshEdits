@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { HistoryRecords } from '@/components/history/HistoryRecords';
-import { RecordCategory } from '@/types';
+import { RecordCategory, Achievement } from '@/types';
 import { calculateRecords } from '@/lib/historyUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CareerStatsTable } from '@/components/history/CareerStatsTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SeasonalStatsTable } from '@/components/history/SeasonalStatsTable';
+import { AchievementsOverview } from '@/components/history/AchievementsOverview';
 
 const TeamHistoryPage = () => {
-  const { userTeam, managedTeams, teams, schedule, seasonHistory, alumni } = useTeam();
+  const { userTeam, managedTeams, teams, schedule, seasonHistory, alumni, teamAchievements } = useTeam();
   const [filterScope, setFilterScope] = useState<'organization' | string>('organization');
 
   const filterOptions = useMemo(() => {
@@ -48,6 +49,16 @@ const TeamHistoryPage = () => {
     );
   }, [filterScope, allPlayersInOrg, teams]);
 
+  const achievementsToDisplay = useMemo(() => {
+    if (!teamAchievements) return [];
+    
+    const teamNamesToInclude = filterScope === 'organization'
+      ? managedTeams.map(t => t.name)
+      : [filterScope];
+
+    return teamNamesToInclude.flatMap(name => teamAchievements[name] || []);
+  }, [filterScope, managedTeams, teamAchievements]);
+
   const { careerRecords } = useMemo(() => {
     return calculateRecords(playersToDisplay, schedule);
   }, [playersToDisplay, schedule]);
@@ -83,11 +94,12 @@ const TeamHistoryPage = () => {
       
       <Tabs defaultValue="records" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="records">Records</TabsTrigger>
+          <TabsTrigger value="records">Records & Achievements</TabsTrigger>
           <TabsTrigger value="seasonal-stats">Seasonal Stats</TabsTrigger>
         </TabsList>
         <TabsContent value="records" className="mt-4 space-y-6">
           <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+            <AchievementsOverview achievements={achievementsToDisplay} title="Honours" />
             <HistoryRecords title="Career Records" records={careerRecords} categories={careerCategories} />
           </div>
           <CareerStatsTable players={playersToDisplay} />

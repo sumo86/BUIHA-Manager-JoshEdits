@@ -295,6 +295,16 @@ export type LegacyRecord = {
   season?: string;
 };
 
+export type Achievement = {
+  type: 'Division Title' | 'Nationals Gold' | 'Nationals Silver';
+  season: string;
+  division: string;
+};
+
+export type TeamAchievements = {
+  [teamName: string]: Achievement[];
+};
+
 // Nationals Types
 export type NationalsStanding = {
   teamName: string;
