@@ -1,5 +1,5 @@
 import { Team, Lineup, TacticsSelection, Player } from "@/types";
-import { generateRoster } from "@/lib/playerGenerator";
+import { generateRoster, getGamesPlayedForDivision } from "@/lib/playerGenerator";
 import { initialFacilityProjects } from './facilities';
 import { teamLogos } from './logos';
 import { getTierName as getNationalsDivision } from '@/lib/leagueUtils';
@@ -113,6 +113,14 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
         const roster = generateRoster(teamInfo.leagueDivision, teamInfo.name);
         const lineup = populateLineup(roster);
         const teamBudget = isMultiTeamOrg ? orgTotalBudget / org.teamsData.length : 15000;
+        const equipmentCost = Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500;
+
+        const totalGames = getGamesPlayedForDivision(teamInfo.leagueDivision);
+        const numberOfHomeGames = Math.floor(totalGames / 2);
+        const numberOfAwayGames = Math.ceil(totalGames / 2);
+        const iceTimeCost = numberOfHomeGames * 350;
+        const travelCost = numberOfAwayGames * 500;
+        const initialFixedCosts = iceTimeCost + travelCost + equipmentCost;
 
         return {
             ...teamInfo,
@@ -120,13 +128,13 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
             roster: roster,
             lineup: lineup,
             tactics: defaultTactics,
-            wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, // Changed otLosses to draws
+            wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0,
             logo: teamLogos[org.name],
             financials: {
                 totalBudget: teamBudget,
+                discretionaryBudget: teamBudget - initialFixedCosts, // Initialize discretionaryBudget
                 iceTimeCostPerGame: 350,
-                equipmentCost: Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500,
-                budgetAllocations: { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 },
+                equipmentCost: equipmentCost,
             },
             facilities: initialFacilityProjects.map(p => ({ ...p })),
         };

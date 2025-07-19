@@ -91,7 +91,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         try {
             const saved = localStorage.getItem('alumni');
             return saved ? JSON.parse(saved) : [];
-        } catch (error) { return []; }
+        } catch (error) { return []; } // Fixed: Return empty array in catch block
     });
 
     useEffect(() => {
