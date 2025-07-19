@@ -23,7 +23,7 @@ const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
     const halfStar = rating % 1 !== 0;
     const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
-    const starClass = "h-4 w-4";
+    const starClass = "w-4 h-4"; // Defined starClass here
     
     return (
       <div className="flex">
@@ -275,7 +275,7 @@ const Lineup = () => {
         Object.values(team.lineup.forwards).flat().forEach(playerId => {
             if (!playerId) return;
             const player = rosterMap.get(playerId);
-            if (player) {
+            if (player) { // Type guard for player
                 const bestRole = findBestRole(player, forwardRoles);
                 if (bestRole) player.role = bestRole;
             }
@@ -284,7 +284,7 @@ const Lineup = () => {
         Object.values(team.lineup.defence).flat().forEach(playerId => {
             if (!playerId) return;
             const player = rosterMap.get(playerId);
-            if (player) {
+            if (player) { // Type guard for player
                 const bestRole = findBestRole(player, defenceRoles);
                 if (bestRole) player.role = bestRole;
             }

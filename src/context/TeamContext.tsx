@@ -156,7 +156,19 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const [transferPool, setTransferPool] = useState<Player[]>([]);
     const [seasonHistory, setSeasonHistory] = useState<SeasonHistory>({});
-    const [savedGames, setSavedGames] = useState<SaveGameSlot[]>([]);
+    const [savedGames, setSavedGames] = useState<SaveGameSlot[]>(() => {
+        try {
+            const saved = localStorage.getItem('savedGames');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error("Failed to load saved games list:", error);
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('savedGames', JSON.stringify(savedGames));
+    }, [savedGames]);
 
     const managedTeams = useMemo(() => {
         if (!managedOrganization) return [];
@@ -1317,7 +1329,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const { updatedTeams, updatedNationalsData, newAchievements } = processNationalsRound(division, currentTeams, currentNationalsData, currentDate.year);
                 currentTeams = updatedTeams;
                 currentNationalsData = updatedNationalsData;
-                tournament = currentNationalsData[currentDate.year]?.[division];
+                tournament = currentNationalsData[currentDate.year]?.[division]; // Corrected line
 
                 if (newAchievements.length > 0) {
                     setTeamAchievements(prev => {
@@ -1340,21 +1352,127 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         toast.info(`Simulation for all Nationals tournaments is complete.`);
     };
 
-    const saveGame = (saveName: string) => { console.log('saveGame called with:', saveName); };
-    const exitToMainMenu = () => { console.log('exitToMainMenu called'); selectTeam(null); };
-    const loadGame = (saveName: string) => { console.log('loadGame called with:', saveName); };
-    const deleteGame = (saveName: string) => { console.log('deleteGame called with:', saveName); };
+    const saveGame = (saveName: string) => {
+        if (!userTeam) {
+            toast.error("Cannot save game", { description: "No active team selected." });
+            return;
+        }
+
+        const gameState = {
+            teams,
+            alumni,
+            activeTeamName,
+            managedOrganization,
+            isManagingOrg,
+            schedule,
+            nationalsData,
+            seasonRecords,
+            careerRecords,
+            teamAchievements,
+            scoutingPool,
+            recruitedPool,
+            fairHosted,
+            currentDate,
+            developmentHistory,
+            seasonHistory,
+            transferPool,
+        };
+
+        try {
+            localStorage.setItem(`savegame_${saveName}`, JSON.stringify(gameState));
+
+            const newSaveSlot: SaveGameSlot = {
+                saveName,
+                savedAt: new Date().toISOString(),
+                userTeamName: userTeam.name,
+                currentDate,
+            };
+
+            setSavedGames(prev => {
+                const existingIndex = prev.findIndex(s => s.saveName === saveName);
+                if (existingIndex > -1) {
+                    const updated = [...prev];
+                    updated[existingIndex] = newSaveSlot;
+                    return updated;
+                }
+                return [...prev, newSaveSlot];
+            });
+
+            toast.success("Game Saved", { description: `Your progress has been saved as "${saveName}".` });
+        } catch (error) {
+            console.error("Failed to save game:", error);
+            toast.error("Save Failed", { description: "Could not save game state. The browser storage might be full." });
+        }
+    };
+    const exitToMainMenu = () => { selectTeam(null); };
+    const loadGame = (saveName: string) => {
+        try {
+            const savedStateJSON = localStorage.getItem(`savegame_${saveName}`);
+            if (!savedStateJSON) {
+                toast.error("Load Failed", { description: "Save file not found." });
+                return;
+            }
+
+            const savedState = JSON.parse(savedStateJSON);
+
+            // Restore all state. Most are persisted via useEffects.
+            setTeams(savedState.teams);
+            setAlumni(savedState.alumni || []);
+            setSchedule(savedState.schedule);
+            setNationalsData(savedState.nationalsData);
+            setSeasonRecords(savedState.seasonRecords);
+            setCareerRecords(savedState.careerRecords);
+            setTeamAchievements(savedState.teamAchievements);
+            setScoutingPool(savedState.scoutingPool);
+            setRecruitedPool(savedState.recruitedPool);
+            setFairHosted(savedState.fairHosted);
+            setCurrentDate(savedState.currentDate);
+            setDevelopmentHistory(savedState.developmentHistory);
+            setSeasonHistory(savedState.seasonHistory || {});
+            setTransferPool(savedState.transferPool || []);
+            
+            // These need to be set in state AND localStorage to ensure
+            // the app loads correctly after a refresh, as they don't have
+            // their own persistence useEffects.
+            setActiveTeamName(savedState.activeTeamName);
+            if (savedState.activeTeamName) {
+                localStorage.setItem('activeTeamName', savedState.activeTeamName);
+            } else {
+                localStorage.removeItem('activeTeamName');
+            }
+            
+            setManagedOrganization(savedState.managedOrganization); // This will trigger its own useEffect to save to localStorage
+
+            setIsManagingOrg(savedState.isManagingOrg);
+            localStorage.setItem('isManagingOrg', savedState.isManagingOrg.toString());
+
+            toast.success("Game Loaded", { description: `Welcome back! Loaded "${saveName}".` });
+        } catch (error) {
+            console.error("Failed to load game:", error);
+            toast.error("Load Failed", { description: "The save file appears to be corrupted." });
+        }
+    };
+    const deleteGame = (saveName: string) => {
+        try {
+            localStorage.removeItem(`savegame_${saveName}`);
+            setSavedGames(prev => prev.filter(s => s.saveName !== saveName));
+            toast.info("Save Deleted", { description: `The save file "${saveName}" has been deleted.` });
+        } catch (error) {
+            console.error("Failed to delete game:", error);
+            toast.error("Delete Failed", { description: "Could not delete the save file." });
+        }
+    };
     const simulateSingleNationalsGame = (division: string, gameId: string) => { console.log('simulateSingleNationalsGame called with:', division, gameId); };
 
     return (
         <TeamContext.Provider value={{
             teams, updateTeam, userTeam, organizationFinancials, organizationFacilities,
             selectTeam, scoutingPool, recruitedPool, fairHosted, generateScoutingPool,
-            recruitPlayer, assignPlayerToRoster, discardRecruit,
-            runStudentLifeInitiative, startFacilityProject, currentDate, advanceWeek,
-            developmentHistory, updatePlayerTrainingFocus, autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
-            managedOrganization, isManagingOrg, managedTeams, selectOrganization, setActiveTeam,
-            schedule, gameForCurrentWeek, nationalsData,
+            recruitPlayer, assignPlayerToRoster, discardRecruit, runStudentLifeInitiative,
+            startFacilityProject, currentDate, advanceWeek, developmentHistory,
+            updatePlayerTrainingFocus, autoAssignTrainingFocuses, processGameResults,
+            movePlayer, requestPlayerTransfer, managedOrganization, isManagingOrg, managedTeams,
+            selectOrganization, setActiveTeam, schedule, gameForCurrentWeek, nationalsData,
             markGameAsCompleted, seasonRecords, careerRecords, alumni,
             playNationalsRound, autoSimulateUserNationalsGame, teamAchievements,
             saveGame, exitToMainMenu, transferPool, seasonHistory, savedGames, loadGame, deleteGame,
