@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements } from '@/types';
+import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
 import { generateRecruits, generatePlayer, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
@@ -65,6 +65,17 @@ interface TeamContextType {
     playNationalsRound: (division: string, userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }) => void;
     autoSimulateUserNationalsGame: (division: string, gameId: string) => void;
     teamAchievements: TeamAchievements;
+    // Added missing properties and methods
+    saveGame: (saveName: string) => void;
+    exitToMainMenu: () => void;
+    transferPool: Player[];
+    seasonHistory: SeasonHistory;
+    savedGames: SaveGameSlot[];
+    loadGame: (saveName: string) => void;
+    deleteGame: (saveName: string) => void;
+    simulateFullNationalsTournament: (division: string) => void;
+    simulateSingleNationalsGame: (division: string, gameId: string) => void;
+    simulateAllNationalsTournaments: () => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -143,6 +154,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     useEffect(() => { localStorage.setItem('teamAchievements', JSON.stringify(teamAchievements)); }, [teamAchievements]);
 
+    // State variables for the newly added properties
+    const [transferPool, setTransferPool] = useState<Player[]>([]);
+    const [seasonHistory, setSeasonHistory] = useState<SeasonHistory>({});
+    const [savedGames, setSavedGames] = useState<SaveGameSlot[]>([]);
+
     const managedTeams = useMemo(() => {
         if (!managedOrganization) return [];
         const organizations = getTeamOrganizations();
@@ -159,7 +175,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const organizationFinancials = useMemo(() => {
         if (!managedOrganization || managedTeams.length === 0) return null;
-        // Sum totalBudget and discretionaryBudget, average iceTimeCostPerGame and equipmentCost
         const totalBudget = managedTeams.reduce((sum, t) => sum + (t.financials?.totalBudget || 0), 0);
         const discretionaryBudget = managedTeams.reduce((sum, t) => sum + (t.financials?.discretionaryBudget || 0), 0);
         const iceTimeCostPerGame = managedTeams.reduce((sum, t) => sum + (t.financials?.iceTimeCostPerGame || 0), 0) / managedTeams.length;
@@ -1328,7 +1343,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         if (currentBudget < cost) {
             toast.error("Insufficient Discretionary Budget", {
-                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available for recruitment.`,
+                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
             });
             return;
         }
@@ -1414,6 +1429,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         });
     };
 
+    // Placeholder implementations for missing functions
+    const saveGame = (saveName: string) => { console.log('saveGame called with:', saveName); };
+    const exitToMainMenu = () => { console.log('exitToMainMenu called'); selectTeam(null); }; // Example: return to team selection
+    const loadGame = (saveName: string) => { console.log('loadGame called with:', saveName); };
+    const deleteGame = (saveName: string) => { console.log('deleteGame called with:', saveName); };
+    const simulateFullNationalsTournament = (division: string) => { console.log('simulateFullNationalsTournament called with:', division); };
+    const simulateSingleNationalsGame = (division: string, gameId: string) => { console.log('simulateSingleNationalsGame called with:', division, gameId); };
+    const simulateAllNationalsTournaments = () => { console.log('simulateAllNationalsTournaments called'); };
+
     return (
         <TeamContext.Provider value={{
             teams, updateTeam, userTeam, organizationFinancials, organizationFacilities,
@@ -1424,7 +1448,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             managedOrganization, isManagingOrg, managedTeams, selectOrganization, setActiveTeam,
             schedule, gameForCurrentWeek, nationalsData,
             markGameAsCompleted, seasonRecords, careerRecords, alumni,
-            playNationalsRound, autoSimulateUserNationalsGame, teamAchievements
+            playNationalsRound, autoSimulateUserNationalsGame, teamAchievements,
+            // Provided values for the newly added properties
+            saveGame, exitToMainMenu, transferPool, seasonHistory, savedGames, loadGame, deleteGame,
+            simulateFullNationalsTournament, simulateSingleNationalsGame, simulateAllNationalsTournaments
         }}>
             {children}
         </TeamContext.Provider>

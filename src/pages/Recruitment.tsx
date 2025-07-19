@@ -12,14 +12,15 @@ const qualityOrder: (Player['estimatedQuality'])[] = ['Beginner', 'Moderate', 'I
 
 const Recruitment = () => {
   const { userTeam, scoutingPool, recruitedPool, transferPool } = useTeam();
-  const recruitingBudget = userTeam?.financials.discretionaryBudget; // Updated to use discretionaryBudget
+  const recruitingBudget = userTeam?.financials.discretionaryBudget;
 
   // Filter state
   const [qualityFilter, setQualityFilter] = useState('All');
   const [positionFilter, setPositionFilter] = useState('All');
   const [sourceFilter, setSourceFilter] = useState('All');
 
-  if (!userTeam || (scoutingPool.length === 0 && recruitedPool.length === 0 && transferPool.length === 0)) {
+  // Added optional chaining to prevent error if pools are undefined
+  if (!userTeam || (scoutingPool?.length === 0 && recruitedPool?.length === 0 && transferPool?.length === 0)) {
     return (
       <div>
         <h1 className="text-3xl font-bold mb-4">Recruitment</h1>
@@ -32,11 +33,13 @@ const Recruitment = () => {
 
   const uniqueQualities = ['All', ...qualityOrder];
   const positionCategories = ['All', 'Forward', 'Defence', 'Goaltender'];
-  const uniqueSources = ['All', ...Array.from(new Set(scoutingPool.map(p => p.source)))];
+  // Added optional chaining and nullish coalescing for safety
+  const uniqueSources = ['All', ...Array.from(new Set(scoutingPool?.map(p => p.source) || []))];
   const forwardPositions: Position[] = ['C', 'LW', 'RW'];
   const defencePositions: Position[] = ['LD', 'RD'];
 
-  const filteredScoutingPool = scoutingPool.filter(player => {
+  // Added optional chaining and nullish coalescing for safety
+  const filteredScoutingPool = scoutingPool?.filter(player => {
     if (qualityFilter !== 'All' && player.estimatedQuality !== qualityFilter) {
       return false;
     }
@@ -53,7 +56,7 @@ const Recruitment = () => {
       return false;
     }
     return true;
-  });
+  }) || [];
 
   return (
     <div className="space-y-4">
@@ -141,7 +144,7 @@ const Recruitment = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {transferPool.length > 0 ? (
+              {transferPool?.length > 0 ? (
                 <ScoutingTable data={transferPool} />
               ) : (
                 <p className="text-muted-foreground text-center py-8">The Transfer Portal is currently empty. Check back at the start of next season.</p>
