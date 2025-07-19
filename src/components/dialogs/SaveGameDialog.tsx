@@ -19,20 +19,26 @@ import { Save } from 'lucide-react';
 export function SaveGameDialog() {
   const [open, setOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
-  const { saveGame } = useTeam();
+  const { saveGame, userTeam, currentDate } = useTeam();
 
   const handleSave = () => {
     if (saveName.trim()) {
       saveGame(saveName.trim());
       setOpen(false);
-      setSaveName("");
     }
+  };
+
+  const generateDefaultSaveName = () => {
+    if (userTeam && currentDate) {
+      return `${userTeam.name} - ${currentDate.month} ${currentDate.week}, ${currentDate.year}`;
+    }
+    return "My Career";
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" onClick={() => setSaveName(generateDefaultSaveName())}>
           <Save className="mr-2 h-4 w-4" />
           Save Game
         </Button>

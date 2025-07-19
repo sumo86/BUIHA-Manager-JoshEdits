@@ -1,7 +1,7 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
-import { generateRecruits, generatePlayer, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator'; // Re-writing this line
+import { generateRecruits, generatePlayer, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
@@ -25,6 +25,26 @@ const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['
     const currentIndex = moraleLevels.indexOf(currentMorale);
     const newIndex = Math.max(0, Math.min(moraleLevels.length - 1, currentIndex + change));
     return moraleLevels[newIndex];
+};
+
+type GameSaveState = {
+    teams: Team[];
+    alumni: Player[];
+    activeTeamName: string | null;
+    managedOrganization: string | null;
+    isManagingOrg: boolean;
+    schedule: ScheduleEntry[];
+    nationalsData: { [year: number]: { [division: string]: NationalsTournament } };
+    seasonRecords: { [key in RecordCategory]?: TeamRecord };
+    careerRecords: { [key in RecordCategory]?: TeamRecord };
+    teamAchievements: TeamAchievements;
+    scoutingPool: Player[];
+    recruitedPool: Player[];
+    fairHosted: boolean;
+    currentDate: GameDate;
+    developmentHistory: DevelopmentLog[];
+    transferPool: Player[];
+    seasonHistory: SeasonHistory;
 };
 
 interface TeamContextType {
@@ -156,7 +176,19 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const [transferPool, setTransferPool] = useState<Player[]>([]);
     const [seasonHistory, setSeasonHistory] = useState<SeasonHistory>({});
-    const [savedGames, setSavedGames] = useState<SaveGameSlot[]>([]);
+    const [savedGames, setSavedGames] = useState<SaveGameSlot[]>(() => {
+        try {
+            const saved = localStorage.getItem('savedGames');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error("Failed to load saved games list:", error);
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('savedGames', JSON.stringify(savedGames));
+    }, [savedGames]);
 
     const managedTeams = useMemo(() => {
         if (!managedOrganization) return [];
@@ -350,7 +382,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 });
 
                 if (userGame) {
-                    // Correctly determine opponent name based on userGame object
                     const opponentName = (typeof userGame.homeTeam === 'string' && userTeam.name === userGame.homeTeam)
                         ? (typeof userGame.awayTeam === 'string' ? userGame.awayTeam : 'TBD')
                         : (typeof userGame.homeTeam === 'string' ? userGame.homeTeam : 'TBD');
@@ -1340,10 +1371,99 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         toast.info(`Simulation for all Nationals tournaments is complete.`);
     };
 
-    const saveGame = (saveName: string) => { console.log('saveGame called with:', saveName); };
-    const exitToMainMenu = () => { console.log('exitToMainMenu called'); selectTeam(null); };
-    const loadGame = (saveName: string) => { console.log('loadGame called with:', saveName); };
-    const deleteGame = (saveName: string) => { console.log('deleteGame called with:', saveName); };
+    const saveGame = (saveName: string) => {
+        if (!userTeam || !currentDate) {
+            toast.error("Cannot save game.", { description: "No active game session found." });
+            return;
+        }
+
+        const gameState: GameSaveState = {
+            teams, alumni, activeTeamName, managedOrganization, isManagingOrg, schedule,
+            nationalsData, seasonRecords, careerRecords, teamAchievements, scoutingPool,
+            recruitedPool, fairHosted, currentDate, developmentHistory, transferPool, seasonHistory,
+        };
+
+        try {
+            localStorage.setItem(`save_${saveName}`, JSON.stringify(gameState));
+
+            const newSaveSlot: SaveGameSlot = {
+                saveName,
+                savedAt: new Date().toISOString(),
+                userTeamName: userTeam.name,
+                currentDate: currentDate,
+            };
+
+            setSavedGames(prev => {
+                const existingIndex = prev.findIndex(s => s.saveName === saveName);
+                if (existingIndex > -1) {
+                    const updatedGames = [...prev];
+                    updatedGames[existingIndex] = newSaveSlot;
+                    return updatedGames;
+                }
+                return [...prev, newSaveSlot].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
+            });
+
+            toast.success("Game Saved!", { description: `Your progress has been saved as "${saveName}".` });
+        } catch (error) {
+            console.error("Failed to save game:", error);
+            toast.error("Failed to save game.", { description: "Could not write to local storage. Your browser may be out of space." });
+        }
+    };
+
+    const loadGame = (saveName: string) => {
+        try {
+            const savedDataString = localStorage.getItem(`save_${saveName}`);
+            if (!savedDataString) {
+                toast.error("Load failed.", { description: "Save file not found." });
+                return;
+            }
+
+            const loadedState: GameSaveState = JSON.parse(savedDataString);
+
+            setTeams(loadedState.teams);
+            setAlumni(loadedState.alumni);
+            setActiveTeamName(loadedState.activeTeamName);
+            setManagedOrganization(loadedState.managedOrganization);
+            setIsManagingOrg(loadedState.isManagingOrg);
+            setSchedule(loadedState.schedule);
+            setNationalsData(loadedState.nationalsData);
+            setSeasonRecords(loadedState.seasonRecords);
+            setCareerRecords(loadedState.careerRecords);
+            setTeamAchievements(loadedState.teamAchievements);
+            setScoutingPool(loadedState.scoutingPool);
+            setRecruitedPool(loadedState.recruitedPool);
+            setFairHosted(loadedState.fairHosted);
+            setCurrentDate(loadedState.currentDate);
+            setDevelopmentHistory(loadedState.developmentHistory);
+            setTransferPool(loadedState.transferPool);
+            setSeasonHistory(loadedState.seasonHistory);
+
+            if (loadedState.activeTeamName) localStorage.setItem('activeTeamName', loadedState.activeTeamName);
+            if (loadedState.managedOrganization) localStorage.setItem('managedOrganization', loadedState.managedOrganization);
+            localStorage.setItem('isManagingOrg', String(loadedState.isManagingOrg));
+
+            toast.success("Game Loaded!", { description: `Welcome back to your career with ${loadedState.teams.find(t => t.name === loadedState.activeTeamName)?.name || 'your team'}.` });
+        } catch (error) {
+            console.error("Failed to load game:", error);
+            toast.error("Failed to load game.", { description: "The save file may be corrupted." });
+        }
+    };
+
+    const deleteGame = (saveName: string) => {
+        try {
+            localStorage.removeItem(`save_${saveName}`);
+            setSavedGames(prev => prev.filter(g => g.saveName !== saveName));
+            toast.info("Save Deleted", { description: `The save file "${saveName}" has been removed.` });
+        } catch (error) {
+            console.error("Failed to delete game:", error);
+            toast.error("Failed to delete save.");
+        }
+    };
+
+    const exitToMainMenu = () => {
+        selectTeam(null);
+    };
+    
     const simulateSingleNationalsGame = (division: string, gameId: string) => { console.log('simulateSingleNationalsGame called with:', division, gameId); };
 
     return (
