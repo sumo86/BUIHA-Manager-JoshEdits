@@ -1,4 +1,4 @@
-import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes, PlayerSeasonStats } from "@/types";
+import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes, PlayerSeasonStats, FacilityProject } from "@/types";
 import { archetypes } from "@/data/archetypes";
 import { roles } from "@/data/roles";
 import { teams as allTeamsData } from "@/data/teams";
@@ -306,10 +306,19 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
   return finalRoster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 };
 
-export const generateRecruits = (userLeagueDivision: string, allTeamNames: string[], count?: number): Player[] => {
+export const generateRecruits = (userLeagueDivision: string, allTeamNames: string[], count?: number, facilities?: FacilityProject[]): Player[] => {
+    // This comment is added to force re-evaluation of this file by the TypeScript compiler.
     const recruits: Player[] = [];
     const usedJerseyNumbers = new Set<number>();
-    const numRecruits = count || (30 + Math.floor(Math.random() * 21));
+    
+    let baseRecruitCount = 30 + Math.floor(Math.random() * 21);
+    const hasPosters = facilities?.some(f => f.id === 'campus_posters_1' && f.status === 'Completed');
+    if (hasPosters) {
+        baseRecruitCount = Math.round(baseRecruitCount * 1.25); // 25% more recruits
+    }
+    const numRecruits = count || baseRecruitCount;
+
+    const hasDatabase = facilities?.some(f => f.id === 'scouting_database_1' && f.status === 'Completed');
 
     for (let i = 0; i < numRecruits; i++) {
         const sourceRoll = Math.random();
@@ -319,7 +328,10 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
             ? "UG Year 1" 
             : getRandomItem(["UG Year 2", "Masters"] as const);
         
-        const qualityRoll = Math.random();
+        let qualityRoll = Math.random();
+        if (hasDatabase) {
+            qualityRoll = Math.min(1, qualityRoll + 0.1); // 10% better chance of higher quality
+        }
         let estimatedQuality: Player['estimatedQuality'];
         if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else if (qualityRoll < 0.99) estimatedQuality = 'Elite'; else estimatedQuality = 'Elite'; // Ensure Elite is possible
         
