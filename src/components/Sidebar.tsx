@@ -19,6 +19,7 @@ import {
   Play,
   Smile,
   BookOpen,
+  Wrench, // Added for Upgrades
   Swords as NationalsIcon, // Renaming to avoid conflict
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -39,7 +40,7 @@ const navItems = [
   { href: "/recruitment", label: "Recruitment", icon: UserPlus },
   { href: "/finances", label: "Finances", icon: DollarSign },
   { href: "/morale", label: "Morale", icon: Smile },
-  { href: "/facilities", label: "Facilities", icon: Building },
+  { href: "/upgrades", label: "Upgrades", icon: Wrench },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/standings", label: "Standings", icon: Trophy },
   { href: "/history", label: "History", icon: BookOpen },

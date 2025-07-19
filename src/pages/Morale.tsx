@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTeam } from "@/context/TeamContext";
 import { Heart, Smile } from "lucide-react";
@@ -11,7 +11,7 @@ const MoralePage = () => {
     return <div>Loading team data...</div>;
   }
 
-  const studentLifeBudget = userTeam.financials.budgetAllocations["Student Life"];
+  const studentLifeBudget = userTeam.financials.discretionaryBudget; // Updated to use discretionaryBudget
   const initiativeCost = 500;
 
   return (

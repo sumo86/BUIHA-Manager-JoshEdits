@@ -1,27 +1,34 @@
+import { useMemo } from 'react';
 import { useTeam } from "@/context/TeamContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BudgetAllocation } from "@/components/finance/BudgetAllocation";
-import { Transactions } from "@/components/finance/Transactions";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { DollarSign, Plane, Box, Calendar as CalendarIcon } from 'lucide-react';
 
 const Finances = () => {
-  const { userTeam, updateBudgetAllocations, managedOrganization, organizationFinancials } = useTeam();
+  const { userTeam, managedOrganization, organizationFinancials } = useTeam();
 
-  if (!userTeam) {
+  const numberOfHomeGames = 13;
+  const numberOfAwayGames = 13;
+  const travelCostPerGame = 200;
+
+  const currentFinancials = useMemo(() => {
+    if (managedOrganization) return organizationFinancials;
+    return userTeam?.financials;
+  }, [userTeam, managedOrganization, organizationFinancials]);
+
+  const fixedCosts = useMemo(() => {
+    if (!userTeam || !currentFinancials) return { iceTime: 0, travel: 0, equipment: 0, total: 0 };
+    
+    const iceTime = numberOfHomeGames * currentFinancials.iceTimeCostPerGame;
+    const travel = numberOfAwayGames * travelCostPerGame;
+    const equipment = currentFinancials.equipmentCost;
+    const total = iceTime + travel + equipment;
+
+    return { iceTime, travel, equipment, total };
+  }, [userTeam, currentFinancials]);
+
+  if (!userTeam || !currentFinancials) {
     return <div>Loading team data...</div>;
   }
-
-  const currentFinancials = managedOrganization ? organizationFinancials : userTeam.financials;
-
-  if (!currentFinancials) {
-    return <div>Financial data not available.</div>;
-  }
-
-  const handleSaveAllocations = (newAllocations: typeof currentFinancials.budgetAllocations) => {
-    updateBudgetAllocations(newAllocations);
-    toast.success("Budget allocations updated!");
-  };
 
   return (
     <div className="space-y-6">
@@ -30,33 +37,60 @@ const Finances = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Budget Summary</CardTitle>
+          <CardTitle className="flex items-center">
+            <DollarSign className="mr-2 h-5 w-5" />
+            Budget Summary
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-muted-foreground">Total Budget:</p>
-              <p className="text-2xl font-bold">£{currentFinancials.totalBudget.toLocaleString()}</p>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 border rounded-lg">
+              <p className="text-muted-foreground">Total Season Budget</p>
+              <p className="text-3xl font-bold">£{currentFinancials.totalBudget.toLocaleString()}</p>
             </div>
-            <div>
-              <p className="text-muted-foreground">Ice Time Cost per Game:</p>
-              <p className="text-2xl font-bold">£{currentFinancials.iceTimeCostPerGame.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Equipment Cost:</p>
-              <p className="text-2xl font-bold">£{currentFinancials.equipmentCost.toLocaleString()}</p>
+            <div className="p-4 border rounded-lg">
+              <p className="text-muted-foreground">Discretionary Spend Available</p>
+              <p className="text-3xl font-bold text-green-600">£{currentFinancials.discretionaryBudget.toLocaleString()}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <BudgetAllocation
-        initialAllocations={currentFinancials.budgetAllocations}
-        totalBudget={currentFinancials.totalBudget}
-        onSave={handleSaveAllocations}
-      />
-
-      <Transactions />
+      <Card>
+        <CardHeader>
+          <CardTitle>Season Fixed Costs</CardTitle>
+          <p className="text-muted-foreground">These costs are automatically deducted from your total budget at the start of the season.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-3">
+                <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+                <span>Ice Time ({numberOfHomeGames} home games)</span>
+              </div>
+              <span className="font-mono">£{fixedCosts.iceTime.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-3">
+                <Plane className="h-5 w-5 text-muted-foreground" />
+                <span>Travel ({numberOfAwayGames} away games)</span>
+              </div>
+              <span className="font-mono">£{fixedCosts.travel.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-3">
+                <Box className="h-5 w-5 text-muted-foreground" />
+                <span>Equipment</span>
+              </div>
+              <span className="font-mono">£{fixedCosts.equipment.toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="flex justify-between items-center p-3 mt-4 border-t">
+            <span className="font-semibold">Total Fixed Costs</span>
+            <span className="font-bold font-mono">£{fixedCosts.total.toLocaleString()}</span>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

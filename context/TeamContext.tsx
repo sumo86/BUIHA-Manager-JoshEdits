@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, BudgetAllocations, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, BudgetCategory, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements } from '@/types';
+import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
 import { generateRecruits, generatePlayer, calculateStarRating } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
@@ -40,7 +40,6 @@ interface TeamContextType {
     recruitPlayer: (playerId: string) => void;
     assignPlayerToRoster: (playerId: string) => void;
     discardRecruit: (playerId: string) => void;
-    updateBudgetAllocations: (newAllocations: BudgetAllocations) => void;
     runStudentLifeInitiative: () => void;
     startFacilityProject: (projectId: string) => void;
     currentDate: GameDate;
@@ -160,16 +159,17 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const organizationFinancials = useMemo(() => {
         if (!managedOrganization || managedTeams.length === 0) return null;
+        // Sum totalBudget and discretionaryBudget, average iceTimeCostPerGame and equipmentCost
+        const totalBudget = managedTeams.reduce((sum, t) => sum + t.financials.totalBudget, 0);
+        const discretionaryBudget = managedTeams.reduce((sum, t) => sum + t.financials.discretionaryBudget, 0);
+        const iceTimeCostPerGame = managedTeams.reduce((sum, t) => sum + t.financials.iceTimeCostPerGame, 0) / managedTeams.length;
+        const equipmentCost = managedTeams.reduce((sum, t) => sum + t.financials.equipmentCost, 0) / managedTeams.length;
+
         return {
-            totalBudget: managedTeams.reduce((sum, t) => sum + t.financials.totalBudget, 0),
-            budgetAllocations: managedTeams.reduce((acc, t) => {
-                (Object.keys(t.financials.budgetAllocations) as BudgetCategory[]).forEach(key => {
-                    acc[key] = Math.round((acc[key] || 0) + t.financials.budgetAllocations[key]);
-                });
-                return acc;
-            }, { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 } as BudgetAllocations),
-            iceTimeCostPerGame: managedTeams.reduce((sum, t) => sum + t.financials.iceTimeCostPerGame, 0),
-            equipmentCost: managedTeams.reduce((sum, t) => sum + t.financials.equipmentCost, 0),
+            totalBudget,
+            discretionaryBudget,
+            iceTimeCostPerGame,
+            equipmentCost,
         };
     }, [managedOrganization, managedTeams]);
 
@@ -336,7 +336,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 });
 
                 if (userGame) {
-                    const opponentName = (typeof userGame.homeTeam === 'string' && userGame.homeTeam === userTeam.name)
+                    const opponentName = (typeof userGame.homeTeam === 'string' && userTeam.name === userGame.homeTeam)
                         ? (typeof userGame.awayTeam === 'string' ? userGame.awayTeam : 'TBD')
                         : (typeof userGame.homeTeam === 'string' ? userGame.homeTeam : 'TBD');
                     
@@ -666,6 +666,34 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     year += 1;
                     toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
                     
+                    // New season budget calculations
+                    tempTeams = tempTeams.map(team => {
+                        const numberOfHomeGames = 13;
+                        const numberOfAwayGames = 13;
+                        const travelCostPerGame = 200;
+
+                        const iceTimeCost = numberOfHomeGames * team.financials.iceTimeCostPerGame;
+                        const travelCost = numberOfAwayGames * travelCostPerGame;
+                        const equipmentCost = team.financials.equipmentCost;
+                        const fixedCosts = iceTimeCost + travelCost + equipmentCost;
+                        
+                        const discretionaryBudget = team.financials.totalBudget - fixedCosts;
+
+                        if (team.name === userTeam?.name) {
+                            toast.info("New Season Budget Calculated", {
+                                description: `Fixed costs of £${fixedCosts.toLocaleString()} deducted. You have £${discretionaryBudget.toLocaleString()} available for upgrades.`,
+                            });
+                        }
+
+                        return {
+                            ...team,
+                            financials: {
+                                ...team.financials,
+                                discretionaryBudget: discretionaryBudget,
+                            }
+                        };
+                    });
+
                     const seasonString = `${prevDate.year}-${prevDate.year + 1}`;
                     const leagueDivisions = [...new Set(tempTeams.map(t => t.leagueDivision))];
                     const newAchievements: { teamName: string, achievement: Achievement }[] = [];
@@ -1223,19 +1251,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const runStudentLifeInitiative = () => {
         if (!userTeam) return;
         const cost = 500;
-        const budgetCategory = "Student Life";
-        const currentBudget = userTeam.financials.budgetAllocations[budgetCategory];
+        const currentBudget = userTeam.financials.discretionaryBudget;
 
         if (currentBudget < cost) {
-            toast.error("Insufficient Student Life Budget", {
+            toast.error("Insufficient Discretionary Budget", {
                 description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
             });
             return;
         }
 
-        const newBudgetAllocations = {
-            ...userTeam.financials.budgetAllocations,
-            [budgetCategory]: currentBudget - cost,
+        const newFinancials = {
+            ...userTeam.financials,
+            discretionaryBudget: Math.round(currentBudget - cost),
         };
         
         const newRoster = userTeam.roster.map(player => ({
@@ -1243,7 +1270,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             morale: updateMorale(player.morale, 1)
         }));
 
-        updateTeam({ ...userTeam, roster: newRoster, financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations } });
+        updateTeam({ ...userTeam, roster: newRoster, financials: newFinancials });
         toast.success("Student Life Initiative Successful!", {
             description: `Cost: £${cost.toLocaleString()}.`,
         });
@@ -1296,22 +1323,29 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const playerToRecruit = scoutingPool.find(p => p.id === playerId);
         if (!playerToRecruit) return;
 
-        const cost = playerToRecruit.recruitmentCost || 0;
-        const currentBudget = userTeam.financials.budgetAllocations.Recruiting;
+        const cost = playerToRecruit.recruitmentCost || 500; // Default cost if not specified
+        const currentBudget = userTeam.financials.discretionaryBudget;
 
         if (currentBudget < cost) {
-            toast.error("Insufficient Recruiting Budget", {
-                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+            toast.error("Insufficient Discretionary Budget", {
+                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available for recruitment.`,
             });
             return;
         }
 
-        const newBudgetAllocations = {
-            ...userTeam.financials.budgetAllocations,
-            Recruiting: Math.round(currentBudget - cost),
+        const newFinancials = {
+            ...userTeam.financials,
+            discretionaryBudget: Math.round(currentBudget - cost),
         };
         
-        updateBudgetAllocations(newBudgetAllocations);
+        updateTeam({ ...userTeam, financials: newFinancials });
+        toast.success("Player Recruited", {
+            description: `${playerToRecruit.name} has been recruited for £${cost.toLocaleString()}. They are now in your recruited pool.`
+        });
+
+        // Move from scouting to recruited pool
+        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        setRecruitedPool(prev => [...prev, playerToRecruit]);
     };
 
     const assignPlayerToRoster = (playerId: string) => {
@@ -1342,35 +1376,28 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         toast.info("Recruit Discarded", { description: "The player has been removed from your recruited pool." });
     };
 
-    const updateBudgetAllocations = (newAllocations: BudgetAllocations) => {
-        if (!userTeam) return;
-        updateTeam({ ...userTeam, financials: { ...userTeam.financials, budgetAllocations: newAllocations } });
-    };
-
     const startFacilityProject = (projectId: string) => {
         if (!userTeam) return;
         const project = userTeam.facilities.find(f => f.id === projectId);
         if (!project) return;
 
         const cost = project.cost;
-        const budgetCategory = "Facilities";
-        const currentBudget = userTeam.financials.budgetAllocations[budgetCategory];
+        const currentBudget = userTeam.financials.discretionaryBudget;
 
         if (currentBudget < cost) {
-            toast.error("Insufficient Facilities Budget", {
+            toast.error("Insufficient Discretionary Budget", {
                 description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
             });
             return;
         }
 
-        const newBudgetAllocations = {
-            ...userTeam.financials.budgetAllocations,
-            [budgetCategory]: currentBudget - cost,
+        const newFinancials = {
+            ...userTeam.financials,
+            discretionaryBudget: currentBudget - cost,
         };
 
         const updatedFacilities = userTeam.facilities.map((f: FacilityProject) => {
             if (f.id === projectId) {
-                // Explicitly cast to FacilityProject to ensure literal type for status
                 const updatedProject: FacilityProject = {
                     ...f,
                     status: 'In Progress',
@@ -1381,8 +1408,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return f;
         });
 
-        updateTeam({ ...userTeam, facilities: updatedFacilities, financials: { ...userTeam.financials, budgetAllocations: newBudgetAllocations } });
-        toast.success("Facility Project Started", {
+        updateTeam({ ...userTeam, facilities: updatedFacilities, financials: newFinancials });
+        toast.success("Upgrade Project Started", {
             description: `${project.name} is now under construction!`,
         });
     };
@@ -1391,7 +1418,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         <TeamContext.Provider value={{
             teams, updateTeam, userTeam, organizationFinancials, organizationFacilities,
             selectTeam, scoutingPool, recruitedPool, fairHosted, generateScoutingPool,
-            recruitPlayer, assignPlayerToRoster, discardRecruit, updateBudgetAllocations,
+            recruitPlayer, assignPlayerToRoster, discardRecruit,
             runStudentLifeInitiative, startFacilityProject, currentDate, advanceWeek,
             developmentHistory, updatePlayerTrainingFocus, autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
             managedOrganization, isManagingOrg, managedTeams, selectOrganization, setActiveTeam,

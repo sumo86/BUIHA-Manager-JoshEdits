@@ -12,14 +12,14 @@ const qualityOrder: (Player['estimatedQuality'])[] = ['Beginner', 'Moderate', 'I
 
 const Recruitment = () => {
   const { userTeam, scoutingPool, recruitedPool, transferPool } = useTeam();
-  const recruitingBudget = userTeam.financials.budgetAllocations.Recruiting;
+  const recruitingBudget = userTeam?.financials.discretionaryBudget; // Updated to use discretionaryBudget
 
   // Filter state
   const [qualityFilter, setQualityFilter] = useState('All');
   const [positionFilter, setPositionFilter] = useState('All');
   const [sourceFilter, setSourceFilter] = useState('All');
 
-  if (scoutingPool.length === 0 && recruitedPool.length === 0 && transferPool.length === 0) {
+  if (!userTeam || (scoutingPool.length === 0 && recruitedPool.length === 0 && transferPool.length === 0)) {
     return (
       <div>
         <h1 className="text-3xl font-bold mb-4">Recruitment</h1>
@@ -69,7 +69,7 @@ const Recruitment = () => {
             <CardTitle className="text-sm font-medium">Recruiting Budget</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{recruitingBudget.toLocaleString()}</div>
+            <div className="text-2xl font-bold">£{recruitingBudget?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
       </div>
