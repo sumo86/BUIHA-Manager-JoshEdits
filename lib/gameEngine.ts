@@ -3,6 +3,7 @@ import { tactics } from '@/data/tactics';
 import { roles, Role } from '@/data/roles';
 import { calculateTacticSuitability } from '@/lib/tactics';
 import { aiMakeAdjustments } from '@/lib/aiManager';
+import { populateLineup } from '@/lib/lineupUtils';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -50,11 +51,14 @@ const getInstructionModifiers = (player: Player) => {
         penaltyChance: 1.0,
     };
 
-    if (!player.activeInstructions || player.activeInstructions.length === 0) {
+    // Ensure activeInstructions is an array, even if it's undefined or null
+    const activeInstructions = player.activeInstructions || [];
+
+    if (activeInstructions.length === 0) {
         return modifiers;
     }
 
-    for (const instruction of player.activeInstructions) {
+    for (const instruction of activeInstructions) {
         switch (instruction.type) {
             case 'Encourage':
                 modifiers.morale += 0.02;
@@ -196,7 +200,7 @@ const determineFaceoffWinner = (teamA: Team, teamB: Team): string => {
 };
 
 const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): { event: GameEvent | null, possessionChange: boolean, shotOnGoal: boolean } => {
-    if (Math.random() > 0.25) return { event: null, possessionChange: false, shotOnGoal: false }; // Increased event frequency for more shots
+    if (Math.random() > 0.15) return { event: null, possessionChange: false, shotOnGoal: false }; // Increased event frequency
 
     const eventTime = formatTime(gameState.time);
     let possessionChange = false;
@@ -234,12 +238,8 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
     
-    const baseProb = 0.12 * divisionGoalFactor; // Increased base probability of a shot
+    const baseProb = 0.1 * divisionGoalFactor;
     let goalProbability = baseProb * (1 + offenseFactor * 1.5 - (defenseFactor * 0.5));
-    
-    if (isBigGame) { // Lower scoring for important games like nationals
-        goalProbability *= 0.8;
-    }
     
     if (eventType < goalProbability) {
         possessionChange = true; // Stoppage of play
@@ -247,7 +247,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const avgScreening = attackingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).screening, 0) / attackingSkaters.length;
         defendingGoalieAbility *= (1 - ((avgScreening - 10) / 150));
         const goalieFactor = (defendingGoalieAbility - 10) / 10;
-        const shotSuccessProb = Math.max(0.05, Math.min(0.95, 0.4 - (goalieFactor * 0.4))); // Reduced goal success rate to increase saves
+        const shotSuccessProb = Math.max(0.05, Math.min(0.95, 0.5 - (goalieFactor * 0.5)));
         
         if (Math.random() < shotSuccessProb) {
             const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4) * getRoleModifiers(p).shootTendency);
@@ -285,10 +285,21 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
             possessionChange = true;
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} turns over the puck.` }, possessionChange, shotOnGoal: false };
         }
-    } else if (eventType > 0.95) { // Reduced penalty frequency slightly
+    } else if (eventType > 0.92) {
         possessionChange = true; // Stoppage of play
         const penaltyTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
+        
+        // Ensure roster is not empty before trying to select a player for a penalty
+        if (penaltyTeam.roster.length === 0) {
+            return { event: null, possessionChange: false, shotOnGoal: false }; 
+        }
         const player = penaltyTeam.roster[Math.floor(Math.random() * penaltyTeam.roster.length)];
+        
+        // Defensive check, though the above check should prevent player from being undefined
+        if (!player) {
+            return { event: null, possessionChange: false, shotOnGoal: false };
+        }
+
         const instructionMods = getInstructionModifiers(player);
         const roleMods = getRoleModifiers(player);
         const aggression = (player.attributes as SkaterAttributes).aggression || 10;
@@ -364,7 +375,12 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
             const defender = defendingTeam.roster.find(p => p.name === defenderName);
             if (defender && defender.healthStatus === 'Healthy') {
                 const injuryProneness = (defender.attributes as SkaterAttributes).injuryProneness || 10;
-                if (Math.random() < 0.01 + (injuryProneness / 2000)) {
+                let injuryChance = 0.01 + (injuryProneness / 2000);
+                const hasNutritionPlan = defendingTeam.facilities.some(f => f.id === 'nutrition_plan_1' && f.status === 'Completed');
+                if (hasNutritionPlan) {
+                    injuryChance *= 0.8; // 20% reduction
+                }
+                if (Math.random() < injuryChance) {
                     const injuryRoll = Math.random();
                     let injuryType: string, duration: number;
                     if (injuryRoll < 0.6) { injuryType = getRandomItem(["Bruised Ribs", "Minor Strain"]); duration = getRandomValueInRange(1, 3); } 
@@ -411,6 +427,10 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
 
     let currentHomeTeam = JSON.parse(JSON.stringify(homeTeam));
     let currentAwayTeam = JSON.parse(JSON.stringify(awayTeam));
+
+    // Ensure lineups are populated
+    currentHomeTeam.lineup = populateLineup(currentHomeTeam.roster);
+    currentAwayTeam.lineup = populateLineup(currentAwayTeam.roster);
 
     for (let p = 1; p <= 3; p++) {
         gameState.period = p;
