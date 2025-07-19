@@ -890,7 +890,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const advanceWeek = () => {
-        if (userTeam) {
+        // Lineup check for game weeks
+        if (gameForCurrentWeek && userTeam) {
             const validationError = validateLineup(userTeam);
             if (validationError) {
                 toast.error("Cannot Advance Week: Invalid Lineup", {
@@ -1125,254 +1126,277 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return { ...team, roster: newRoster, facilities: newFacilities };
         });
 
-        const newDate = ((prevDate) => {
-            let { month, week, year } = prevDate;
-            const monthIndex = months.indexOf(month);
-            
-            week += 1; 
+        let newDate;
+        try {
+            newDate = ((prevDate) => {
+                let { month, week, year } = prevDate;
+                const monthIndex = months.indexOf(month);
+                
+                week += 1; 
 
-            if (week > 4) { 
-                week = 1;
-                let nextMonthIndex = (monthIndex + 1) % months.length;
-                if (month === "July" && months[nextMonthIndex] === "August") {
-                    year += 1;
-                    toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
-                    
-                    const seasonToArchive = `${prevDate.year}-${prevDate.year + 1}`;
-                    const newSeason = `${year}-${year + 1}`;
-                    const standingsForYear: TeamSeasonHistory[] = tempTeams.map(t => ({
-                        teamName: t.name,
-                        leagueDivision: t.leagueDivision,
-                        nationalsDivision: t.nationalsDivision,
-                        wins: t.wins,
-                        losses: t.losses,
-                        draws: t.draws,
-                        points: t.points,
-                        goalsFor: t.goalsFor,
-                        goalsAgainst: t.goalsAgainst,
-                    }));
-                    setSeasonHistory(prev => ({ ...prev, [seasonToArchive]: standingsForYear }));
+                if (week > 4) { 
+                    week = 1;
+                    let nextMonthIndex = (monthIndex + 1) % months.length;
+                    if (month === "July" && months[nextMonthIndex] === "August") {
+                        year += 1;
+                        toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
+                        
+                        const seasonToArchive = `${prevDate.year}-${prevDate.year + 1}`;
+                        const newSeason = `${year}-${year + 1}`;
+                        const standingsForYear: TeamSeasonHistory[] = tempTeams.map(t => ({
+                            teamName: t.name,
+                            leagueDivision: t.leagueDivision,
+                            nationalsDivision: t.nationalsDivision,
+                            wins: t.wins,
+                            losses: t.losses,
+                            draws: t.draws,
+                            points: t.points,
+                            goalsFor: t.goalsFor,
+                            goalsAgainst: t.goalsAgainst,
+                        }));
+                        setSeasonHistory(prev => ({ ...prev, [seasonToArchive]: standingsForYear }));
 
-                    // Update all-time season records with the bests from the just-concluded season
-                    tempSeasonRecords = compareAndSetSeasonRecords(tempCurrentSeasonStatsAccumulator, tempSeasonRecords);
-                    
-                    // Reset current season accumulator for the new season
-                    tempCurrentSeasonStatsAccumulator = {}; 
-                    
-                    const newAlumni: Player[] = [];
-                    const allTransferPlayers: Player[] = [];
-                    const allOrganizations = getTeamOrganizations(); // Get the base organization structure
+                        // Update all-time season records with the bests from the just-concluded season
+                        tempSeasonRecords = compareAndSetSeasonRecords(tempCurrentSeasonStatsAccumulator, tempSeasonRecords);
+                        
+                        // Reset current season accumulator for the new season
+                        tempCurrentSeasonStatsAccumulator = {}; 
+                        
+                        const newAlumni: Player[] = [];
+                        const allTransferPlayers: Player[] = [];
+                        const allOrganizations = getTeamOrganizations(); // Get the base organization structure
 
-                    tempTeams = tempTeams.map(team => {
-                        const graduatingPlayers: Player[] = [];
-                        const remainingPlayers = team.roster.filter(player => {
-                            // Age the player first
-                            player.age += 1;
+                        tempTeams = tempTeams.map(team => {
+                            const graduatingPlayers: Player[] = [];
+                            const remainingPlayers = team.roster.filter(player => {
+                                // Age the player first
+                                player.age += 1;
 
-                            // Archive stats for everyone at the end of the season
-                            if (player.currentStats.length > 0) {
-                                player.history.push(...player.currentStats);
-                                player.currentStats = [];
-                            }
-
-                            // Handle Masters/PhD players
-                            if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
-                                player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
-                                if (player.yearsLeftInProgram <= 0) {
-                                    graduatingPlayers.push(player);
-                                    return false; // Player leaves
+                                // Archive stats for everyone at the end of the season
+                                if (player.currentStats.length > 0) {
+                                    player.history.push(...player.currentStats);
+                                    player.currentStats = [];
                                 }
-                                return true; // Player stays for another year
-                            }
 
-                            // Handle Staff players (retirement logic)
-                            if (player.eligibility === 'Staff') {
-                                if (player.age >= STAFF_RETIREMENT_MIN_AGE) {
-                                    let retirementChance = (player.age - STAFF_RETIREMENT_MIN_AGE + 1) * STAFF_RETIREMENT_CHANCE_PER_YEAR_INCREASE;
-                                    retirementChance = Math.min(retirementChance, 1.0); // Cap at 100%
-
-                                    if (Math.random() < retirementChance) {
-                                        player.alumniStatus = 'Retired';
+                                // Handle Masters/PhD players
+                                if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
+                                    player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
+                                    if (player.yearsLeftInProgram <= 0) {
                                         graduatingPlayers.push(player);
-                                        return false; // Staff player retires
+                                        return false; // Player leaves
+                                    }
+                                    return true; // Player stays for another year
+                                }
+
+                                // Handle Staff players (retirement logic)
+                                if (player.eligibility === 'Staff') {
+                                    if (player.age >= STAFF_RETIREMENT_MIN_AGE) {
+                                        let retirementChance = (player.age - STAFF_RETIREMENT_MIN_AGE + 1) * STAFF_RETIREMENT_CHANCE_PER_YEAR_INCREASE;
+                                        retirementChance = Math.min(retirementChance, 1.0); // Cap at 100%
+
+                                        if (Math.random() < retirementChance) {
+                                            player.alumniStatus = 'Retired';
+                                            graduatingPlayers.push(player);
+                                            return false; // Staff player retires
+                                        }
+                                    }
+                                    return true; // Staff player stays
+                                }
+
+                                // Handle Undergraduate players
+                                if (player.eligibility.startsWith('UG Year')) {
+                                    const currentYear = parseInt(player.eligibility.replace('UG Year ', ''), 10);
+                                    if (currentYear < 4) {
+                                        player.eligibility = `UG Year ${currentYear + 1}` as Player['eligibility'];
+                                        return true; // UG player advances
+                                    } else { // UG Year 4
+                                        graduatingPlayers.push(player);
+                                        return false; // UG Year 4 graduates
                                     }
                                 }
-                                return true; // Staff player stays
-                            }
 
-                            // Handle Undergraduate players
-                            if (player.eligibility.startsWith('UG Year')) {
-                                const currentYear = parseInt(player.eligibility.replace('UG Year ', ''), 10);
-                                if (currentYear < 4) {
-                                    player.eligibility = `UG Year ${currentYear + 1}` as Player['eligibility'];
-                                    return true; // UG player advances
-                                } else { // UG Year 4
-                                    graduatingPlayers.push(player);
-                                    return false; // UG Year 4 graduates
-                                }
-                            }
+                                // Fallback for any other unexpected eligibility (shouldn't happen if types are exhaustive)
+                                return true;
+                            });
 
-                            // Fallback for any other unexpected eligibility (shouldn't happen if types are exhaustive)
-                            return true;
-                        });
+                            // Create new season stat lines for players who are staying
+                            remainingPlayers.forEach(player => {
+                                player.currentStats = [{
+                                    season: newSeason,
+                                    team: team.name,
+                                    league: team.leagueDivision,
+                                    gamesPlayed: 0,
+                                    goals: 0,
+                                    assists: 0,
+                                    points: 0,
+                                    penaltyMinutes: 0,
+                                    captaincy: null,
+                                    goalsAgainst: 0,
+                                    shotsAgainst: 0,
+                                    saves: 0,
+                                    goalsAgainstAverage: 0,
+                                    savePercentage: 0,
+                                    shutouts: 0,
+                                }];
+                            });
 
-                        // Create new season stat lines for players who are staying
-                        remainingPlayers.forEach(player => {
-                            player.currentStats = [{
-                                season: newSeason,
-                                team: team.name,
-                                league: team.leagueDivision,
-                                gamesPlayed: 0,
-                                goals: 0,
-                                assists: 0,
-                                points: 0,
-                                penaltyMinutes: 0,
-                                captaincy: null,
-                                goalsAgainst: 0,
-                                shotsAgainst: 0,
-                                saves: 0,
-                                goalsAgainstAverage: 0,
-                                savePercentage: 0,
-                                shutouts: 0,
-                            }];
-                        });
+                            graduatingPlayers.forEach(player => {
+                                const isManaged = managedTeamNames.includes(team.name);
+                                const ambition = player.attributes.ambition || 10;
+                                const loyalty = player.attributes.loyalty || 10;
+                                const roll = Math.random();
+                                const continueChance = 0.15 + (loyalty - 10) / 100;
+                                const transferChance = 0.40 + (ambition - 10) / 100;
 
-                        graduatingPlayers.forEach(player => {
-                            const isManaged = managedTeamNames.includes(team.name);
-                            const ambition = player.attributes.ambition || 10;
-                            const loyalty = player.attributes.loyalty || 10;
-                            const roll = Math.random();
-                            const continueChance = 0.15 + (loyalty - 10) / 100;
-                            const transferChance = 0.40 + (ambition - 10) / 100;
+                                if (player.alumniStatus === 'Retired') { // Already marked as retired by staff logic
+                                    newAlumni.push(player);
+                                    if (isManaged) {
+                                        // No toast for staff retirement as per user request
+                                    }
+                                } else if (roll < continueChance) {
+                                    player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
+                                    player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
+                                    player.isContinuingEducation = true;
+                                    remainingPlayers.push(player);
+                                    if (isManaged) {
+                                        toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
+                                    }
+                                } else if (roll < continueChance + transferChance) {
+                                    // Player becomes a transfer prospect
+                                    player.alumniStatus = 'Active Elsewhere'; // Mark as active elsewhere
+                                    newAlumni.push(player); // Add to alumni list
 
-                            if (player.alumniStatus === 'Retired') { // Already marked as retired by staff logic
-                                newAlumni.push(player);
-                                if (isManaged) {
-                                    // No toast for staff retirement as per user request
-                                }
-                            } else if (roll < continueChance) {
-                                player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
-                                player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
-                                player.isContinuingEducation = true;
-                                remainingPlayers.push(player);
-                                if (isManaged) {
-                                    toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
-                                }
-                            } else if (roll < continueChance + transferChance) {
-                                // Player becomes a transfer prospect
-                                player.alumniStatus = 'Active Elsewhere'; // Mark as active elsewhere
-                                newAlumni.push(player); // Add to alumni list
-
-                                const transferProspect: Player = {
-                                    ...player, // Use the original player as base
-                                    source: 'Transfer',
-                                    jerseyNumber: 0, // Reset jersey number for transfer
-                                    morale: 'Content', // Reset morale for transfer
-                                    eligibility: 'Masters', // Default eligibility for transfers
-                                    yearsLeftInProgram: 2, // Default years for transfers
-                                    recruitmentCost: 0, // Free for user, cost for AI is based on quality
-                                    captaincy: null, // Reset captaincy
-                                    currentStats: [], // Clear current stats for new season
-                                    isContinuingEducation: false, // Not continuing education
-                                };
-                                allTransferPlayers.push(transferProspect);
-                                if (isManaged) {
-                                    toast.info(`${player.name} has graduated and is seeking opportunities at other universities.`);
-                                }
-                            } else {
-                                player.alumniStatus = 'Retired';
-                                newAlumni.push(player);
-                                if (isManaged) {
-                                    toast.info(`${player.name} has retired from university hockey.`);
-                                }
-                            }
-                        });
-
-                        team.roster = remainingPlayers;
-
-                        // --- NEW BUDGET LOGIC START ---
-                        const currentSpentFunds = Object.values(team.financials.budgetAllocations).reduce((sum, val) => sum + val, 0);
-                        const unspentFunds = team.financials.totalBudget - currentSpentFunds;
-
-                        const orgName = getOrganizationName(team.name);
-                        const organization = allOrganizations.find(org => org.name === orgName);
-
-                        let newBaseBudget = 15000; // Default for single-team orgs
-                        if (organization && organization.teams.length > 1) {
-                            // Replicate the multi-team organization budget calculation
-                            const orgTotalBudget = 10000 + (organization.teams.length * 7500);
-                            newBaseBudget = orgTotalBudget / organization.teams.length;
-                        }
-
-                        const newTotalBudget = newBaseBudget + unspentFunds;
-                        const resetAllocations = { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 };
-                        // --- NEW BUDGET LOGIC END ---
-
-                        return {
-                            ...team,
-                            roster: team.roster, // Already updated above
-                            financials: {
-                                ...team.financials,
-                                totalBudget: newTotalBudget,
-                                budgetAllocations: resetAllocations,
-                            },
-                            wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 // existing reset
-                        };
-                    });
-
-                    setTransferPool([]);
-                    setScoutingPool([]);
-                    setRecruitedPool([]);
-                    setFairHosted(false);
-
-                    if (allTransferPlayers.length > 0) {
-                        for (let i = allTransferPlayers.length - 1; i > 0; i--) {
-                            const j = Math.floor(Math.random() * (i + 1));
-                            [allTransferPlayers[i], allTransferPlayers[j]] = [allTransferPlayers[j], allTransferPlayers[i]];
-                        }
-
-                        const maxUserTransfers = 3;
-                        const userPlayerCount = Math.min(maxUserTransfers, allTransferPlayers.length);
-
-                        const userTransfers = allTransferPlayers.slice(0, userPlayerCount);
-                        const aiTransfers = allTransferPlayers.slice(userPlayerCount);
-                        const aiTeams = tempTeams.filter(t => !managedTeamNames.includes(t.name));
-
-                        if (aiTransfers.length > 0 && aiTeams.length > 0) {
-                            aiTransfers.forEach((player) => {
-                                const targetTeam = getRandomItem(aiTeams);
-                                const teamToUpdateIndex = tempTeams.findIndex(t => t.name === targetTeam.name);
-                                if (teamToUpdateIndex !== -1) {
-                                    const teamToUpdate = tempTeams[teamToUpdateIndex];
-                                    const usedJerseyNumbers = new Set(teamToUpdate.roster.map(p => p.jerseyNumber));
-                                    
-                                    let newJerseyNumber = 1;
-                                    while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
-                                    player.jerseyNumber = newJerseyNumber;
-                                    
-                                    const isSkater = player.positions[0] !== 'G';
-                                    player.starRating = calculateStarRating(player.currentAbility, isSkater, teamToUpdate.leagueDivision);
-                                    
-                                    tempTeams[teamToUpdateIndex].roster.push(player);
+                                    const transferProspect: Player = {
+                                        ...player, // Use the original player as base
+                                        source: 'Transfer',
+                                        jerseyNumber: 0, // Reset jersey number for transfer
+                                        morale: 'Content', // Reset morale for transfer
+                                        eligibility: 'Masters', // Default eligibility for transfers
+                                        yearsLeftInProgram: 2, // Default years for transfers
+                                        recruitmentCost: 0, // Free for user, cost for AI is based on quality
+                                        captaincy: null, // Reset captaincy
+                                        currentStats: [], // Clear current stats for new season
+                                        isContinuingEducation: false, // Not continuing education
+                                    };
+                                    allTransferPlayers.push(transferProspect);
+                                    if (isManaged) {
+                                        toast.info(`${player.name} has graduated and is seeking opportunities at other universities.`);
+                                    }
+                                } else {
+                                    player.alumniStatus = 'Retired';
+                                    newAlumni.push(player);
+                                    if (isManaged) {
+                                        toast.info(`${player.name} has retired from university hockey.`);
+                                    }
                                 }
                             });
-                            toast.info("AI teams have recruited new players for the upcoming season.");
-                        }
-                        
-                        if (userTransfers.length > 0) {
-                            setTransferPool(userTransfers);
-                            toast.info("Exclusive Transfer Offers", { description: `Your program's prestige has attracted ${userTransfers.length} transfer players. Find them in the Transfer Portal tab.` });
-                        }
-                    }
 
-                    if (newAlumni.length > 0) {
-                        setAlumni(prev => [...prev, ...newAlumni]);
+                            team.roster = remainingPlayers;
+
+                            // --- NEW BUDGET LOGIC START ---
+                            const currentSpentFunds = Object.values(team.financials.budgetAllocations).reduce((sum, val) => sum + val, 0);
+                            const unspentFunds = team.financials.totalBudget - currentSpentFunds;
+
+                            const orgName = getOrganizationName(team.name);
+                            const organization = allOrganizations.find(org => org.name === orgName);
+
+                            let newBaseBudget = 15000; // Default for single-team orgs
+                            if (organization && organization.teams.length > 1) {
+                                // Replicate the multi-team organization budget calculation
+                                const orgTotalBudget = 10000 + (organization.teams.length * 7500);
+                                newBaseBudget = orgTotalBudget / organization.teams.length;
+                            }
+
+                            const newTotalBudget = newBaseBudget + unspentFunds;
+                            const resetAllocations = { Travel: 0, Equipment: 0, "Ice Time": 0, Recruiting: 0, "Student Life": 0, Facilities: 0 };
+                            // --- NEW BUDGET LOGIC END ---
+
+                            return {
+                                ...team,
+                                roster: team.roster, // Already updated above
+                                financials: {
+                                    ...team.financials,
+                                    totalBudget: newTotalBudget,
+                                    budgetAllocations: resetAllocations,
+                                },
+                                wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0 // existing reset
+                            };
+                        });
+
+                        // Post-graduation lineup check
+                        const updatedUserTeamForValidation = tempTeams.find(t => t.name === activeTeamName);
+                        if (updatedUserTeamForValidation) {
+                            const validationError = validateLineup(updatedUserTeamForValidation);
+                            if (validationError) {
+                                throw new Error(`VALIDATION_ERROR:${validationError}`);
+                            }
+                        }
+
+                        setTransferPool([]);
+                        setScoutingPool([]);
+                        setRecruitedPool([]);
+                        setFairHosted(false);
+
+                        if (allTransferPlayers.length > 0) {
+                            for (let i = allTransferPlayers.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [allTransferPlayers[i], allTransferPlayers[j]] = [allTransferPlayers[j], allTransferPlayers[i]];
+                            }
+
+                            const maxUserTransfers = 3;
+                            const userPlayerCount = Math.min(maxUserTransfers, allTransferPlayers.length);
+
+                            const userTransfers = allTransferPlayers.slice(0, userPlayerCount);
+                            const aiTransfers = allTransferPlayers.slice(userPlayerCount);
+                            const aiTeams = tempTeams.filter(t => !managedTeamNames.includes(t.name));
+
+                            if (aiTransfers.length > 0 && aiTeams.length > 0) {
+                                aiTransfers.forEach((player) => {
+                                    const targetTeam = getRandomItem(aiTeams);
+                                    const teamToUpdateIndex = tempTeams.findIndex(t => t.name === targetTeam.name);
+                                    if (teamToUpdateIndex !== -1) {
+                                        const teamToUpdate = tempTeams[teamToUpdateIndex];
+                                        const usedJerseyNumbers = new Set(teamToUpdate.roster.map(p => p.jerseyNumber));
+                                        
+                                        let newJerseyNumber = 1;
+                                        while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
+                                        player.jerseyNumber = newJerseyNumber;
+                                        
+                                        const isSkater = player.positions[0] !== 'G';
+                                        player.starRating = calculateStarRating(player.currentAbility, isSkater, teamToUpdate.leagueDivision);
+                                        
+                                        tempTeams[teamToUpdateIndex].roster.push(player);
+                                    }
+                                });
+                                toast.info("AI teams have recruited new players for the upcoming season.");
+                            }
+                            
+                            if (userTransfers.length > 0) {
+                                setTransferPool(userTransfers);
+                                toast.info("Exclusive Transfer Offers", { description: `Your program's prestige has attracted ${userTransfers.length} transfer players. Find them in the Transfer Portal tab.` });
+                            }
+                        }
+
+                        if (newAlumni.length > 0) {
+                            setAlumni(prev => [...prev, ...newAlumni]);
+                        }
                     }
+                    month = months[nextMonthIndex];
                 }
-                month = months[nextMonthIndex];
+                return { month, week, year };
+            })(currentDate);
+        } catch (e) {
+            if (e instanceof Error && e.message.startsWith('VALIDATION_ERROR:')) {
+                const errorMessage = e.message.replace('VALIDATION_ERROR:', '');
+                toast.error("Invalid Lineup for New Season", {
+                    description: `Your lineup is invalid after player graduation: ${errorMessage}. Please fix your lineup before advancing.`
+                });
+                return; // Abort the function
+            } else {
+                // Re-throw other errors
+                throw e;
             }
-            return { month, week, year };
-        })(currentDate);
+        }
 
         if (newDevelopmentLogs.length > 0) setDevelopmentHistory(prev => [...newDevelopmentLogs, ...prev].slice(0, 200));
         if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
