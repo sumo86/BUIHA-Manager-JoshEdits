@@ -5,6 +5,7 @@ export const getAggregatedCurrentStats = (player: Player): PlayerSeasonStats => 
     return {
       season: '', team: '', league: '', gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0,
       goalsAgainst: 0, shotsAgainst: 0, saves: 0, goalsAgainstAverage: 0, savePercentage: 0, shutouts: 0,
+      captaincy: player.captaincy, // Include captaincy here
     };
   }
 
@@ -34,6 +35,7 @@ export const getAggregatedCurrentStats = (player: Player): PlayerSeasonStats => 
     league: player.currentStats[0].league,
     goalsAgainstAverage: gaa,
     savePercentage: svp,
+    captaincy: player.captaincy, // Include captaincy here
   };
 };
 
@@ -44,6 +46,7 @@ export const getDivisionAggregatedStats = (player: Player, division: string): Pl
     return {
       season: '', team: '', league: division, gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0,
       goalsAgainst: 0, shotsAgainst: 0, saves: 0, goalsAgainstAverage: 0, savePercentage: 0, shutouts: 0,
+      captaincy: player.captaincy, // Include captaincy here
     };
   }
 
@@ -73,5 +76,6 @@ export const getDivisionAggregatedStats = (player: Player, division: string): Pl
     league: division,
     goalsAgainstAverage: gaa,
     savePercentage: svp,
+    captaincy: player.captaincy, // Include captaincy here
   };
 };

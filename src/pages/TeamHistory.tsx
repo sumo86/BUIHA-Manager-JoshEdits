@@ -63,7 +63,16 @@ const TeamHistoryPage = () => {
     return calculateRecords(playersToDisplay, schedule);
   }, [playersToDisplay, schedule]);
 
-  const seasons = useMemo(() => Object.keys(seasonHistory), [seasonHistory]);
+  // Collect all unique seasons from all players' history
+  const allPlayerSeasons = useMemo(() => {
+    const seasonsSet = new Set<string>();
+    allPlayersInOrg.forEach(player => {
+      player.history.forEach(stat => {
+        seasonsSet.add(stat.season);
+      });
+    });
+    return Array.from(seasonsSet);
+  }, [allPlayersInOrg]);
 
   if (!userTeam) {
     return <div>Select a team to see its history.</div>;
@@ -105,7 +114,7 @@ const TeamHistoryPage = () => {
           <CareerStatsTable players={playersToDisplay} />
         </TabsContent>
         <TabsContent value="seasonal-stats" className="mt-4">
-          <SeasonalStatsTable players={allPlayersInOrg} seasons={seasons} />
+          <SeasonalStatsTable players={allPlayersInOrg} seasons={allPlayerSeasons} />
         </TabsContent>
       </Tabs>
     </div>

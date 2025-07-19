@@ -293,7 +293,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         if (Math.random() < (avgBravery - 5) / 100) {
             const blocker = selectPlayerWeighted(defendingSkaters, p => ((p.attributes as SkaterAttributes).shotBlocking + (p.attributes as SkaterAttributes).bravery) * getRoleModifiers(p).shotBlockTendency);
             if (!blocker) return { event: null, possessionChange: false, shotOnGoal: false };
-            return { event: { time: eventTime, period: defendingTeam.name, description: `Shot blocked by ${blocker.name}!` }, possessionChange: false, shotOnGoal: false };
+            return { event: { time: eventTime, period: gameState.period, team: defendingTeam.name, description: `Shot blocked by ${blocker.name}!` }, possessionChange: false, shotOnGoal: false };
         }
     } else if (eventType < 0.65) { // Neutral zone / puck movement events
         const player1 = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).puckhandling);
@@ -347,7 +347,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
         if (!attacker || !defender) return { event: null, possessionChange: false, shotOnGoal: false };
         const hitDescriptions = [`${attacker.name} lays a big hit on ${defender.name}.`, `${attacker.name} delivers a crushing check to ${defender.name}.`, `${defender.name} is rocked by a huge hit from ${attacker.name}.`, `${attacker.name} finishes his check on ${defender.name} with authority.`, `${defender.name} gets stood up at the blue line by ${attacker.name}.`];
-        return { event: { time: eventTime, period: attackingTeam.name, description: getRandomItem(hitDescriptions) }, possessionChange: false, shotOnGoal: false };
+        return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: getRandomItem(hitDescriptions) }, possessionChange: false, shotOnGoal: false };
     }
     return { event: null, possessionChange: false, shotOnGoal: false };
 };
