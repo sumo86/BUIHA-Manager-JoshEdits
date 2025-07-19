@@ -8,7 +8,7 @@ export const initialFacilityProjects: FacilityProject[] = [
     description: 'A small kiosk selling basic team apparel. Generates a small weekly income.',
     cost: 2500,
     status: 'Not Started',
-    benefit: '+£100 weekly income.',
+    benefit: '+£50 weekly income.',
     category: 'Financial',
   },
   {
@@ -17,7 +17,7 @@ export const initialFacilityProjects: FacilityProject[] = [
     description: 'Sell advertising space on the rink dasherboards to local businesses.',
     cost: 1000,
     status: 'Not Started',
-    benefit: '+£150 weekly income.',
+    benefit: '+£25 weekly income.',
     category: 'Financial',
   },
   {
@@ -26,7 +26,7 @@ export const initialFacilityProjects: FacilityProject[] = [
     description: 'Hire an intern to boost social media, increasing ticket and merch sales.',
     cost: 1500,
     status: 'Not Started',
-    benefit: '+£200 weekly income.',
+    benefit: '+£75 weekly income.',
     category: 'Financial',
   },
 

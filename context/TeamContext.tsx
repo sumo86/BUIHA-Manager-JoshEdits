@@ -352,7 +352,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 if (userGame) {
                     const opponentName = (typeof userGame.homeTeam === 'string' && userTeam.name === userGame.homeTeam)
                         ? (typeof userGame.awayTeam === 'string' ? userGame.awayTeam : 'TBD')
-                        : (typeof userGame.homeTeam === 'string' ? userGame.homeTeam : 'TBD');
+                        : (typeof userGame.homeTeam === 'string' ? userTeam.homeTeam : 'TBD');
                     
                     return {
                         id: userGame.id,
@@ -392,12 +392,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         tempTeams = tempTeams.map(team => {
             if (team.facilities) {
                 let weeklyIncome = 0;
-                if (team.facilities.some(f => f.id === 'merch_kiosk_1' && f.status === 'Completed')) weeklyIncome += 100;
-                if (team.facilities.some(f => f.id === 'rink_ads_1' && f.status === 'Completed')) weeklyIncome += 150;
-                if (team.facilities.some(f => f.id === 'social_media_1' && f.status === 'Completed')) weeklyIncome += 200;
+                if (team.facilities.some(f => f.id === 'merch_kiosk_1' && f.status === 'Completed')) weeklyIncome += 50;
+                if (team.facilities.some(f => f.id === 'rink_ads_1' && f.status === 'Completed')) weeklyIncome += 25;
+                if (team.facilities.some(f => f.id === 'social_media_1' && f.status === 'Completed')) weeklyIncome += 75;
 
                 if (weeklyIncome > 0) {
                     team.financials.discretionaryBudget += weeklyIncome;
+                    if (team.name === userTeam?.name) {
+                         toast.info(`+£${weeklyIncome} weekly income received.`);
+                    }
                 }
             }
             return team;
@@ -1266,13 +1269,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const simulateFullNationalsTournament = (division: string) => {
+        toast.info(`Simulating full ${division} tournament...`);
         let currentTeams = teams;
         let currentNationalsData = nationalsData;
         let tournament = currentNationalsData[currentDate.year]?.[division];
         
         if (!tournament) return;
 
-        while(tournament && tournament.status !== 'completed') {
+        let safetyBreak = 0;
+        while(tournament && tournament.status !== 'completed' && safetyBreak < 50) {
             const { updatedTeams, updatedNationalsData, newAchievements } = processNationalsRound(division, currentTeams, currentNationalsData, currentDate.year);
             currentTeams = updatedTeams;
             currentNationalsData = updatedNationalsData;
@@ -1291,6 +1296,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     return updated;
                 });
             }
+            safetyBreak++;
         }
         setTeams(currentTeams);
         setNationalsData(currentNationalsData);
@@ -1298,13 +1304,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const simulateAllNationalsTournaments = () => {
+        toast.info("Simulating all Nationals tournaments...");
         let currentTeams = teams;
         let currentNationalsData = nationalsData;
         const allDivisions = Object.keys(currentNationalsData[currentDate.year] || {});
 
         allDivisions.forEach(division => {
             let tournament = currentNationalsData[currentDate.year]?.[division];
-            while(tournament && tournament.status !== 'completed') {
+            let safetyBreak = 0;
+            while(tournament && tournament.status !== 'completed' && safetyBreak < 50) {
                 const { updatedTeams, updatedNationalsData, newAchievements } = processNationalsRound(division, currentTeams, currentNationalsData, currentDate.year);
                 currentTeams = updatedTeams;
                 currentNationalsData = updatedNationalsData;
@@ -1323,6 +1331,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         return updated;
                     });
                 }
+                safetyBreak++;
             }
         });
         setTeams(currentTeams);
