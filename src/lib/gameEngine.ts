@@ -260,10 +260,32 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
                 if (assist1) assists.push(assist1.name);
             }
             const assistText = assists.length > 0 ? `Assists: ${assists.join(', ')}` : "Unassisted";
+
+            // Record goal scorer and assist
+            gameState.skaterStats.push({
+                playerId: attacker.id,
+                goals: 1,
+                assists: assists.length,
+                points: 1 + assists.length,
+                penaltyMinutes: 0,
+            });
+
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` }, possessionChange, shotOnGoal };
         } else {
             const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame) * getRoleModifiers(p).shootTendency);
             if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
+            
+            // Record shot on goal (saved)
+            if (defendingGoalie) {
+                gameState.goalieStats.push({
+                    playerId: defendingGoalie.id,
+                    goalsAgainst: 0,
+                    shotsAgainst: 1,
+                    saves: 1,
+                    shutout: false, // Will be determined at end of game
+                });
+            }
+
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` }, possessionChange, shotOnGoal };
         }
     } else if (eventType < 0.35) {
@@ -271,7 +293,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         if (Math.random() < (avgBravery - 5) / 100) {
             const blocker = selectPlayerWeighted(defendingSkaters, p => ((p.attributes as SkaterAttributes).shotBlocking + (p.attributes as SkaterAttributes).bravery) * getRoleModifiers(p).shotBlockTendency);
             if (!blocker) return { event: null, possessionChange: false, shotOnGoal: false };
-            return { event: { time: eventTime, period: gameState.period, team: defendingTeam.name, description: `Shot blocked by ${blocker.name}!` }, possessionChange: false, shotOnGoal: false };
+            return { event: { time: eventTime, period: defendingTeam.name, description: `Shot blocked by ${blocker.name}!` }, possessionChange: false, shotOnGoal: false };
         }
     } else if (eventType < 0.65) { // Neutral zone / puck movement events
         const player1 = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).puckhandling);
@@ -308,6 +330,16 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const personalityModifier = (1 + (aggression - 10) / 20) * (1 - (sportsmanship - 10) / 30);
         if (Math.random() < basePenaltyChance * personalityModifier * instructionMods.penaltyChance * roleMods.penaltyTendency) {
             const infraction = getRandomItem(infractions);
+            
+            // Record penalty
+            gameState.skaterStats.push({
+                playerId: player.id,
+                goals: 0,
+                assists: 0,
+                points: 0,
+                penaltyMinutes: 2, // Assuming 2 minutes for simplicity
+            });
+
             return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange, shotOnGoal: false };
         }
     } else {
@@ -315,7 +347,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
         if (!attacker || !defender) return { event: null, possessionChange: false, shotOnGoal: false };
         const hitDescriptions = [`${attacker.name} lays a big hit on ${defender.name}.`, `${attacker.name} delivers a crushing check to ${defender.name}.`, `${defender.name} is rocked by a huge hit from ${attacker.name}.`, `${attacker.name} finishes his check on ${defender.name} with authority.`, `${defender.name} gets stood up at the blue line by ${attacker.name}.`];
-        return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: getRandomItem(hitDescriptions) }, possessionChange: false, shotOnGoal: false };
+        return { event: { time: eventTime, period: attackingTeam.name, description: getRandomItem(hitDescriptions) }, possessionChange: false, shotOnGoal: false };
     }
     return { event: null, possessionChange: false, shotOnGoal: false };
 };
@@ -418,6 +450,8 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
             teamOnPowerPlay: null,
             timeLeft: 0,
         },
+        skaterStats: [], // Initialize skaterStats
+        goalieStats: [], // Initialize goalieStats
     };
 
     let currentHomeTeam = JSON.parse(JSON.stringify(homeTeam));

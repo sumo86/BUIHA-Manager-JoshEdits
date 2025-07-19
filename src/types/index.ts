@@ -203,6 +203,22 @@ export type Team = {
   facilities: FacilityProject[];
 };
 
+export type GameSkaterStats = {
+  playerId: string;
+  goals: number;
+  assists: number;
+  points: number;
+  penaltyMinutes: number;
+};
+
+export type GameGoalieStats = {
+  playerId: string;
+  goalsAgainst: number;
+  shotsAgainst: number;
+  saves: number;
+  shutout: boolean;
+};
+
 export type GameEvent = {
   time: string;
   period: number;
@@ -229,6 +245,8 @@ export type GameState = {
   injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
   possessionHolder: string | null;
   powerPlayState: PowerPlayState;
+  skaterStats: GameSkaterStats[]; // Added
+  goalieStats: GameGoalieStats[]; // Added
 };
 
 export type GameDate = {

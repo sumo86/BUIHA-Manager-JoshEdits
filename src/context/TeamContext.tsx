@@ -923,6 +923,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     season: seasonString,
                                     team: team.name,
                                     league: team.leagueDivision,
+                                    captaincy: player.captaincy, // Add captaincy here
                                 };
                                 const newHistory = player.history ? [...player.history, seasonHistoryEntry] : [seasonHistoryEntry];
                                 return { ...player, history: newHistory, currentStats: [] };
