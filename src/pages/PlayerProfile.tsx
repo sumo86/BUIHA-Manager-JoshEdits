@@ -111,7 +111,11 @@ const PlayerProfile = () => {
             <div className="flex items-center gap-4">
                 {team?.logo && <img src={team.logo} alt={team.name} className="h-16 w-16 object-contain" />}
                 <div>
-                    <CardTitle className="text-5xl font-extrabold leading-none tracking-tight">{player.name}</CardTitle>
+                    <CardTitle className="text-5xl font-extrabold leading-none tracking-tight">
+                        {player.name}
+                        {player.captaincy === 'C' && <span className="ml-4 text-yellow-700">C</span>}
+                        {player.captaincy === 'A' && <span className="ml-4 text-yellow-500">A</span>}
+                    </CardTitle>
                     <p className="text-4xl font-bold text-primary mt-2">#{player.jerseyNumber}</p>
                     <p className="text-muted-foreground text-lg mt-1">{player.positions.join(", ")} | {player.age} years old | {player.nationality}</p>
                 </div>

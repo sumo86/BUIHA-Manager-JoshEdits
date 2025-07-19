@@ -12,7 +12,7 @@ const MoralePage = () => {
   }
 
   const studentLifeBudget = userTeam.financials.discretionaryBudget;
-  const initiativeCost = 500;
+  const initiativeCost = 150;
 
   return (
     <div className="space-y-6">

@@ -15,6 +15,7 @@ import { NationalsTournament } from '@/types';
 import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { processNationalsRound } from '@/lib/nationalsSimulator';
+import { getAggregatedCurrentStats } from '@/lib/statsUtils';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -915,8 +916,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     tempTeams = tempTeams.map(team => {
                         const updatedRoster = team.roster.map(player => {
-                            if (player.currentStats.length > 0) {
-                                const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
+                            if (player.currentStats && player.currentStats.length > 0) {
+                                const aggregatedStats = getAggregatedCurrentStats(player);
+                                const seasonHistoryEntry: PlayerSeasonStats = {
+                                    ...aggregatedStats,
+                                    season: seasonString,
+                                    team: team.name,
+                                    league: team.leagueDivision,
+                                };
+                                const newHistory = player.history ? [...player.history, seasonHistoryEntry] : [seasonHistoryEntry];
                                 return { ...player, history: newHistory, currentStats: [] };
                             }
                             return player;
@@ -1117,7 +1125,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const runStudentLifeInitiative = () => {
         if (!userTeam) return;
-        const cost = 500;
+        const cost = 150;
         const currentBudget = userTeam.financials.discretionaryBudget;
 
         if (currentBudget < cost) {
@@ -1132,15 +1140,22 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             discretionaryBudget: Math.round(currentBudget - cost),
         };
         
-        const newRoster = userTeam.roster.map(player => ({
-            ...player,
-            morale: updateMorale(player.morale, 1)
-        }));
+        if (Math.random() < 0.5) {
+            const newRoster = userTeam.roster.map(player => ({
+                ...player,
+                morale: updateMorale(player.morale, 1)
+            }));
 
-        updateTeam({ ...userTeam, roster: newRoster, financials: newFinancials });
-        toast.success("Student Life Initiative Successful!", {
-            description: `Cost: £${cost.toLocaleString()}.`,
-        });
+            updateTeam({ ...userTeam, roster: newRoster, financials: newFinancials });
+            toast.success("Student Life Initiative Successful!", {
+                description: `Team morale has improved. Cost: £${cost.toLocaleString()}.`,
+            });
+        } else {
+            updateTeam({ ...userTeam, financials: newFinancials });
+            toast.error("Student Life Initiative Failed", {
+                description: `The event didn't have the desired effect on morale. Cost: £${cost.toLocaleString()}.`,
+            });
+        }
     };
 
     const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
