@@ -20,7 +20,7 @@ export const CareerStatsTable = ({ players }: CareerStatsTableProps) => {
     return players
       .filter(p => !p.positions.includes('G'))
       .map(player => {
-        const allStats = [...player.history, ...player.currentStats];
+        const allStats = [...player.history, ...(player.currentStats || [])];
         const careerStats = allStats.reduce((acc, season) => {
           acc.gp += season.gamesPlayed || 0;
           acc.g += season.goals || 0;
