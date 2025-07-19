@@ -45,12 +45,10 @@ const Finances = () => {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-4 border rounded-lg">
-              <p className="text-muted-foreground">Total Season Budget</p>
-              <p className="text-3xl font-bold">£{currentFinancials.totalBudget.toLocaleString()}</p>
+              <p className="text-3xl font-bold">£{currentFinancials.totalBudget?.toLocaleString() || 0}</p>
             </div>
             <div className="p-4 border rounded-lg">
-              <p className="text-muted-foreground">Discretionary Spend Available</p>
-              <p className="text-3xl font-bold text-green-600">£{currentFinancials.discretionaryBudget.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-green-600">£{currentFinancials.discretionaryBudget?.toLocaleString() || 0}</p>
             </div>
           </div>
         </CardContent>
@@ -68,26 +66,26 @@ const Finances = () => {
                 <CalendarIcon className="h-5 w-5 text-muted-foreground" />
                 <span>Ice Time ({numberOfHomeGames} home games)</span>
               </div>
-              <span className="font-mono">£{fixedCosts.iceTime.toLocaleString()}</span>
+              <span className="font-mono">£{fixedCosts.iceTime?.toLocaleString() || 0}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-3">
                 <Plane className="h-5 w-5 text-muted-foreground" />
                 <span>Travel ({numberOfAwayGames} away games)</span>
               </div>
-              <span className="font-mono">£{fixedCosts.travel.toLocaleString()}</span>
+              <span className="font-mono">£{fixedCosts.travel?.toLocaleString() || 0}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-3">
                 <Box className="h-5 w-5 text-muted-foreground" />
                 <span>Equipment</span>
               </div>
-              <span className="font-mono">£{fixedCosts.equipment.toLocaleString()}</span>
+              <span className="font-mono">£{fixedCosts.equipment?.toLocaleString() || 0}</span>
             </div>
           </div>
           <div className="flex justify-between items-center p-3 mt-4 border-t">
             <span className="font-semibold">Total Fixed Costs</span>
-            <span className="font-bold font-mono">£{fixedCosts.total.toLocaleString()}</span>
+            <span className="font-bold font-mono">£{fixedCosts.total?.toLocaleString() || 0}</span>
           </div>
         </CardContent>
       </Card>
