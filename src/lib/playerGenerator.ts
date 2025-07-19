@@ -165,7 +165,7 @@ const calculateRoleSuitability = (attributes: SkaterAttributes, playerPosition: 
 };
 
 const eligibilityAgeRanges: Record<Player['eligibility'], { min: number, max: number }> = { "UG Year 1": { min: 18, max: 19 }, "UG Year 2": { min: 19, max: 20 }, "UG Year 3": { min: 20, max: 21 }, "UG Year 4": { min: 21, max: 22 }, "Masters": { min: 22, max: 24 }, "PhD": { min: 23, max: 28 }, "Staff": { min: 25, max: 40 } };
-const getGamesPlayedForDivision = (leagueDivision: string): number => {
+export const getGamesPlayedForDivision = (leagueDivision: string): number => {
     if (leagueDivision.includes('Checking 1')) return 10; if (leagueDivision.includes('Checking 2')) return 6; if (leagueDivision.includes('Non Checking 1')) return 10; if (leagueDivision.includes('Non Checking 2 - North')) return 6; if (leagueDivision.includes('Non Checking 2 - South')) return 12; if (leagueDivision.includes('Non Checking 3')) return 6; return 10;
 };
 

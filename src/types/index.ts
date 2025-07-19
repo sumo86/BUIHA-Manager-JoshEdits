@@ -181,6 +181,7 @@ export type FacilityProject = {
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
   weeksToComplete?: number;
+  category: 'Financial' | 'Player Development' | 'Player Welfare' | 'Recruitment';
 };
 
 export type Team = {

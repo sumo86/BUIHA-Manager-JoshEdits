@@ -2,13 +2,21 @@ import { useMemo } from 'react';
 import { useTeam } from "@/context/TeamContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Plane, Box, Calendar as CalendarIcon } from 'lucide-react';
+import { getGamesPlayedForDivision } from '@/lib/playerGenerator';
 
 const Finances = () => {
   const { userTeam, managedOrganization, organizationFinancials } = useTeam();
 
-  const numberOfHomeGames = 13;
-  const numberOfAwayGames = 13;
-  const travelCostPerGame = 200;
+  const gameCounts = useMemo(() => {
+    if (!userTeam) return { home: 0, away: 0 };
+    const totalGames = getGamesPlayedForDivision(userTeam.leagueDivision);
+    const home = Math.floor(totalGames / 2);
+    const away = Math.ceil(totalGames / 2);
+    return { home, away };
+  }, [userTeam]);
+
+  const travelCostPerGame = 500;
+  const iceTimeCostPerGame = 350;
 
   const currentFinancials = useMemo(() => {
     if (managedOrganization) return organizationFinancials;
@@ -18,13 +26,13 @@ const Finances = () => {
   const fixedCosts = useMemo(() => {
     if (!userTeam || !currentFinancials) return { iceTime: 0, travel: 0, equipment: 0, total: 0 };
     
-    const iceTime = numberOfHomeGames * currentFinancials.iceTimeCostPerGame;
-    const travel = numberOfAwayGames * travelCostPerGame;
+    const iceTime = gameCounts.home * iceTimeCostPerGame;
+    const travel = gameCounts.away * travelCostPerGame;
     const equipment = currentFinancials.equipmentCost;
     const total = iceTime + travel + equipment;
 
     return { iceTime, travel, equipment, total };
-  }, [userTeam, currentFinancials]);
+  }, [userTeam, currentFinancials, gameCounts]);
 
   if (!userTeam || !currentFinancials) {
     return <div>Loading team data...</div>;
@@ -45,10 +53,12 @@ const Finances = () => {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-4 border rounded-lg">
-              <p className="text-3xl font-bold">£{currentFinancials.totalBudget?.toLocaleString() || 0}</p>
+              <p className="text-muted-foreground">Total Season Budget</p>
+              <p className="text-3xl font-bold">£{(currentFinancials.totalBudget || 0).toLocaleString()}</p>
             </div>
             <div className="p-4 border rounded-lg">
-              <p className="text-3xl font-bold text-green-600">£{currentFinancials.discretionaryBudget?.toLocaleString() || 0}</p>
+              <p className="text-muted-foreground">Discretionary Spend Available</p>
+              <p className="text-3xl font-bold text-green-600">£{(currentFinancials.discretionaryBudget || 0).toLocaleString()}</p>
             </div>
           </div>
         </CardContent>
@@ -64,28 +74,28 @@ const Finances = () => {
             <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-3">
                 <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                <span>Ice Time ({numberOfHomeGames} home games)</span>
+                <span>Ice Time ({gameCounts.home} home games)</span>
               </div>
-              <span className="font-mono">£{fixedCosts.iceTime?.toLocaleString() || 0}</span>
+              <span className="font-mono">£{fixedCosts.iceTime.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-3">
                 <Plane className="h-5 w-5 text-muted-foreground" />
-                <span>Travel ({numberOfAwayGames} away games)</span>
+                <span>Travel ({gameCounts.away} away games)</span>
               </div>
-              <span className="font-mono">£{fixedCosts.travel?.toLocaleString() || 0}</span>
+              <span className="font-mono">£{fixedCosts.travel.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-3">
                 <Box className="h-5 w-5 text-muted-foreground" />
                 <span>Equipment</span>
               </div>
-              <span className="font-mono">£{fixedCosts.equipment?.toLocaleString() || 0}</span>
+              <span className="font-mono">£{fixedCosts.equipment.toLocaleString()}</span>
             </div>
           </div>
           <div className="flex justify-between items-center p-3 mt-4 border-t">
             <span className="font-semibold">Total Fixed Costs</span>
-            <span className="font-bold font-mono">£{fixedCosts.total?.toLocaleString() || 0}</span>
+            <span className="font-bold font-mono">£{fixedCosts.total.toLocaleString()}</span>
           </div>
         </CardContent>
       </Card>

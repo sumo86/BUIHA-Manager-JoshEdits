@@ -1,7 +1,7 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
-import { generateRecruits, generatePlayer, calculateStarRating } from '@/lib/playerGenerator';
+import { generateRecruits, generatePlayer, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator';
 import { toast } from 'sonner';
 import { calculateCurrentAbility } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
@@ -668,12 +668,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     
                     // New season budget calculations
                     tempTeams = tempTeams.map(team => {
-                        const numberOfHomeGames = 13;
-                        const numberOfAwayGames = 13;
-                        const travelCostPerGame = 200;
+                        const totalGames = getGamesPlayedForDivision(team.leagueDivision);
+                        const numberOfHomeGames = Math.floor(totalGames / 2);
+                        const numberOfAwayGames = Math.ceil(totalGames / 2);
+                        const iceTimeCost = numberOfHomeGames * 350;
+                        const travelCost = numberOfAwayGames * 500;
 
-                        const iceTimeCost = numberOfHomeGames * team.financials.iceTimeCostPerGame;
-                        const travelCost = numberOfAwayGames * travelCostPerGame;
                         const equipmentCost = team.financials.equipmentCost;
                         const fixedCosts = iceTimeCost + travelCost + equipmentCost;
                         
