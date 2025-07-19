@@ -5,9 +5,11 @@ import { RecordCategory } from '@/types';
 import { calculateRecords } from '@/lib/historyUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CareerStatsTable } from '@/components/history/CareerStatsTable';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SeasonalStatsTable } from '@/components/history/SeasonalStatsTable';
 
 const TeamHistoryPage = () => {
-  const { userTeam, managedTeams, teams, schedule } = useTeam();
+  const { userTeam, managedTeams, teams, schedule, seasonHistory, alumni } = useTeam();
   const [filterScope, setFilterScope] = useState<'organization' | string>('organization');
 
   const filterOptions = useMemo(() => {
@@ -18,25 +20,45 @@ const TeamHistoryPage = () => {
     return options;
   }, [userTeam]);
 
+  const allPlayersInOrg = useMemo(() => {
+    const currentPlayers = managedTeams.flatMap(t => t.roster);
+    const managedTeamNames = new Set(managedTeams.map(t => t.name));
+    
+    const relevantAlumni = alumni.filter(player => 
+        player.history.some(record => managedTeamNames.has(record.team))
+    );
+
+    const allPlayers = [...currentPlayers, ...relevantAlumni];
+    const uniquePlayers = Array.from(new Map(allPlayers.map(p => [p.id, p])).values());
+    
+    return uniquePlayers;
+  }, [managedTeams, alumni]);
+
   const playersToDisplay = useMemo(() => {
     if (filterScope === 'organization') {
-      return managedTeams.flatMap(t => t.roster);
+        return allPlayersInOrg;
     }
     const selectedTeam = teams.find(t => t.name === filterScope);
-    return selectedTeam ? selectedTeam.roster : [];
-  }, [filterScope, managedTeams, teams]);
+    if (!selectedTeam) return [];
 
-  const { seasonRecords, careerRecords } = useMemo(() => {
+    const teamName = selectedTeam.name;
+    return allPlayersInOrg.filter(player => 
+        player.history.some(record => record.team === teamName) || 
+        selectedTeam.roster.some(p => p.id === player.id)
+    );
+  }, [filterScope, allPlayersInOrg, teams]);
+
+  const { careerRecords } = useMemo(() => {
     return calculateRecords(playersToDisplay, schedule);
   }, [playersToDisplay, schedule]);
+
+  const seasons = useMemo(() => Object.keys(seasonHistory), [seasonHistory]);
 
   if (!userTeam) {
     return <div>Select a team to see its history.</div>;
   }
 
-  const skaterSeasonCategories: RecordCategory[] = ['Goals', 'Assists', 'Points', 'PenaltyMinutes'];
-  const goalieSeasonCategories: RecordCategory[] = ['GAA', 'SavePercentage', 'Shutouts'];
-  const careerCategories: RecordCategory[] = ['Goals', 'Points', 'Assists', 'PenaltyMinutes'];
+  const careerCategories: RecordCategory[] = ['Goals', 'Points', 'Assists', 'PenaltyMinutes', 'Shutouts'];
 
   return (
     <div className="space-y-6">
@@ -44,7 +66,7 @@ const TeamHistoryPage = () => {
         <div>
           <h1 className="text-3xl font-bold">Team History & Records</h1>
           <p className="text-lg text-muted-foreground">
-            Historical records from the start of your career.
+            Historical records and stats from the start of your career.
           </p>
         </div>
         <Select value={filterScope} onValueChange={setFilterScope}>
@@ -58,12 +80,22 @@ const TeamHistoryPage = () => {
           </SelectContent>
         </Select>
       </div>
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <HistoryRecords title="Single Season Records (Skaters)" records={seasonRecords} categories={skaterSeasonCategories} showSeason />
-        <HistoryRecords title="Single Season Records (Goalies)" records={seasonRecords} categories={goalieSeasonCategories} showSeason />
-        <HistoryRecords title="Career Records" records={careerRecords} categories={careerCategories} />
-      </div>
-      <CareerStatsTable players={playersToDisplay} />
+      
+      <Tabs defaultValue="records" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="records">Records</TabsTrigger>
+          <TabsTrigger value="seasonal-stats">Seasonal Stats</TabsTrigger>
+        </TabsList>
+        <TabsContent value="records" className="mt-4 space-y-6">
+          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+            <HistoryRecords title="Career Records" records={careerRecords} categories={careerCategories} />
+          </div>
+          <CareerStatsTable players={playersToDisplay} />
+        </TabsContent>
+        <TabsContent value="seasonal-stats" className="mt-4">
+          <SeasonalStatsTable players={allPlayersInOrg} seasons={seasons} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
