@@ -62,12 +62,12 @@ const StandingsPage = () => {
         <h1 className="text-3xl font-bold">League Standings</h1>
         <p className="text-muted-foreground">View team standings and player leaderboards.</p>
       </div>
-      <Select value={selectedLeague || leagues[0] || ''} onValueChange={setSelectedLeague}>
+      <Select value={selectedLeague || leagues[0] || ''} onValueChange={(value) => setSelectedLeague(value)}>
         <SelectTrigger className="w-[280px]">
           <SelectValue placeholder="Select a league" />
         </SelectTrigger>
         <SelectContent>
-          {leagues.map((league: string) => (
+          {leagues.map((league) => (
             <SelectItem key={league} value={league}>{league}</SelectItem>
           ))}
         </SelectContent>

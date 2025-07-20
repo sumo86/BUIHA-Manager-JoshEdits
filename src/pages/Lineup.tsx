@@ -77,7 +77,7 @@ const PlayerLineupCard = ({ player, onRoleChange, displayName }: { player: Playe
 
 const Lineup = () => {
     const { userTeam: team, updateTeam } = useTeam();
-    const playerMap = useMemo(() => new Map(team.roster.map(p => [p.id, p])), [team.roster]);
+    const playerMap = useMemo(() => new Map(team.roster.map((p: Player) => [p.id, p])), [team.roster]);
 
     const assignedPlayerIds = useMemo(() => {
         const ids = new Set<string>();
@@ -98,7 +98,7 @@ const Lineup = () => {
 
         return lineupPlayerIds.reduce((count, id) => {
             const player = playerMap.get(id);
-            if (player && player.eligibility === 'Staff') { // Check if player exists and then its eligibility
+            if (player && player.eligibility === 'Staff') {
                 return count + 1;
             }
             return count;
@@ -183,7 +183,7 @@ const Lineup = () => {
     };
 
     const handleTacticChange = (category: string, tactic: string) => {
-        updateTeam({ ...team, tactics: { ...team.tactics, [category]: tactic } });
+        updateTeam({ ...team, tactics: { ...team.tactics, [category as keyof TacticsSelection]: tactic } });
     };
 
     const autoFillLines = () => {
@@ -275,7 +275,7 @@ const Lineup = () => {
         Object.values(team.lineup.forwards).flat().forEach(playerId => {
             if (!playerId) return;
             const player = rosterMap.get(playerId);
-            if (player) { // Type guard for player
+            if (player) {
                 const bestRole = findBestRole(player, forwardRoles);
                 if (bestRole) player.role = bestRole;
             }
@@ -284,7 +284,7 @@ const Lineup = () => {
         Object.values(team.lineup.defence).flat().forEach(playerId => {
             if (!playerId) return;
             const player = rosterMap.get(playerId);
-            if (player) { // Type guard for player
+            if (player) {
                 const bestRole = findBestRole(player, defenceRoles);
                 if (bestRole) player.role = bestRole;
             }
@@ -301,7 +301,7 @@ const Lineup = () => {
                 const bestTactic = groupedTactics[phase][category]
                     .map(t => ({ tactic: t, suitability: calculateTacticSuitability(t, team.roster) }))
                     .sort((a, b) => b.suitability.score - a.suitability.score)[0];
-                newTactics[category] = bestTactic.tactic.tactic;
+                newTactics[category as keyof TacticsSelection] = bestTactic.tactic.tactic;
             });
         });
         updateTeam({ ...team, tactics: newTactics });
@@ -449,7 +449,7 @@ const Lineup = () => {
                                     {Object.entries(categories).map(([category, tacticList]) => (
                                         <div key={category}>
                                             <Label>{category}</Label>
-                                            <Select value={team.tactics[category]} onValueChange={(value) => handleTacticChange(category, value)}>
+                                            <Select value={team.tactics[category as keyof TacticsSelection]} onValueChange={(value) => handleTacticChange(category, value)}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select a tactic" />
                                                 </SelectTrigger>
