@@ -32,18 +32,14 @@ const getRoleModifiers = (player: Player | null): Role['behavioralModifiers'] =>
 };
 
 const getGoalFactor = (leagueDivision: string): number => {
-    // These values are calculated to achieve target average goals per game for each division
-    // Target GPG / (Total ticks * Event chance per tick * Shot success probability)
-    // Total ticks = 3600 (3 periods * 1200 ticks/period)
-    // Event chance per tick = 0.15
-    // Shot success probability = ~0.5 (after goalie factor)
-    // So, baseProb = Target GPG / (3600 * 0.15 * 0.5) = Target GPG / 270
-    if (leagueDivision.includes('Non-Checking 3')) return 0.0407; // Target ~11.0 GPG
-    if (leagueDivision.includes('Non-Checking 2')) return 0.0389; // Target ~10.5 GPG
-    if (leagueDivision.includes('Non-Checking 1')) return 0.0370; // Target ~10.0 GPG
-    if (leagueDivision.includes('Checking 2')) return 0.0352; // Target ~9.5 GPG
-    if (leagueDivision.includes('Checking 1')) return 0.0333; // Target ~9.0 GPG
-    return 0.0370; // Default to Non-Checking 1
+    // These values represent the target average goals per game (GPG) divided by total ticks (3600).
+    // This is the target probability of a goal occurring per tick.
+    if (leagueDivision.includes('Non-Checking 3')) return 13.0 / 3600; // Target ~13.0 GPG
+    if (leagueDivision.includes('Non-Checking 2')) return 12.0 / 3600; // Target ~12.0 GPG
+    if (leagueDivision.includes('Non-Checking 1')) return 11.0 / 3600; // Target ~11.0 GPG
+    if (leagueDivision.includes('Checking 2')) return 10.5 / 3600; // Target ~10.5 GPG
+    if (leagueDivision.includes('Checking 1')) return 10.0 / 3600; // Target ~10.0 GPG
+    return 11.0 / 3600; // Default to Non-Checking 1
 };
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
@@ -206,7 +202,7 @@ const determineFaceoffWinner = (teamA: Team, teamB: Team): string => {
 };
 
 const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): { event: GameEvent | null, possessionChange: boolean, shotOnGoal: boolean } => {
-    if (Math.random() > 0.15) return { event: null, possessionChange: false, shotOnGoal: false }; // Event happens 15% of the time
+    if (Math.random() > 0.15) return { event: null, possessionChange: false, shotOnGoal: false }; // Event happens 85% of the time
 
     const eventTime = formatTime(gameState.time);
     let possessionChange = false;
@@ -222,7 +218,9 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
 
     const tacticalModifier = getTacticalModifier(attackingTeam, defendingTeam);
     const eventType = Math.random();
-    const baseProb = getGoalFactor(attackingTeam.leagueDivision); // Base probability of a shot event per tick
+    
+    // This is the target probability of a goal occurring per tick, based on league division.
+    const targetGoalProbPerTick = getGoalFactor(attackingTeam.leagueDivision); 
 
     const attackingSkaters = attackingTeam.roster.filter(p => !p.positions.includes('G'));
     const defendingSkaters = defendingTeam.roster.filter(p => !p.positions.includes('G'));
@@ -246,11 +244,17 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
     
-    // New goal probability formula: baseProb * (offensive_impact) / (defensive_impact)
-    // The 0.5 multiplier controls the sensitivity to team ratings
-    let goalProbability = baseProb * (1 + offenseFactor * 0.5) / (1 + defenseFactor * 0.5);
+    // Calculate the base probability that an event (which happens 85% of the time) is a shot.
+    // This is derived from the targetGoalProbPerTick, accounting for the 85% event chance and ~50% shot success.
+    const baseShotProbGivenEvent = targetGoalProbPerTick / (0.85 * 0.5); // 0.85 is P(event happens), 0.5 is avg shot success prob
     
-    if (eventType < goalProbability) { // This event is a shot event
+    // Adjust the shot probability based on team offense/defense factors
+    let shotEventProbability = baseShotProbGivenEvent * (1 + offenseFactor * 0.5) / (1 + defenseFactor * 0.5);
+    
+    // Ensure shotEventProbability is within reasonable bounds (e.g., 0 to 1)
+    shotEventProbability = Math.max(0, Math.min(1, shotEventProbability));
+
+    if (eventType < shotEventProbability) { // This event is a shot event
         possessionChange = true; // Stoppage of play
         shotOnGoal = true;
         const avgScreening = attackingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).screening, 0) / attackingSkaters.length;
