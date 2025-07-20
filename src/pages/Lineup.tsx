@@ -150,7 +150,7 @@ const Lineup = () => {
         }
     };
 
-    const handlePlayerChange = (positionType: 'forwards' | 'defence' | 'goalies', line: 'lw' | 'c' | 'rw' | 'ld' | 'rd' | 'starter' | 'backup', index: number | null, playerId: string) => {
+    const handlePlayerChange = (positionType: 'forwards' | 'defence' | 'goalies', line: 'lw' | 'c' | 'rw' | 'ld' | 'rd' | 'starter' | 'backup', index: number | null, playerId: string | null) => {
         if (!team) return;
 
         const newTeamLineup = { ...team.lineup };
@@ -212,7 +212,10 @@ const Lineup = () => {
         return (
             <Select
                 value={playerId || ''}
-                onValueChange={(value) => handlePlayerChange(lineType, lineName, index, value)}
+                onValueChange={(value) => {
+                    const finalPlayerId = value === "clear-slot" ? null : value;
+                    handlePlayerChange(lineType, lineName, index, finalPlayerId);
+                }}
             >
                 <SelectTrigger className="w-full h-8 text-xs">
                     <SelectValue placeholder="Select Player">
@@ -245,7 +248,7 @@ const Lineup = () => {
                             </div>
                         </SelectItem>
                     )}
-                    <SelectItem value="" className="text-muted-foreground">
+                    <SelectItem value="clear-slot" className="text-muted-foreground">
                         (Empty Slot)
                     </SelectItem>
                 </SelectContent>
