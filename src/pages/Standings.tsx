@@ -40,7 +40,6 @@ const StandingsPage = () => {
         return {
           ...player,
           currentStats: statsForThisTeam,
-          // This ensures the team name displayed is correct for the context of the division standings
           history: [{ ...(player.history[player.history.length - 1] || {}), team: team.name }],
         } as Player;
       })
@@ -67,7 +66,7 @@ const StandingsPage = () => {
           <SelectValue placeholder="Select a league" />
         </SelectTrigger>
         <SelectContent>
-          {leagues.map((league) => (
+          {leagues.map((league: string) => (
             <SelectItem key={league} value={league}>{league}</SelectItem>
           ))}
         </SelectContent>
