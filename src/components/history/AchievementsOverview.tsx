@@ -9,24 +9,28 @@ interface AchievementsOverviewProps {
 }
 
 export const AchievementsOverview = ({ achievements, title }: AchievementsOverviewProps) => {
-  const divisionTitles = useMemo(() => achievements.filter(a => a.type === 'Division Title'), [achievements]);
-  const nationalsGold = useMemo(() => achievements.filter(a => a.type === 'Nationals Gold'), [achievements]);
-  const nationalsSilver = useMemo(() => achievements.filter(a => a.type === 'Nationals Silver'), [achievements]);
+  const safeAchievements = Array.isArray(achievements) ? achievements : [];
 
-  const renderAchievementList = (list: Achievement[], name: string) => (
-    <div>
-      <h4 className="font-semibold text-lg">{name} ({list.length})</h4>
-      {list.length > 0 ? (
-        <ul className="list-disc list-inside text-muted-foreground">
-          {list.map((ach, index) => (
-            <li key={index}>{ach.division} - {ach.season}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-muted-foreground">None</p>
-      )}
-    </div>
-  );
+  const divisionTitles = useMemo(() => safeAchievements.filter(a => a.type === 'Division Title'), [safeAchievements]);
+  const nationalsGold = useMemo(() => safeAchievements.filter(a => a.type === 'Nationals Gold'), [safeAchievements]);
+  const nationalsSilver = useMemo(() => safeAchievements.filter(a => a.type === 'Nationals Silver'), [safeAchievements]);
+
+  const hasAchievements = divisionTitles.length > 0 || nationalsGold.length > 0 || nationalsSilver.length > 0;
+
+  const renderAchievementList = (list: Achievement[], name: string) => {
+    if (list.length === 0) return null;
+    
+    return (
+        <div>
+            <h4 className="font-semibold text-lg">{name} ({list.length})</h4>
+            <ul className="list-disc list-inside text-muted-foreground">
+                {list.map((ach, index) => (
+                    <li key={`${ach.season}-${ach.division}-${index}`}>{ach.division} - {ach.season}</li>
+                ))}
+            </ul>
+        </div>
+    );
+  };
 
   return (
     <Card>
@@ -37,9 +41,15 @@ export const AchievementsOverview = ({ achievements, title }: AchievementsOvervi
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {renderAchievementList(divisionTitles, 'Division Titles')}
-        {renderAchievementList(nationalsGold, 'Nationals Gold Titles')}
-        {renderAchievementList(nationalsSilver, 'Nationals Silver Titles')}
+        {hasAchievements ? (
+          <>
+            {renderAchievementList(divisionTitles, 'Division Titles')}
+            {renderAchievementList(nationalsGold, 'Nationals Gold Titles')}
+            {renderAchievementList(nationalsSilver, 'Nationals Silver Titles')}
+          </>
+        ) : (
+          <p className="text-muted-foreground text-center py-4">No honours recorded yet.</p>
+        )}
       </CardContent>
     </Card>
   );

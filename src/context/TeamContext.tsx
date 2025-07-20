@@ -782,6 +782,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     // New season budget calculations
                     tempTeams = tempTeams.map(team => {
+                        const unspentBudget = team.financials.discretionaryBudget;
+
                         const totalGames = getGamesPlayedForDivision(team.leagueDivision);
                         const numberOfHomeGames = Math.floor(totalGames / 2);
                         const numberOfAwayGames = Math.ceil(totalGames / 2);
@@ -791,11 +793,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         const equipmentCost = team.financials.equipmentCost;
                         const fixedCosts = iceTimeCost + travelCost + equipmentCost;
                         
-                        const discretionaryBudget = team.financials.totalBudget - fixedCosts;
+                        const newDiscretionaryBudget = (team.financials.totalBudget - fixedCosts) + unspentBudget;
 
                         if (team.name === userTeam?.name) {
                             toast.info("New Season Budget Calculated", {
-                                description: `Fixed costs of £${fixedCosts.toLocaleString()} deducted. You have £${discretionaryBudget.toLocaleString()} available for upgrades.`,
+                                description: `Fixed costs of £${fixedCosts.toLocaleString()} deducted. You have £${newDiscretionaryBudget.toLocaleString()} available for upgrades (including £${unspentBudget.toLocaleString()} carried over).`,
                             });
                         }
 
@@ -803,7 +805,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             ...team,
                             financials: {
                                 ...team.financials,
-                                discretionaryBudget: discretionaryBudget,
+                                discretionaryBudget: newDiscretionaryBudget,
                             }
                         };
                     });
@@ -1165,10 +1167,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (isNationalsGame && nationalsDivision && gameId) {
             const completedGame = {
                 gameId: gameId,
-                homeScore: gameState.userScore,
-                awayScore: gameState.opponentScore,
                 homeTeamName: userTeam.name,
                 awayTeamName: opponentTeam.name,
+                homeScore: gameState.userScore,
+                awayScore: gameState.opponentScore,
             };
             playNationalsRound(nationalsDivision, completedGame);
         } else if (gameId) { // Handle regular season game completion
@@ -1525,7 +1527,31 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const simulateSingleNationalsGame = (division: string, gameId: string) => {
-        const { updatedTeams, updatedNationalsData } = processNationalsRound(division, teams, nationalsData, currentDate.year, undefined, gameId);
+        const tournament = nationalsData[currentDate.year]?.[division];
+        if (!tournament) return;
+
+        const game = [...tournament.groupStageSchedule, ...tournament.playoffSchedule].find(g => g.id === gameId);
+        if (!game || game.status !== 'scheduled') return;
+
+        const homeTeamName = typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD';
+        const awayTeamName = typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD';
+
+        const homeTeam = teams.find(t => t.name === homeTeamName);
+        const awayTeam = teams.find(t => t.name === awayTeamName);
+
+        if (!homeTeam || !awayTeam) return;
+
+        const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+
+        const dummyUserGameResult = {
+            homeTeamName: homeTeam.name,
+            awayTeamName: awayTeam.name,
+            homeScore: finalGameState.userScore,
+            awayScore: finalGameState.opponentScore,
+            gameId: gameId,
+        };
+
+        const { updatedTeams, updatedNationalsData } = processNationalsRound(division, teams, nationalsData, currentDate.year, dummyUserGameResult);
         setTeams(updatedTeams);
         setNationalsData(updatedNationalsData);
     };
@@ -1540,8 +1566,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         // Remove from transfer pool
         setTransferPool(prev => prev.filter(p => p.id !== playerId));
 
-        // Add to new team
-        const newRoster = [...toTeam.roster, playerToSign];
+        // Add to new team, ensuring captaincy is reset
+        const playerWithNoCaptaincy = { ...playerToSign, captaincy: null };
+        const newRoster = [...toTeam.roster, playerWithNoCaptaincy];
         const updatedTeam = { ...toTeam, roster: newRoster };
         updateTeam(updatedTeam);
 
