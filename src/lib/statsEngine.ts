@@ -1,5 +1,4 @@
 import { Player, Team, GameState, PlayerSeasonStats } from '@/types';
-import { calculateCurrentAbility, calculateStarRating } from './playerGenerator';
 
 export const processGameResults = (
   userTeam: Team,
@@ -31,14 +30,14 @@ export const processGameResults = (
         goalsAgainstAverage: 0,
         savePercentage: 0,
         shutouts: 0,
-        captaincy: player.captaincy, // Include captaincy here
+        captaincy: player.captaincy,
       };
       player.currentStats.push(currentSeasonStat);
     }
 
     currentSeasonStat.gamesPlayed = (currentSeasonStat.gamesPlayed || 0) + 1;
 
-    if (!player.positions.includes('G')) { // Skater stats
+    if (!player.positions.includes('G')) {
       const skaterStats = gameState.skaterStats.find(s => s.playerId === player.id);
       if (skaterStats) {
         currentSeasonStat.goals = (currentSeasonStat.goals || 0) + skaterStats.goals;
@@ -46,7 +45,7 @@ export const processGameResults = (
         currentSeasonStat.points = (currentSeasonStat.points || 0) + skaterStats.points;
         currentSeasonStat.penaltyMinutes = (currentSeasonStat.penaltyMinutes || 0) + skaterStats.penaltyMinutes;
       }
-    } else { // Goalie stats
+    } else {
       const goalieStats = gameState.goalieStats.find(s => s.playerId === player.id);
       if (goalieStats) {
         currentSeasonStat.goalsAgainst = (currentSeasonStat.goalsAgainst || 0) + goalieStats.goalsAgainst;
@@ -64,21 +63,18 @@ export const processGameResults = (
     }
   };
 
-  // Update user team players
   updatedUserTeam.roster = updatedUserTeam.roster.map(player => {
     const newPlayer = { ...player };
     updatePlayerStats(newPlayer, updatedUserTeam.name, true);
     return newPlayer;
   });
 
-  // Update opponent team players
   updatedOpponentTeam.roster = updatedOpponentTeam.roster.map(player => {
     const newPlayer = { ...player };
     updatePlayerStats(newPlayer, updatedOpponentTeam.name, false);
     return newPlayer;
   });
 
-  // Update team records, but only for league games
   if (!isNationalsGame) {
     if (gameState.userScore > gameState.opponentScore) {
       updatedUserTeam.wins = (updatedUserTeam.wins || 0) + 1;
@@ -100,7 +96,6 @@ export const processGameResults = (
     updatedOpponentTeam.points = (updatedOpponentTeam.wins * 2) + updatedOpponentTeam.draws;
   }
 
-  // Process injuries
   gameState.injuries.forEach(injury => {
     const targetTeam = injury.teamName === updatedUserTeam.name ? updatedUserTeam : updatedOpponentTeam;
     const injuredPlayerIndex = targetTeam.roster.findIndex(p => p.id === injury.playerId);

@@ -26,6 +26,7 @@ export const getAggregatedCurrentStats = (player: Player): PlayerSeasonStats => 
       goalsAgainst: 0,
       savePercentage: 0,
       goalsAgainstAverage: 0,
+      captaincy: player.captaincy || null, // Ensure captaincy is included
     }
   );
 
@@ -67,6 +68,7 @@ export const getAggregatedCareerStats = (player: Player) => {
       goalsAgainst: 0,
       savePercentage: 0,
       goalsAgainstAverage: 0,
+      captaincy: player.captaincy || null, // Ensure captaincy is included
     }
   );
 };
@@ -99,6 +101,7 @@ export const getDivisionAggregatedStats = (player: Player, division: string): Pl
       goalsAgainst: 0,
       savePercentage: 0,
       goalsAgainstAverage: 0,
+      captaincy: player.captaincy || null, // Ensure captaincy is included
     }
   );
 

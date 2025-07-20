@@ -487,7 +487,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
                                 return { ...player, history: newHistory, currentStats: [] };
                             } else if (!player.history.some(h => h.season === seasonThatEnded)) {
-                                const newHistoryEntry: PlayerSeasonStats = { season: seasonThatEnded, team: team.name, league: team.leagueDivision, gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, shotsAgainst: 0, saves: 0, shutouts: 0, goalsAgainst: 0, savePercentage: 0, goalsAgainstAverage: 0 };
+                                const newHistoryEntry: PlayerSeasonStats = { season: seasonThatEnded, team: team.name, league: team.leagueDivision, gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0, shotsAgainst: 0, saves: 0, shutouts: 0, goalsAgainst: 0, savePercentage: 0, goalsAgainstAverage: 0, captaincy: null };
                                 return { ...player, history: player.history ? [...player.history, newHistoryEntry] : [newHistoryEntry], currentStats: [] };
                             }
                             return player;
@@ -547,14 +547,19 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         graduatingPlayers.forEach(player => {
                             const isManaged = managedTeamNames.includes(team.name);
                             const roll = Math.random();
+                            const priorSeasonString = `${prevDate.year - 1}-${prevDate.year}`;
+                            const priorSeasonStats = player.history?.find(h => h.season === priorSeasonString);
+                            const sourceTeamName = priorSeasonStats?.team || 'Unknown';
+
                             if (roll < 0.85) {
                                 player.alumniStatus = 'Retired';
                                 newAlumni.push(player);
                                 if (isManaged) toast.info(`${player.name} has retired from university hockey.`);
                             } else if (roll < 0.95) {
                                 player.alumniStatus = 'Transfer Listed';
-                                newTransferPoolPlayers.push(player);
-                                newAlumni.push(player);
+                                const transferPlayer = { ...player, source: sourceTeamName };
+                                newTransferPoolPlayers.push(transferPlayer);
+                                newAlumni.push(transferPlayer);
                                 if (isManaged) toast.info(`${player.name} has graduated and entered the transfer portal.`);
                             } else {
                                 player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';

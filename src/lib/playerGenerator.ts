@@ -11,7 +11,7 @@ import { skaterAbilityRanges, goalieAbilityRanges } from "@/data/abilityRanges";
 const eligibilities = ["UG Year 1", "UG Year 2", "UG Year 3", "UG Year 4", "Masters", "PhD", "Staff"] as const;
 const skaterPositions = ["C", "LW", "RW", "LD", "RD"] as const;
 
-const getRandomItem = <TItem>(arr: readonly TItem[]): TItem => arr[Math.floor(Math.random() * arr.length)];
+const getRandomItem = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const getArchetypeForPosition = (position: Position): PlayerArchetype => {
@@ -25,19 +25,16 @@ const getArchetypeForPosition = (position: Position): PlayerArchetype => {
     return getRandomItem(possibleArchetypes);
 };
 
-const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament', 'gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
-const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
+const visibleSkaterKeys: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting', 'aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament', 'gettingOpen', 'offensiveRead', 'passing', 'puckHandling', 'screening', 'shootingAccuracy', 'shootingRange', 'checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
+const visibleGoalieKeys: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckHandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
 
-// Helper function to get a random skater position with explicit type
 const getRandomSkaterPosition = (): Position => {
     return getRandomItem(skaterPositions);
 };
 
-// New helper function to get a unique skater position
 const getUniqueSkaterPosition = (currentPositions: Position[]): Position => {
     const availablePositions = skaterPositions.filter(p => !currentPositions.includes(p));
     if (availablePositions.length === 0) {
-        // Fallback if no unique position can be found (shouldn't happen with 5 positions and max 3 assigned)
         return skaterPositions[Math.floor(Math.random() * skaterPositions.length)];
     }
     return availablePositions[Math.floor(Math.random() * availablePositions.length)];
@@ -55,19 +52,19 @@ const generateAttributesForAbility = (archetype: PlayerArchetype, targetAbility:
 
     if (isSkater) {
         const attrs = attributes as SkaterAttributes;
-        if (archetype.type.includes('Offensive')) { attrs.offensiveRead += 5; attrs.puckhandling += 3; attrs.shootingAccuracy += 4; }
+        if (archetype.type.includes('Offensive')) { attrs.offensiveRead += 5; attrs.puckHandling += 3; attrs.shootingAccuracy += 4; }
         if (archetype.type.includes('Playmaker')) { attrs.passing += 6; attrs.offensiveRead += 4; }
         if (archetype.type.includes('Goalscorer')) { attrs.shootingAccuracy += 6; attrs.shootingRange += 4; attrs.gettingOpen += 5; }
         if (archetype.type.includes('Two-Way')) { attrs.defensiveRead += 4; attrs.positioning += 4; attrs.stickchecking += 3; attrs.offensiveRead += 2; }
         if (archetype.type.includes('Defensive') || archetype.type.includes('Checking')) { attrs.defensiveRead += 6; attrs.positioning += 5; attrs.stickchecking += 5; attrs.checking += 4; attrs.shotBlocking += 4; attrs.hitting += 3; }
-        if (archetype.type === 'Enforcer') { attrs.fighting += 10; attrs.aggression += 8; attrs.bravery += 6; attrs.hitting += 8; attrs.strength += 5; attrs.passing -= 5; attrs.puckhandling -= 5; attrs.shootingAccuracy -= 5; attrs.offensiveRead -= 6; }
+        if (archetype.type === 'Enforcer') { attrs.fighting += 10; attrs.aggression += 8; attrs.bravery += 6; attrs.hitting += 8; attrs.strength += 5; attrs.passing -= 5; attrs.puckHandling -= 5; attrs.shootingAccuracy -= 5; attrs.offensiveRead -= 6; }
         if (archetype.physicality === 'Physical') { attrs.strength += 5; attrs.hitting += 4; attrs.balance += 3; attrs.aggression += 3; } 
         else if (archetype.physicality === 'Non-Physical') { attrs.strength -= 3; attrs.hitting -= 4; attrs.aggression -= 4; attrs.fighting -= 5; }
     } else {
         const attrs = attributes as GoalieAttributes;
         if (archetype.type === 'Standup') { attrs.positioning += 3; attrs.recovery -= 2; } 
         else if (archetype.type === 'Butterfly') { attrs.lowShots += 4; attrs.recovery += 2; attrs.positioning -= 2; }
-        if (archetype.physicality === 'Puckhandler') { attrs.puckhandling += 8; attrs.passing += 6; }
+        if (archetype.physicality === 'Puckhandler') { attrs.puckHandling += 8; attrs.passing += 6; }
     }
 
     visibleKeys.forEach(key => { attributes[key] = clamp(attributes[key]); });
@@ -114,16 +111,15 @@ export const calculateStarRating = (currentAbility: number, isSkater: boolean, l
     const tier = getTierStats(leagueDivision);
     const ranges = isSkater ? skaterAbilityRanges[tier.name] : goalieAbilityRanges[tier.name];
 
-    if (!ranges) return 1; // Fallback
+    if (!ranges) return 1;
 
-    // Iterate from highest star to lowest
     for (const star of Object.keys(ranges).sort((a, b) => parseFloat(b) - parseFloat(a))) {
         const { min, max } = ranges[star];
         if (currentAbility >= min && currentAbility <= max) {
             return parseFloat(star);
         }
     }
-    return 1; // Default to 1 star if no range matches
+    return 1;
 };
 
 const getTargetAbilityRange = (starRating: number, isSkater: boolean, leagueDivision: string): { min: number, max: number } => {
@@ -131,17 +127,15 @@ const getTargetAbilityRange = (starRating: number, isSkater: boolean, leagueDivi
     const ranges = isSkater ? skaterAbilityRanges[tier.name] : goalieAbilityRanges[tier.name];
     
     const range = ranges[String(starRating)];
-    if (!range) { // Fallback for safety
+    if (!range) {
         return isSkater ? { min: 200, max: 220 } : { min: 80, max: 100 };
     }
 
-    // Handle Infinity for max range
     const maxAbility = range.max === Infinity 
-        ? range.min + (isSkater ? 40 : 20) // If max is infinity, create a reasonable upper bound for generation
+        ? range.min + (isSkater ? 40 : 20)
         : range.max;
 
-    // Ensure a minimum floor for generated ability to prevent excessively low attributes
-    const minFloor = (isSkater ? visibleSkaterKeys.length : visibleGoalieKeys.length) * 5; // e.g., 28 * 5 = 140 for skaters
+    const minFloor = (isSkater ? visibleSkaterKeys.length : visibleGoalieKeys.length) * 5;
     
     return { min: Math.max(range.min, minFloor), max: maxAbility };
 };
@@ -171,22 +165,30 @@ export const getGamesPlayedForDivision = (leagueDivision: string): number => {
 
 const generateRandomSeasonStats = (isSkater: boolean, teamName: string, leagueDivision: string, seasonYear: number, previousCaptaincy: 'C' | 'A' | null = null, attributes?: SkaterAttributes | GoalieAttributes): PlayerSeasonStats => {
     const gamesPlayed = getGamesPlayedForDivision(leagueDivision);
+    let goals = 0, assists = 0, points = 0, penaltyMinutes = 0, shotsAgainst = 0, saves = 0, shutouts = 0, goalsAgainst = 0, savePercentage = 0, goalsAgainstAverage = 0;
+    let captaincy: 'C' | 'A' | null = null;
+
     if (isSkater && attributes) {
         const skaterAttrs = attributes as SkaterAttributes;
         const offensiveSkill = (skaterAttrs.offensiveRead + skaterAttrs.shootingAccuracy + skaterAttrs.gettingOpen + skaterAttrs.passing) / 4;
         const ppg = 0.1 + Math.pow((offensiveSkill - 1) / 19, 2) * (2.0 - 0.1);
-        const points = Math.round(ppg * (0.8 + Math.random() * 0.4) * gamesPlayed);
-        let goals = Math.round(points * (skaterAttrs.shootingAccuracy / (skaterAttrs.shootingAccuracy + skaterAttrs.passing + 0.1)));
+        points = Math.round(ppg * (0.8 + Math.random() * 0.4) * gamesPlayed);
+        goals = Math.round(points * (skaterAttrs.shootingAccuracy / (skaterAttrs.shootingAccuracy + skaterAttrs.passing + 0.1)));
         if (goals > points) goals = points;
-        const assists = points - goals;
-        const penaltyMinutes = Math.floor(Math.random() * gamesPlayed * 2);
-        let captaincy: 'C' | 'A' | null = null;
+        assists = points - goals;
+        penaltyMinutes = Math.floor(Math.random() * gamesPlayed * 2);
         if (previousCaptaincy === 'A') { const roll = Math.random(); if (roll < 0.75) captaincy = 'A'; else if (roll < 0.90) captaincy = 'C'; } else if (previousCaptaincy === 'C') { const roll = Math.random(); if (roll < 0.95) captaincy = 'C'; else if (roll < 0.99) captaincy = 'A'; } else { const captaincyRoll = Math.random(); if (captaincyRoll < 0.02) captaincy = 'C'; else if (captaincyRoll < 0.07) captaincy = 'A'; }
-        return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goals, assists, points, penaltyMinutes, captaincy };
+    } else if (isSkater) {
+        goals = Math.floor(Math.random() * (gamesPlayed * 0.8));
+        assists = Math.floor(Math.random() * (gamesPlayed * 1.2));
+        points = goals + assists;
+        penaltyMinutes = Math.floor(Math.random() * gamesPlayed * 2);
     } else {
-        if (isSkater) { const goals = Math.floor(Math.random() * (gamesPlayed * 0.8)); const assists = Math.floor(Math.random() * (gamesPlayed * 1.2)); return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goals, assists, points: goals + assists, penaltyMinutes: Math.floor(Math.random() * gamesPlayed * 2), captaincy: null }; }
-        else { const gaa = parseFloat((Math.random() * (5.50 - 2.00) + 2.00).toFixed(2)); const svp = parseFloat((Math.random() * (0.930 - 0.880) + 0.880).toFixed(3)); return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goalsAgainstAverage: gaa, savePercentage: svp, shutouts: Math.random() < 0.2 ? Math.floor(Math.random() * 3) + 1 : 0 }; }
+        goalsAgainstAverage = parseFloat((Math.random() * (5.50 - 2.00) + 2.00).toFixed(2));
+        savePercentage = parseFloat((Math.random() * (0.930 - 0.880) + 0.880).toFixed(3));
+        shutouts = Math.random() < 0.2 ? Math.floor(Math.random() * 3) + 1 : 0;
     }
+    return { season: `${seasonYear}-${seasonYear + 1}`, team: teamName, league: leagueDivision, gamesPlayed, goals, assists, points, penaltyMinutes, shotsAgainst, saves, shutouts, goalsAgainst, savePercentage, goalsAgainstAverage, captaincy };
 };
 
 export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Position, leagueDivision: string, teamName: string, allowedEligibilities?: Player['eligibility'][], options?: { targetStarRating?: number, targetAbility?: number }): Player => {
@@ -197,12 +199,8 @@ export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Positio
   let positions: Position[] = [position];
   const isSkater = position !== 'G';
   if (isSkater) {
-    if (Math.random() > 0.5) { 
-      positions.push(getUniqueSkaterPosition(positions));
-    }
-    if (positions.length === 2 && Math.random() > 0.8) { 
-      positions.push(getUniqueSkaterPosition(positions));
-    }
+    if (Math.random() > 0.5) positions.push(getUniqueSkaterPosition(positions));
+    if (positions.length === 2 && Math.random() > 0.8) positions.push(getUniqueSkaterPosition(positions));
   }
 
   const archetype = getArchetypeForPosition(position);
@@ -228,7 +226,7 @@ export const generatePlayer = (usedJerseyNumbers: Set<number>, position: Positio
   const starRating = options?.targetStarRating ?? calculateStarRating(currentAbility, isSkater, leagueDivision);
   
   const potentialBonus = Math.floor(Math.random() * (isSkater ? 100 : 50)) * ((30 - age) / 12);
-  const maxAbility = isSkater ? 560 : 260;
+  const maxAbility = isSkater ? visibleSkaterKeys.reduce((sum, key) => sum + 20, 0) : visibleGoalieKeys.reduce((sum, key) => sum + 20, 0);
   let potentialAbility = Math.min(maxAbility, Math.round(currentAbility + potentialBonus));
   if (potentialAbility < currentAbility) potentialAbility = currentAbility;
 
@@ -307,14 +305,13 @@ export const generateRoster = (leagueDivision: string, teamName: string): Player
 };
 
 export const generateRecruits = (userLeagueDivision: string, allTeamNames: string[], count?: number, facilities?: FacilityProject[]): Player[] => {
-    // This comment is added to force re-evaluation of this file by the TypeScript compiler.
     const recruits: Player[] = [];
     const usedJerseyNumbers = new Set<number>();
     
     let baseRecruitCount = 30 + Math.floor(Math.random() * 21);
     const hasPosters = facilities?.some(f => f.id === 'campus_posters_1' && f.status === 'Completed');
     if (hasPosters) {
-        baseRecruitCount = Math.round(baseRecruitCount * 1.25); // 25% more recruits
+        baseRecruitCount = Math.round(baseRecruitCount * 1.25);
     }
     const numRecruits = count || baseRecruitCount;
 
@@ -330,10 +327,10 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
         
         let qualityRoll = Math.random();
         if (hasDatabase) {
-            qualityRoll = Math.min(1, qualityRoll + 0.1); // 10% better chance of higher quality
+            qualityRoll = Math.min(1, qualityRoll + 0.1);
         }
         let estimatedQuality: Player['estimatedQuality'];
-        if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else if (qualityRoll < 0.99) estimatedQuality = 'Elite'; else estimatedQuality = 'Elite'; // Ensure Elite is possible
+        if (qualityRoll < 0.49) estimatedQuality = 'Beginner'; else if (qualityRoll < 0.79) estimatedQuality = 'Moderate'; else if (qualityRoll < 0.94) estimatedQuality = 'Intermediate'; else if (qualityRoll < 0.98) estimatedQuality = 'Experienced'; else estimatedQuality = 'Elite';
         
         const allRecruitPositions = [...skaterPositions, 'G'] as const;
         const position = getRandomItem(allRecruitPositions);
