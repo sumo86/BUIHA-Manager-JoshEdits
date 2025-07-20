@@ -69,9 +69,10 @@ export const ScoutingTable = ({ data, isTransferPortal = false }: ScoutingTableP
                     lastSeasonHistory.sort((a, b) => {
                         const rankA = leagueDivisions.indexOf(a.league);
                         const rankB = leagueDivisions.indexOf(b.league);
-                        if (rankA === -1) return 1;
-                        if (rankB === -1) return -1;
-                        return rankA - rankB;
+                        if (rankA === -1 && rankB === -1) return 0; // Both not in known divisions
+                        if (rankA === -1) return 1; // a is not in known divisions, b is
+                        if (rankB === -1) return -1; // b is not in known divisions, a is
+                        return rankA - rankB; // Sort by division rank (lower index = higher division)
                     });
                     return lastSeasonHistory[0].team;
                 }
