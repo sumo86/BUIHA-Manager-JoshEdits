@@ -32,7 +32,19 @@ const StandingsPage = () => {
       return b.goalsFor - a.goalsFor;
     });
 
-    const players = filteredTeams.flatMap(team => team.roster.map(p => ({...p, history: [{...p.history[p.history.length - 1], team: team.name}]} as Player)));
+    const players = filteredTeams.flatMap(team =>
+      team.roster.map(player => {
+        const statsForThisTeam = player.currentStats.filter(
+          stat => stat.team === team.name
+        );
+        return {
+          ...player,
+          currentStats: statsForThisTeam,
+          // This ensures the team name displayed is correct for the context of the division standings
+          history: [{ ...(player.history[player.history.length - 1] || {}), team: team.name }],
+        } as Player;
+      })
+    );
 
     return { displayedTeams: sortedTeams, leaguePlayers: players };
   }, [teams, selectedLeague, leagues]);

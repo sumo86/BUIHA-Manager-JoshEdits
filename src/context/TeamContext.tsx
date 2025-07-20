@@ -818,7 +818,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     updatedAchievements[teamName].push(achievement);
                                 }
                             });
-                            return updatedAchievements;
+                            return updatedAchievements; // Return the updated state
                         });
                     }
                     
@@ -1021,7 +1021,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const isSkater = player.positions[0] !== 'G';
             const updatedPlayer = {
                 ...player,
-                starRating: calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision)
+                starRating: calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision),
+                captaincy: null, // Reset captaincy when player moves teams
             };
 
             const newToRoster = [...toTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
@@ -1118,7 +1119,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         toast.success(`${teamName} has won the ${achievement.division} ${achievement.type === 'Nationals Gold' ? 'Gold' : 'Silver'} Championship!`);
                     }
                 });
-                return updated;
+                return updated; // Return the updated state
             });
         }
     };
@@ -1341,7 +1342,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             toast.success(`${teamName} has won the ${achievement.division} ${achievement.type === 'Nationals Gold' ? 'Gold' : 'Silver'} Championship!`);
                         }
                     });
-                    return updated;
+                    return updated; // Return the updated state
                 });
             }
             safetyBreak++;
@@ -1376,7 +1377,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 toast.success(`${teamName} has won the ${achievement.division} ${achievement.type === 'Nationals Gold' ? 'Gold' : 'Silver'} Championship!`);
                             }
                         });
-                        return updated;
+                        return updated; // Return the updated state
                     });
                 }
                 safetyBreak++;

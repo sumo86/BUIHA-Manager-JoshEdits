@@ -37,12 +37,12 @@ const getGoalFactor = (leagueDivision: string, isBigGame: boolean): number => {
     if (isBigGame) {
         return getRandomValueInRange(2, 4); // Nationals: 2-4 GPG
     }
-    if (leagueDivision.includes('Non-Checking 3')) return getRandomValueInRange(11, 13); // Target ~11-13 GPG
-    if (leagueDivision.includes('Non-Checking 2')) return getRandomValueInRange(10, 12); // Target ~10-12 GPG
-    if (leagueDivision.includes('Non-Checking 1')) return getRandomValueInRange(9, 11); // Target ~9-11 GPG
-    if (leagueDivision.includes('Checking 2')) return getRandomValueInRange(9, 11); // Target ~9-11 GPG
-    if (leagueDivision.includes('Checking 1')) return getRandomValueInRange(8, 10); // Target ~8-10 GPG
-    return getRandomValueInRange(10, 12); // Default
+    if (leagueDivision.includes('Non-Checking 3')) return getRandomValueInRange(11, 13); 
+    if (leagueDivision.includes('Non-Checking 2')) return getRandomValueInRange(16, 22);
+    if (leagueDivision.includes('Non-Checking 1')) return getRandomValueInRange(15, 20);
+    if (leagueDivision.includes('Checking 2')) return getRandomValueInRange(14, 19);
+    if (leagueDivision.includes('Checking 1')) return getRandomValueInRange(12, 17);
+    return getRandomValueInRange(15, 20); // Default
 };
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
