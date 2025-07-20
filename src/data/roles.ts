@@ -1,4 +1,19 @@
-import { SkaterAttributes, Role } from "@/types";
+import { SkaterAttributes } from "@/types";
+
+export interface Role {
+    name: string;
+    description: string;
+    positions: ('Forward' | 'Defenceman')[];
+    keyAttributes: (keyof SkaterAttributes)[];
+    type: 'Offensive' | 'Defensive' | 'Two-Way' | 'Physical' | 'Specialist';
+    behavioralModifiers: {
+        shootTendency: number;
+        passTendency: number;
+        hitTendency: number;
+        shotBlockTendency: number;
+        penaltyTendency: number;
+    };
+}
 
 export const roles: Role[] = [
     // Forwards
@@ -6,7 +21,7 @@ export const roles: Role[] = [
         name: "Offensive Forward",
         description: "A balanced forward expected to contribute offensively.",
         positions: ['Forward'],
-        keyAttributes: ['offensiveRead', 'puckHandling', 'shootingAccuracy', 'passing', 'gettingOpen'],
+        keyAttributes: ['offensiveRead', 'puckhandling', 'shootingAccuracy', 'passing', 'gettingOpen'],
         type: 'Offensive',
         behavioralModifiers: { shootTendency: 1.1, passTendency: 1.1, hitTendency: 0.9, shotBlockTendency: 0.8, penaltyTendency: 1.0 },
     },
@@ -14,7 +29,7 @@ export const roles: Role[] = [
         name: "Playmaker",
         description: "Creates scoring chances for teammates.",
         positions: ['Forward'],
-        keyAttributes: ['passing', 'offensiveRead', 'puckHandling', 'teamPlayer'],
+        keyAttributes: ['passing', 'offensiveRead', 'puckhandling', 'teamPlayer'],
         type: 'Offensive',
         behavioralModifiers: { shootTendency: 0.7, passTendency: 1.4, hitTendency: 0.8, shotBlockTendency: 0.7, penaltyTendency: 0.9 },
     },
@@ -38,7 +53,7 @@ export const roles: Role[] = [
         name: "Speedy Forward",
         description: "Uses superior skating to fly past opponents.",
         positions: ['Forward'],
-        keyAttributes: ['speed', 'acceleration', 'agility', 'puckHandling'],
+        keyAttributes: ['speed', 'acceleration', 'agility', 'puckhandling'],
         type: 'Offensive',
         behavioralModifiers: { shootTendency: 1.1, passTendency: 1.1, hitTendency: 0.7, shotBlockTendency: 0.6, penaltyTendency: 0.9 },
     },
@@ -87,7 +102,7 @@ export const roles: Role[] = [
         name: "Offensive Defenceman",
         description: "Primary contribution is expected to be offensive.",
         positions: ['Defenceman'],
-        keyAttributes: ['offensiveRead', 'passing', 'shootingRange', 'puckHandling', 'speed'],
+        keyAttributes: ['offensiveRead', 'passing', 'shootingRange', 'puckhandling', 'speed'],
         type: 'Offensive',
         behavioralModifiers: { shootTendency: 1.3, passTendency: 1.2, hitTendency: 0.7, shotBlockTendency: 0.7, penaltyTendency: 1.0 },
     },
@@ -95,7 +110,7 @@ export const roles: Role[] = [
         name: "Playmaking Defenceman",
         description: "Focuses on setting up teammates and controlling play.",
         positions: ['Defenceman'],
-        keyAttributes: ['passing', 'offensiveRead', 'puckHandling', 'agility', 'determination'],
+        keyAttributes: ['passing', 'offensiveRead', 'puckhandling', 'agility', 'determination'],
         type: 'Offensive',
         behavioralModifiers: { shootTendency: 0.8, passTendency: 1.4, hitTendency: 0.7, shotBlockTendency: 0.8, penaltyTendency: 0.9 },
     },

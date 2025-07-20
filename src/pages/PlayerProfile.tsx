@@ -93,9 +93,9 @@ const PlayerProfile = () => {
 
   const skaterPhysicalAttrs: (keyof SkaterAttributes)[] = ['acceleration', 'agility', 'balance', 'fighting', 'speed', 'stamina', 'strength', 'hitting'];
   const skaterMentalAttrs: (keyof SkaterAttributes)[] = ['aggression', 'bravery', 'determination', 'leadership', 'professionalism', 'teamPlayer', 'temperament'];
-  const skaterOffensiveAttrs: (keyof SkaterAttributes)[] = ['gettingOpen', 'offensiveRead', 'passing', 'puckHandling', 'screening', 'shootingAccuracy', 'shootingRange'];
+  const skaterOffensiveAttrs: (keyof SkaterAttributes)[] = ['gettingOpen', 'offensiveRead', 'passing', 'puckhandling', 'screening', 'shootingAccuracy', 'shootingRange'];
   const skaterDefensiveAttrs: (keyof SkaterAttributes)[] = ['checking', 'defensiveRead', 'faceoffs', 'positioning', 'shotBlocking', 'stickchecking'];
-  const goalieAttrs: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckHandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
+  const goalieAttrs: (keyof GoalieAttributes)[] = ['blocker', 'glove', 'lowShots', 'positioning', 'rebound', 'recovery', 'reflexes', 'passing', 'pokeCheck', 'puckhandling', 'skating', 'mentalToughness', 'goaltenderStamina'];
   const allUsedJerseyNumbers = userTeam.roster.map(p => p.jerseyNumber);
   const sortedRoles = isSkater ? Object.entries(player.roleSuitability).sort(([, a]: [string, number], [, b]: [string, number]) => b - a).slice(0, 5) : [];
 

@@ -1,4 +1,11 @@
-import { type LucideIcon } from 'lucide-react';
+export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
+
+export type Instruction = "Encourage" | "Discipline" | "Praise" | "Push Harder" | "Calm Down";
+
+export type ActiveInstruction = {
+  type: Instruction;
+  duration: number; // in game ticks
+};
 
 export type PlayerArchetype = {
   position: 'Defenceman' | 'Centre' | 'Winger' | 'Goaltender';
@@ -7,173 +14,137 @@ export type PlayerArchetype = {
   description: string;
 };
 
+export type SkaterAttributes = {
+  acceleration: number;
+  agility: number;
+  balance: number;
+  fighting: number;
+  speed: number;
+  stamina: number;
+  strength: number;
+  hitting: number;
+  aggression: number;
+  bravery: number;
+  determination: number;
+  leadership: number;
+  professionalism: number;
+  teamPlayer: number;
+  temperament: number;
+  gettingOpen: number;
+  offensiveRead: number;
+  passing: number;
+  puckhandling: number;
+  screening: number;
+  shootingAccuracy: number;
+  shootingRange: number;
+  checking: number;
+  defensiveRead: number;
+  faceoffs: number;
+  positioning: number;
+  shotBlocking: number;
+  stickchecking: number;
+  aging: number;
+  ambition: number;
+  bigGames: number;
+  coachability: number;
+  controversy: number;
+  developmentRate: number;
+  greed: number;
+  handleFailure: number;
+  handleSuccess: number;
+  handleCritics: number;
+  injuryProneness: number;
+  intelligence: number;
+  loyalty: number;
+  mood: number;
+  sportsmanship: number;
+  passShootTendency: number;
+};
+
+export type GoalieAttributes = {
+  blocker: number;
+  glove: number;
+  lowShots: number;
+  positioning: number;
+  rebound: number;
+  recovery: number;
+  reflexes: number;
+  passing: number;
+  pokeCheck: number;
+  puckhandling: number;
+  skating: number;
+  mentalToughness: number;
+  goaltenderStamina: number;
+  aging: number;
+  ambition: number;
+  bigGames: number;
+  coachability: number;
+  controversy: number;
+  developmentRate: number;
+  greed: number;
+  handleFailure: number;
+  handleSuccess: number;
+  handleCritics: number;
+  injuryProneness: number;
+  intelligence: number;
+  loyalty: number;
+  mood: number;
+  sportsmanship: number;
+  professionalism: number;
+  determination: number;
+  leadership: number;
+};
+
+export type PlayerSeasonStats = {
+  season: string;
+  team: string;
+  league: string;
+  gamesPlayed: number;
+  goals?: number;
+  assists?: number;
+  points?: number;
+  penaltyMinutes?: number;
+  captaincy?: 'C' | 'A' | null;
+  goalsAgainst?: number;
+  shotsAgainst?: number;
+  saves?: number;
+  goalsAgainstAverage?: number;
+  savePercentage?: number;
+  shutouts?: number;
+};
+
+export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
+
 export type Player = {
   id: string;
+  jerseyNumber: number;
   name: string;
   age: number;
   nationality: string;
   positions: Position[];
-  jerseyNumber: number;
+  starRating: number;
+  morale: "Content" | "Happy" | "Unhappy" | "Angry";
+  healthStatus: "Healthy" | "Injured" | "Suspended";
+  injury: { type: string; duration: number } | null;
+  eligibility: "UG Year 1" | "UG Year 2" | "UG Year 3" | "UG Year 4" | "Masters" | "PhD" | "Staff";
+  archetype: PlayerArchetype;
   attributes: SkaterAttributes | GoalieAttributes;
   currentAbility: number;
   potentialAbility: number;
-  starRating: number;
-  healthStatus: 'Healthy' | 'Injured';
-  injury: { type: string; duration: number; } | null;
-  eligibility: 'UG Year 1' | 'UG Year 2' | 'UG Year 3' | 'UG Year 4' | 'Masters' | 'PhD' | 'Staff';
+  role: string | undefined;
+  roleSuitability: { [key: string]: number };
+  captaincy: 'C' | 'A' | null;
+  yearsLeftInProgram?: number;
+  history: PlayerSeasonStats[];
+  trainingFocus: TrainingFocus;
+  currentStats: PlayerSeasonStats[];
+  activeInstructions: ActiveInstruction[];
+  source?: 'Local' | 'International' | 'Transfer';
+  estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
+  recruitmentCost?: number;
+  alumniStatus?: 'Retired' | 'Active Elsewhere' | 'Transfer Listed';
   isContinuingEducation?: boolean;
   continuingEducationStartSeason?: string;
-  yearsLeftInProgram?: number;
-  morale: 'Angry' | 'Unhappy' | 'Content' | 'Happy';
-  trainingFocus: TrainingFocus | null;
-  captaincy: 'C' | 'A' | null;
-  role: string | null;
-  roleSuitability: { [key: string]: number };
-  currentStats: PlayerSeasonStats[];
-  history: PlayerSeasonStats[];
-  alumniStatus?: 'Retired' | 'Transfer Listed';
-  recruitmentCost?: number;
-  estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
-  source?: string;
-  archetype?: PlayerArchetype;
-  activeInstructions?: { type: Instruction; duration: number }[];
-};
-
-export type Position = 'C' | 'LW' | 'RW' | 'LD' | 'RD' | 'G';
-
-export type SkaterAttributes = {
-  skating: number;
-  shootingAccuracy: number;
-  shootingRange: number;
-  passing: number;
-  puckHandling: number;
-  checking: number;
-  hitting: number;
-  strength: number;
-  stamina: number;
-  speed: number;
-  acceleration: number;
-  agility: number;
-  balance: number;
-  offensiveRead: number;
-  defensiveRead: number;
-  professionalism: number;
-  determination: number;
-  leadership: number;
-  aggressiveness: number;
-  bravery: number;
-  teamwork: number;
-  flair: number;
-  consistency: number;
-  developmentRate: number;
-  injuryProneness: number;
-  passShootTendency: number;
-  mood: number;
-  controversy: number;
-  greed: number;
-  loyalty: number;
-  handleCritics: number;
-  handleFailure: number;
-  handleSuccess: number;
-  sportsmanship: number;
-  ambition: number;
-  bigGames: number;
-  coachability: number;
-  intelligence: number;
-  // Added missing attributes
-  gettingOpen: number;
-  teamPlayer: number;
-  temperament: number;
-  screening: number;
-  aggression: number;
-  fighting: number;
-  positioning: number;
-  stickchecking: number;
-  shotBlocking: number;
-  faceoffs: number;
-  aging: number;
-};
-
-export type GoalieAttributes = {
-  skating: number;
-  glove: number;
-  stick: number;
-  positioning: number;
-  reboundControl: number;
-  recovery: number;
-  goaltenderStamina: number;
-  reflexes: number;
-  puckHandling: number;
-  passing: number;
-  breakaway: number;
-  fiveHole: number;
-  screen: number;
-  professionalism: number;
-  determination: number;
-  leadership: number;
-  aggressiveness: number;
-  bravery: number;
-  teamwork: number;
-  flair: number;
-  consistency: number;
-  developmentRate: number;
-  injuryProneness: number;
-  mood: number;
-  controversy: number;
-  greed: number;
-  loyalty: number;
-  handleCritics: number;
-  handleFailure: number;
-  handleSuccess: number;
-  sportsmanship: number;
-  ambition: number;
-  bigGames: number;
-  coachability: number;
-  intelligence: number;
-  // Added missing attributes
-  blocker: number;
-  lowShots: number;
-  rebound: number;
-  pokeCheck: number;
-  mentalToughness: number;
-  aging: number;
-};
-
-export type Team = {
-  id: string;
-  name: string;
-  logo?: string;
-  leagueDivision: string;
-  nationalsDivision: string | null;
-  roster: Player[];
-  wins: number;
-  losses: number;
-  draws: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  points: number;
-  financials: Financials;
-  facilities: FacilityProject[];
-  lineup: Lineup;
-  tactics: TacticsSelection;
-};
-
-export type Financials = {
-  totalBudget: number;
-  discretionaryBudget: number;
-  equipmentCost: number;
-  iceTimeCostPerGame: number;
-};
-
-export type FacilityProject = {
-  id: string;
-  name: string;
-  description: string;
-  cost: number;
-  status: 'Not Started' | 'In Progress' | 'Completed';
-  benefit: string;
-  category: string;
-  weeksToComplete?: number;
 };
 
 export type Lineup = {
@@ -196,10 +167,47 @@ export type TacticsSelection = {
   [key: string]: string;
 };
 
-export type GameDate = {
-  month: string;
-  week: number;
-  year: number;
+export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities";
+
+export type BudgetAllocations = {
+  [key in BudgetCategory]: number;
+};
+
+export type Financials = {
+  totalBudget: number;
+  discretionaryBudget: number;
+  iceTimeCostPerGame: number;
+  equipmentCost: number;
+};
+
+export type FacilityProject = {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  status: 'Not Started' | 'In Progress' | 'Completed';
+  benefit: string;
+  weeksToComplete?: number;
+  category: 'Financial' | 'Player Development' | 'Player Welfare' | 'Recruitment';
+};
+
+export type Team = {
+  id: string;
+  name: string;
+  logo: string;
+  leagueDivision: string;
+  nationalsDivision: string;
+  roster: Player[];
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  lineup: Lineup;
+  tactics: TacticsSelection;
+  financials: Financials;
+  facilities: FacilityProject[];
 };
 
 export type GameEvent = {
@@ -207,6 +215,28 @@ export type GameEvent = {
   period: number;
   team: string;
   description: string;
+};
+
+export type PowerPlayState = {
+  isActive: boolean;
+  teamOnPowerPlay: string | null;
+  timeLeft: number; // in game ticks
+};
+
+export type GameSkaterStats = {
+    playerId: string;
+    goals: number;
+    assists: number;
+    points: number;
+    penaltyMinutes: number;
+};
+
+export type GameGoalieStats = {
+    playerId: string;
+    shotsAgainst: number;
+    saves: number;
+    goalsAgainst: number;
+    shutout: boolean;
 };
 
 export type GameState = {
@@ -219,33 +249,27 @@ export type GameState = {
   gameLog: GameEvent[];
   isGameOver: boolean;
   isPaused: boolean;
-  injuries: { playerId: string; teamName: string; injuryType: string; duration: number; }[];
+  injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
   possessionHolder: string | null;
-  powerPlayState: {
-    isActive: boolean;
-    teamOnPowerPlay: string | null;
-    timeLeft: number;
-  };
-  skaterStats: { playerId: string; goals: number; assists: number; points: number; penaltyMinutes: number; }[];
-  goalieStats: { playerId: string; shotsAgainst: number; saves: number; goalsAgainst: number; shutout: boolean; }[];
+  powerPlayState: PowerPlayState;
+  skaterStats: GameSkaterStats[];
+  goalieStats: GameGoalieStats[];
 };
 
-export type PlayerSeasonStats = {
-  season: string;
-  team: string;
-  league: string;
-  gamesPlayed: number;
-  goals: number;
-  assists: number;
-  points: number;
-  penaltyMinutes: number;
-  shotsAgainst: number;
-  saves: number;
-  shutouts: number;
-  goalsAgainst: number;
-  savePercentage: number;
-  goalsAgainstAverage: number;
-  captaincy: 'C' | 'A' | null;
+export type GameDate = {
+  year: number;
+  month: string;
+  week: number;
+};
+
+export type ScheduleEntry = {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  date: GameDate;
+  status: 'scheduled' | 'completed';
+  result?: { homeScore: number; awayScore: number };
+  round?: number;
 };
 
 export type DevelopmentLog = {
@@ -257,19 +281,20 @@ export type DevelopmentLog = {
   date: GameDate;
 };
 
-export type TrainingFocus = 'Skating' | 'Shooting' | 'Playmaking' | 'Defense' | 'Physical' | 'Mental' | 'Goaltending' | 'Rebound Control' | 'Puck Handling (G)' | 'Breakaway Saves' | null;
-
-export type ScheduleEntry = {
-  id: string;
-  homeTeam: string;
-  awayTeam: string;
-  date: GameDate;
-  status: 'scheduled' | 'completed';
-  result?: { homeScore: number; awayScore: number; };
-  round?: number;
+export type Tactic = {
+  phase: string;
+  category: string;
+  tactic: string;
+  description: string;
+  bestUsedWith: string;
+  strongVs: string;
+  weakVs: string;
 };
 
-export type RecordCategory = 'Goals' | 'Assists' | 'Points' | 'PenaltyMinutes' | 'GAA' | 'SavePercentage' | 'Shutouts';
+export type TacticSuitability = {
+  score: number;
+  explanation: string;
+};
 
 export type TeamRecord = {
   playerName: string;
@@ -278,124 +303,87 @@ export type TeamRecord = {
   season?: string;
 };
 
+export type RecordCategory = 'Goals' | 'Assists' | 'Points' | 'PenaltyMinutes' | 'GAA' | 'SavePercentage' | 'Shutouts';
+
+export type LegacyRecord = {
+  playerName: string;
+  teamName: string;
+  category: RecordCategory;
+  type: 'season' | 'career';
+  value: number;
+  season?: string;
+};
+
+// Nationals Types
 export type NationalsStanding = {
   teamName: string;
   played: number;
   wins: number;
   losses: number;
   draws: number;
-  points: number;
   goalsFor: number;
   goalsAgainst: number;
+  points: number;
 };
 
 export type NationalsGroup = {
-  name: string;
-  teams: string[];
+  name: string; // e.g., "Group A"
+  teams: string[]; // team names
   standings: NationalsStanding[];
-};
-
-export type NationalsTournament = {
-  year: number;
-  division: string;
-  status: 'group-stage' | 'silver-playoffs' | 'gold-playoffs' | 'completed';
-  currentRound: number | string;
-  groupStageSchedule: NationalsGame[];
-  playoffSchedule: NationalsPlayoffMatch[];
-  groups: NationalsGroup[];
-  winner?: string;
-};
-
-export type NationalsGame = {
-  id: string;
-  homeTeam: string;
-  awayTeam: string;
-  date: GameDate;
-  status: 'scheduled' | 'completed';
-  result?: { homeScore: number; awayScore: number; };
-  round: number;
-  group: string;
 };
 
 export type NationalsPlayoffMatch = {
   id: string;
+  round: 'Quarter-Final' | 'Semi-Final' | 'Final' | 'Preliminary';
+  bracket: 'Gold' | 'Silver';
   homeTeam: string | { winnerOf: string };
   awayTeam: string | { winnerOf: string };
-  date: GameDate;
-  status: 'scheduled' | 'completed';
-  result?: { homeScore: number; awayScore: number; };
-  round: string;
-  bracket: 'Gold' | 'Silver';
-  nextGameId?: string;
   winner?: string;
+  result?: { homeScore: number; awayScore: number };
+  status: 'scheduled' | 'completed';
+  date: GameDate;
+};
+
+export type NationalsTournament = {
+  division: string;
+  year: number;
+  groups: NationalsGroup[];
+  groupStageSchedule: ScheduleEntry[];
+  playoffSchedule: NationalsPlayoffMatch[];
+  status: 'pending' | 'group-stage' | 'silver-playoffs' | 'gold-playoffs' | 'completed';
+  winner?: string;
+  currentRound: number | 'Quarter-Final' | 'Semi-Final' | 'Final';
 };
 
 export type Achievement = {
-  type: 'Division Title' | 'Nationals Gold' | 'Nationals Silver';
-  season: string;
-  division: string;
+    type: 'Division Title' | 'Nationals Gold' | 'Nationals Silver';
+    season: string;
+    division: string;
 };
 
 export type TeamAchievements = {
-  [teamName: string]: Achievement[];
-};
-
-export type SeasonHistory = {
-  [season: string]: TeamSeasonHistory[];
+    [teamName: string]: Achievement[];
 };
 
 export type TeamSeasonHistory = {
-  teamName: string;
-  leagueDivision: string;
-  nationalsDivision: string | null;
-  wins: number;
-  losses: number;
-  draws: number;
-  points: number;
-  goalsFor: number;
-  goalsAgainst: number;
+    teamName: string;
+    leagueDivision: string;
+    nationalsDivision: string;
+    wins: number;
+    losses: number;
+    draws: number;
+    points: number;
+    goalsFor: number;
+    goalsAgainst: number;
+};
+
+export type SeasonHistory = {
+    [season: string]: TeamSeasonHistory[];
 };
 
 export type SaveGameSlot = {
-  saveName: string;
-  userTeamName: string;
-  currentDate: GameDate;
-  savedAt: string;
+    saveName: string;
+    savedAt: string;
+    userTeamName: string;
+    currentDate: GameDate;
 };
-
-export type TeamOrganization = {
-  name: string;
-  teams: { name: string; division: string; logo?: string; }[];
-};
-
-export type Tactic = {
-  tactic: string;
-  description: string;
-  bestUsedWith: string;
-  phase: string;
-  category: string;
-  strongVs?: string;
-  weakVs?: string;
-};
-
-export type Role = {
-  name: string;
-  description: string;
-  positions: ('Forward' | 'Defenceman')[];
-  keyAttributes: (keyof SkaterAttributes)[];
-  type: 'Offensive' | 'Defensive' | 'Two-Way' | 'Physical' | 'Specialist';
-  behavioralModifiers: {
-      shootTendency: number;
-      passTendency: number;
-      hitTendency: number;
-      shotBlockTendency: number;
-      penaltyTendency: number;
-  };
-};
-
-export type TacticSuitability = {
-  score: number;
-  explanation: string;
-};
-
-export type Instruction = "Encourage" | "Discipline" | "Praise" | "Push Harder" | "Calm Down";

@@ -1,5 +1,6 @@
-import { Team, NationalsGroup, NationalsTournament, NationalsGame, GameDate, NationalsPlayoffMatch, NationalsStanding } from '@/types';
+import { Team, NationalsGroup, NationalsTournament, ScheduleEntry, GameDate, NationalsPlayoffMatch, NationalsStanding } from '@/types';
 
+// Fisher-Yates shuffle algorithm
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -37,8 +38,8 @@ export const generateNationalsGroups = (allTeamsInDivision: Team[]): NationalsGr
   return groups;
 };
 
-export const generateGroupStageSchedule = (groups: NationalsGroup[], startDate: GameDate): NationalsGame[] => {
-    const schedule: NationalsGame[] = [];
+export const generateGroupStageSchedule = (groups: NationalsGroup[], startDate: GameDate): ScheduleEntry[] => {
+    const schedule: ScheduleEntry[] = [];
     
     groups.forEach(group => {
         const teams = [...group.teams];
@@ -60,10 +61,10 @@ export const generateGroupStageSchedule = (groups: NationalsGroup[], startDate: 
                         date: { ...startDate },
                         status: 'scheduled',
                         round: round + 1,
-                        group: group.name,
                     });
                 }
             }
+            // Rotate teams
             const lastTeam = teams.pop();
             if (lastTeam) {
                 teams.splice(1, 0, lastTeam);
@@ -105,6 +106,7 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
 
     const playoffs: NationalsPlayoffMatch[] = [];
 
+    // Gold Bracket
     if (goldQualifiersA.length >= 2 && goldQualifiersB.length >= 2) {
         if (totalTeams >= 13 && goldQualifiersA.length >= 3 && goldQualifiersB.length >= 3) {
             const [a1, a2, a3] = goldQualifiersA;
@@ -129,6 +131,7 @@ export const generatePlayoffBracket = (groups: NationalsGroup[], date: GameDate)
         }
     }
 
+    // Silver Bracket
     const allSilverStandings = [
         ...groups[0].standings.filter(s => !goldQualifiersA.includes(s.teamName)),
         ...groups[1].standings.filter(s => !goldQualifiersB.includes(s.teamName))

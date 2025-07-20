@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { tactics } from '@/data/tactics';
-import { roles } from '@/data/roles';
-import { Player, Position, Lineup as LineupType, TacticsSelection, Role } from '@/types';
+import { roles, Role } from '@/data/roles';
+import { Player, Position, Lineup as LineupType, TacticsSelection } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

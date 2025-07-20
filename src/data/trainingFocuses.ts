@@ -3,7 +3,7 @@ import { SkaterAttributes, GoalieAttributes, TrainingFocus } from "@/types";
 export const trainingFocusesMap: { [key: string]: (keyof SkaterAttributes | keyof GoalieAttributes)[] } = {
     "Skating": ["acceleration", "agility", "balance", "speed", "skating"],
     "Shooting": ["shootingAccuracy", "shootingRange", "gettingOpen"],
-    "Playmaking": ["passing", "puckHandling", "offensiveRead"],
+    "Playmaking": ["passing", "puckhandling", "offensiveRead"],
     "Defense": ["checking", "defensiveRead", "positioning", "shotBlocking", "stickchecking", "pokeCheck"],
     "Physical": ["strength", "stamina", "fighting", "hitting", "aggression", "bravery"],
     "Mental": ["determination", "leadership", "professionalism", "teamPlayer", "temperament", "mentalToughness"],
@@ -11,4 +11,4 @@ export const trainingFocusesMap: { [key: string]: (keyof SkaterAttributes | keyo
 };
 
 export const skaterFocuses: TrainingFocus[] = ["Skating", "Shooting", "Playmaking", "Defense", "Physical", "Mental"];
-export const goalieFocuses: TrainingFocus[] = ["Goaltending", "Mental", "Rebound Control", "Puck Handling (G)", "Breakaway Saves"];
+export const goalieFocuses: TrainingFocus[] = ["Goaltending", "Mental"];

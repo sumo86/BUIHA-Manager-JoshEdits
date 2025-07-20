@@ -2,7 +2,7 @@ import { Player, SkaterAttributes, Tactic, TacticSuitability } from "@/types";
 
 const attributeMap: { [key: string]: (keyof SkaterAttributes)[] } = {
     "teamwork": ["teamPlayer"],
-    "puckhandling": ["puckHandling"],
+    "puckhandling": ["puckhandling"],
     "skating": ["speed", "acceleration", "agility"],
     "offensive awareness": ["offensiveRead", "gettingOpen"],
     "checking": ["checking", "hitting"],
