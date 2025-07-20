@@ -16,12 +16,14 @@ export const PlayerHistoryTable = ({ history, isSkater, teams, currentStats }: P
   const nationalsHistory = useMemo(() => history.filter(s => s.league === 'Nationals'), [history]);
 
   const allLeagueStats = useMemo(() => 
-    [...currentStats.filter(s => s.league !== 'Nationals'), ...leagueHistory].sort((a, b) => b.season.localeCompare(a.season)),
+    // Changed sorting order: a.season.localeCompare(b.season) for oldest to newest
+    [...currentStats.filter(s => s.league !== 'Nationals'), ...leagueHistory].sort((a, b) => a.season.localeCompare(b.season)),
     [currentStats, leagueHistory]
   );
 
   const allNationalsStats = useMemo(() =>
-    [...currentStats.filter(s => s.league === 'Nationals'), ...nationalsHistory].sort((a, b) => b.season.localeCompare(a.season)),
+    // Changed sorting order: a.season.localeCompare(b.season) for oldest to newest
+    [...currentStats.filter(s => s.league === 'Nationals'), ...nationalsHistory].sort((a, b) => a.season.localeCompare(b.season)),
     [currentStats, nationalsHistory]
   );
 
