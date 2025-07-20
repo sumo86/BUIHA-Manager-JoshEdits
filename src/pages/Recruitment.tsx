@@ -145,7 +145,7 @@ const Recruitment = () => {
             </CardHeader>
             <CardContent>
               {transferPool?.length > 0 ? (
-                <ScoutingTable data={transferPool} />
+                <ScoutingTable data={transferPool} isTransferPortal={true} />
               ) : (
                 <p className="text-muted-foreground text-center py-8">The Transfer Portal is currently empty. Check back at the start of next season.</p>
               )}

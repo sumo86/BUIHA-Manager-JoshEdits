@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Star, StarHalf } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SeasonHistoryTable } from '@/components/buiha/SeasonHistoryTable';
+import DivisionWinnersHistory from '@/components/buiha/DivisionWinnersHistory';
 import NationalsHistoryView from '@/components/buiha/NationalsHistoryView';
 
 type PlayerWithTeamInfo = Player & {
@@ -214,7 +214,7 @@ const SeasonsHistory = () => {
         </TabsList>
         <TabsContent value="league" className="pt-4">
           {standingsForSelectedSeason.length > 0 ? (
-            <SeasonHistoryTable standings={standingsForSelectedSeason} />
+            <DivisionWinnersHistory standings={standingsForSelectedSeason} />
           ) : (
             <p className="text-center text-muted-foreground py-8">No league history available for the selected season.</p>
           )}

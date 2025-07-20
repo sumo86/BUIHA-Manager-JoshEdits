@@ -142,7 +142,7 @@ export type Player = {
   source?: 'Local' | 'International' | 'Transfer';
   estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
   recruitmentCost?: number;
-  alumniStatus?: 'Retired' | 'Active Elsewhere';
+  alumniStatus?: 'Retired' | 'Active Elsewhere' | 'Transfer Listed';
   isContinuingEducation?: boolean;
 };
 
@@ -166,11 +166,17 @@ export type TacticsSelection = {
   [key: string]: string;
 };
 
+export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities";
+
+export type BudgetAllocations = {
+  [key in BudgetCategory]: number;
+};
+
 export type Financials = {
   totalBudget: number;
-  discretionaryBudget: number;
   iceTimeCostPerGame: number;
   equipmentCost: number;
+  budgetAllocations: BudgetAllocations;
 };
 
 export type FacilityProject = {
@@ -181,7 +187,6 @@ export type FacilityProject = {
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
   weeksToComplete?: number;
-  category: 'Financial' | 'Player Development' | 'Player Welfare' | 'Recruitment';
 };
 
 export type Team = {
@@ -194,29 +199,12 @@ export type Team = {
   wins: number;
   losses: number;
   draws: number;
-  points: number;
   goalsFor: number;
   goalsAgainst: number;
   lineup: Lineup;
   tactics: TacticsSelection;
   financials: Financials;
   facilities: FacilityProject[];
-};
-
-export type GameSkaterStats = {
-  playerId: string;
-  goals: number;
-  assists: number;
-  points: number;
-  penaltyMinutes: number;
-};
-
-export type GameGoalieStats = {
-  playerId: string;
-  goalsAgainst: number;
-  shotsAgainst: number;
-  saves: number;
-  shutout: boolean;
 };
 
 export type GameEvent = {
@@ -245,8 +233,6 @@ export type GameState = {
   injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
   possessionHolder: string | null;
   powerPlayState: PowerPlayState;
-  skaterStats: GameSkaterStats[]; // Added
-  goalieStats: GameGoalieStats[]; // Added
 };
 
 export type GameDate = {
@@ -294,7 +280,6 @@ export type TeamRecord = {
   teamName: string;
   value: number;
   season?: string;
-  gamesPlayed?: number; // Added this line
 };
 
 export type RecordCategory = 'Goals' | 'Assists' | 'Points' | 'PenaltyMinutes' | 'GAA' | 'SavePercentage' | 'Shutouts';
@@ -306,16 +291,6 @@ export type LegacyRecord = {
   type: 'season' | 'career';
   value: number;
   season?: string;
-};
-
-export type Achievement = {
-  type: 'Division Title' | 'Nationals Gold' | 'Nationals Silver';
-  season: string;
-  division: string;
-};
-
-export type TeamAchievements = {
-  [teamName: string]: Achievement[];
 };
 
 // Nationals Types
@@ -338,7 +313,7 @@ export type NationalsGroup = {
 
 export type NationalsPlayoffMatch = {
   id: string;
-  round: 'Quarter-Final' | 'Semi-Final' | 'Final' | 'Preliminary';
+  round: 'Quarter-Final' | 'Semi-Final' | 'Final';
   bracket: 'Gold' | 'Silver';
   homeTeam: string | { winnerOf: string };
   awayTeam: string | { winnerOf: string };
@@ -356,29 +331,5 @@ export type NationalsTournament = {
   playoffSchedule: NationalsPlayoffMatch[];
   status: 'pending' | 'group-stage' | 'silver-playoffs' | 'gold-playoffs' | 'completed';
   winner?: string;
-  currentRound: number | 'Preliminary' | 'Quarter-Final' | 'Semi-Final' | 'Final';
-};
-
-// History Types
-export type TeamSeasonHistory = {
-  teamName: string;
-  leagueDivision: string;
-  nationalsDivision: string;
-  wins: number;
-  losses: number;
-  draws: number;
-  points: number;
-  goalsFor: number;
-  goalsAgainst: number;
-};
-
-export type SeasonHistory = {
-  [season: string]: TeamSeasonHistory[];
-};
-
-export type SaveGameSlot = {
-  saveName: string;
-  savedAt: string;
-  userTeamName: string;
-  currentDate: GameDate;
+  currentRound: number | 'Quarter-Final' | 'Semi-Final' | 'Final';
 };
