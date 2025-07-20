@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { useTeam } from "@/context/TeamContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Plane, Box, Calendar as CalendarIcon } from 'lucide-react';
+import { DollarSign, Plane, Box, Calendar as CalendarIcon, Building2 } from 'lucide-react';
 import { getGamesPlayedForDivision } from '@/lib/playerGenerator';
 
 const Finances = () => {
-  const { userTeam, managedOrganization, organizationFinancials } = useTeam();
+  const { userTeam, managedOrganization, organizationFinancials, isManagingOrg, managedTeams } = useTeam();
 
   const gameCounts = useMemo(() => {
     if (!userTeam) return { home: 0, away: 0 };
@@ -19,9 +19,9 @@ const Finances = () => {
   const iceTimeCostPerGame = 350;
 
   const currentFinancials = useMemo(() => {
-    if (managedOrganization) return organizationFinancials;
+    if (isManagingOrg) return organizationFinancials;
     return userTeam?.financials;
-  }, [userTeam, managedOrganization, organizationFinancials]);
+  }, [userTeam, isManagingOrg, organizationFinancials]);
 
   const fixedCosts = useMemo(() => {
     if (!userTeam || !currentFinancials) return { iceTime: 0, travel: 0, equipment: 0, total: 0 };
@@ -34,13 +34,28 @@ const Finances = () => {
     return { iceTime, travel, equipment, total };
   }, [userTeam, currentFinancials, gameCounts]);
 
+  const orgBudgetBreakdown = useMemo(() => {
+    if (isManagingOrg || !managedOrganization || !userTeam || managedTeams.length <= 1) return null;
+
+    const orgTotalBudget = managedTeams.reduce((sum, t) => sum + (t.financials?.totalBudget || 0), 0);
+    const otherTeamsBudget = managedTeams
+        .filter(t => t.name !== userTeam.name)
+        .reduce((sum, t) => sum + (t.financials?.totalBudget || 0), 0);
+
+    return {
+        orgTotalBudget,
+        otherTeamsBudget,
+        otherTeamCount: managedTeams.length - 1,
+    };
+  }, [isManagingOrg, managedOrganization, managedTeams, userTeam]);
+
   if (!userTeam || !currentFinancials) {
     return <div>Loading team data...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">{managedOrganization ? `${managedOrganization} Organization` : userTeam.name} Finances</h1>
+      <h1 className="text-3xl font-bold">{isManagingOrg ? `${managedOrganization} Organization` : userTeam.name} Finances</h1>
       <p className="text-lg text-muted-foreground">Manage your team's budget and track financial transactions.</p>
 
       <Card>
@@ -63,6 +78,34 @@ const Finances = () => {
           </div>
         </CardContent>
       </Card>
+
+      {orgBudgetBreakdown && (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center">
+                    <Building2 className="mr-2 h-5 w-5" />
+                    Organization Budget Allocation
+                </CardTitle>
+                <p className="text-muted-foreground pt-1">
+                    Your team is part of the {managedOrganization} organization. Here's how the total budget is allocated across the teams.
+                </p>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <span>Organization Total Budget</span>
+                    <span className="font-mono font-semibold">£{orgBudgetBreakdown.orgTotalBudget.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center p-3">
+                    <span>Your Team's Budget Allocation</span>
+                    <span className="font-mono">£{(userTeam.financials.totalBudget || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center p-3">
+                    <span>Budget for other teams ({orgBudgetBreakdown.otherTeamCount})</span>
+                    <span className="font-mono">£{orgBudgetBreakdown.otherTeamsBudget.toLocaleString()}</span>
+                </div>
+            </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

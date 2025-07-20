@@ -53,8 +53,8 @@ const NationalsGame = () => {
         userScore: 0, opponentScore: 0, userShots: 0, opponentShots: 0, period: 1,
         time: 0, gameLog: [], isGameOver: false, isPaused: true, injuries: [],
         possessionHolder: null, powerPlayState: { isActive: false, teamOnPowerPlay: null, timeLeft: 0 },
-        skaterStats: [], // Initialize skaterStats
-        goalieStats: [], // Initialize goalieStats
+        skaterStats: [],
+        goalieStats: [],
     });
 
     const intervalRef = useRef<NodeJS.Timeout | null>(null);

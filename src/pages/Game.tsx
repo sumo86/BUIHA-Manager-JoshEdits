@@ -107,8 +107,8 @@ const Game = () => {
             teamOnPowerPlay: null,
             timeLeft: 0,
         },
-        skaterStats: [], // Initialize skaterStats
-        goalieStats: [], // Initialize goalieStats
+        skaterStats: [],
+        goalieStats: [],
     });
 
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -229,8 +229,8 @@ const Game = () => {
             injuries: [],
             possessionHolder: null,
             powerPlayState: { isActive: false, teamOnPowerPlay: null, timeLeft: 0 },
-            skaterStats: [], // Initialize skaterStats
-            goalieStats: [], // Initialize goalieStats
+            skaterStats: [],
+            goalieStats: [],
         };
     
         // The context function handles stat processing and marking the game as complete
