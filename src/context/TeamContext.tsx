@@ -886,21 +886,21 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         graduatingPlayers.forEach(player => {
                             const isManaged = managedTeamNames.includes(team.name);
                             const roll = Math.random();
-                            // 30% retire, 40% transfer, 30% new degree
-                            if (roll < 0.3) { // Retire
+                            
+                            if (roll < 0.85) { // Retire (85% chance)
                                 player.alumniStatus = 'Retired';
                                 newAlumni.push(player);
                                 if (isManaged) {
                                     toast.info(`${player.name} has retired from university hockey.`);
                                 }
-                            } else if (roll < 0.7) { // Transfer
+                            } else if (roll < 0.95) { // Transfer (10% chance)
                                 player.alumniStatus = 'Transfer Listed';
                                 newTransferPoolPlayers.push(player);
                                 newAlumni.push(player); // Also add to alumni to track them
                                 if (isManaged) {
                                     toast.info(`${player.name} has graduated and entered the transfer portal.`);
                                 }
-                            } else { // New Degree
+                            } else { // New Degree (5% chance)
                                 player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
                                 player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
                                 player.isContinuingEducation = true;
@@ -918,18 +918,40 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     if (newAlumni.length > 0) {
                         setAlumni(prev => [...prev, ...newAlumni]);
                     }
-                    if (newTransferPoolPlayers.length > 0) {
-                        setTransferPool(prev => [...prev, ...newTransferPoolPlayers]);
-                        toast.info(`${newTransferPoolPlayers.length} new players have entered the transfer portal.`);
+
+                    // AI teams sign players from the transfer pool
+                    let availableForSigning = [...newTransferPoolPlayers];
+                    const managedTeamNamesSet = new Set(managedTeamNames); // Convert to Set for efficient lookup
+                    const aiTeams = tempTeams.filter(t => !managedTeamNamesSet.has(t.name));
+                    if (aiTeams.length > 0) {
+                        const playersSignedByAI: Player[] = [];
+                        availableForSigning.forEach(player => {
+                            // 80% chance an AI team signs the player, leaving a few for the user
+                            if (Math.random() < 0.8) {
+                                const signingTeam = getRandomItem(aiTeams);
+                                const teamIndex = tempTeams.findIndex(t => t.id === signingTeam.id);
+                                if (teamIndex !== -1) {
+                                    tempTeams[teamIndex].roster.push(player);
+                                    playersSignedByAI.push(player);
+                                }
+                            }
+                        });
+                        const signedPlayerIds = new Set(playersSignedByAI.map(p => p.id));
+                        availableForSigning = availableForSigning.filter(p => !signedPlayerIds.has(p.id));
                     }
 
-                    // AI Recruitment Logic
+                    if (availableForSigning.length > 0) {
+                        setTransferPool(prev => [...prev, ...availableForSigning]);
+                        toast.info(`${availableForSigning.length} new players have entered the transfer portal.`);
+                    }
+
+                    // AI Recruitment Logic (for new recruits, not transfers)
                     const allOrgs = getTeamOrganizations();
-                    const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
+                    const aiOrgsList = allOrgs.filter(org => org.name !== managedOrganization);
                     const allTeamNames = tempTeams.map(t => t.name);
                     let recruitmentOccurred = false;
 
-                    aiOrgs.forEach(org => {
+                    aiOrgsList.forEach(org => {
                         const orgTeamNames = org.teams.map(t => t.name);
                         const orgTeams = tempTeams.filter(t => orgTeamNames.includes(t.name));
                         if (orgTeams.length === 0) return;
