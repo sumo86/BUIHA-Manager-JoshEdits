@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot } from '@/types';
+import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
 import { generateRecruits, generatePlayer, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator'; // Re-writing this line
 import { toast } from 'sonner';
@@ -156,7 +156,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => { localStorage.setItem('teamAchievements', JSON.stringify(teamAchievements)); }, [teamAchievements]);
 
     const [transferPool, setTransferPool] = useState<Player[]>([]);
-    const [seasonHistory, setSeasonHistory] = useState<SeasonHistory>({});
+    const [seasonHistory, setSeasonHistory] = useState<SeasonHistory>(() => {
+        try {
+            const saved = localStorage.getItem('seasonHistory');
+            return saved ? JSON.parse(saved) : {};
+        } catch (error) { return {}; }
+    });
+    useEffect(() => {
+        localStorage.setItem('seasonHistory', JSON.stringify(seasonHistory));
+    }, [seasonHistory]);
+
     const [savedGames, setSavedGames] = useState<SaveGameSlot[]>(() => {
         try {
             const saved = localStorage.getItem('savedGames');
@@ -725,6 +734,24 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     year += 1;
                     toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
                     
+                    const seasonThatEnded = `${prevDate.year}-${prevDate.year + 1}`;
+                    const finalStandings: TeamSeasonHistory[] = tempTeams.map(team => ({
+                        teamName: team.name,
+                        leagueDivision: team.leagueDivision,
+                        nationalsDivision: team.nationalsDivision,
+                        wins: team.wins,
+                        losses: team.losses,
+                        draws: team.draws,
+                        points: team.points,
+                        goalsFor: team.goalsFor,
+                        goalsAgainst: team.goalsAgainst,
+                    }));
+
+                    setSeasonHistory(prev => ({
+                        ...prev,
+                        [seasonThatEnded]: finalStandings,
+                    }));
+
                     // New season budget calculations
                     tempTeams = tempTeams.map(team => {
                         const totalGames = getGamesPlayedForDivision(team.leagueDivision);

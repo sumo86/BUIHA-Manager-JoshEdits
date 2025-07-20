@@ -1,143 +1,106 @@
-import { PlayerSeasonStats, Team } from "@/types";
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useMemo } from 'react';
+import { Player, PlayerSeasonStats, Team } from '@/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PlayerHistoryTableProps {
   history: PlayerSeasonStats[];
-  currentStats: PlayerSeasonStats[];
   isSkater: boolean;
   teams: Team[];
+  currentStats: PlayerSeasonStats[];
 }
 
-export const PlayerHistoryTable = ({ history, currentStats, isSkater, teams }: PlayerHistoryTableProps) => {
-  const allStats = [...history, ...currentStats];
+export const PlayerHistoryTable = ({ history, isSkater, teams, currentStats }: PlayerHistoryTableProps) => {
+  const leagueHistory = useMemo(() => history.filter(s => s.league !== 'Nationals'), [history]);
+  const nationalsHistory = useMemo(() => history.filter(s => s.league === 'Nationals'), [history]);
 
-  if (!allStats || allStats.length === 0) {
-    return <p className="text-muted-foreground">No history available for this player.</p>;
-  }
+  const allLeagueStats = useMemo(() => 
+    [...currentStats.filter(s => s.league !== 'Nationals'), ...leagueHistory].sort((a, b) => b.season.localeCompare(a.season)),
+    [currentStats, leagueHistory]
+  );
 
-  const findTeamLogo = (teamName: string) => {
-    const team = teams.find(t => t.name === teamName);
-    return team?.logo;
+  const allNationalsStats = useMemo(() =>
+    [...currentStats.filter(s => s.league === 'Nationals'), ...nationalsHistory].sort((a, b) => b.season.localeCompare(a.season)),
+    [currentStats, nationalsHistory]
+  );
+
+  const renderTable = (stats: PlayerSeasonStats[]) => {
+    if (stats.length === 0) {
+      return <p className="text-center text-muted-foreground py-4">No stats available for this competition.</p>;
+    }
+
+    return (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Season</TableHead>
+              <TableHead>Team</TableHead>
+              <TableHead>League</TableHead>
+              <TableHead className="text-right">GP</TableHead>
+              {isSkater ? (
+                <>
+                  <TableHead className="text-right">G</TableHead>
+                  <TableHead className="text-right">A</TableHead>
+                  <TableHead className="text-right">P</TableHead>
+                  <TableHead className="text-right">PIM</TableHead>
+                </>
+              ) : (
+                <>
+                  <TableHead className="text-right">GAA</TableHead>
+                  <TableHead className="text-right">SV%</TableHead>
+                  <TableHead className="text-right">SO</TableHead>
+                </>
+              )}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {stats.map((s, index) => {
+              const teamLogo = teams.find(t => t.name === s.team)?.logo;
+              return (
+                <TableRow key={`${s.season}-${s.team}-${index}`}>
+                  <TableCell className="font-medium">{s.season}</TableCell>
+                  <TableCell className="flex items-center">
+                    {teamLogo && <img src={teamLogo} alt={s.team} className="h-6 w-6 mr-2 object-contain" />}
+                    {s.team}
+                  </TableCell>
+                  <TableCell>{s.league}</TableCell>
+                  <TableCell className="text-right">{s.gamesPlayed}</TableCell>
+                  {isSkater ? (
+                    <>
+                      <TableCell className="text-right">{s.goals}</TableCell>
+                      <TableCell className="text-right">{s.assists}</TableCell>
+                      <TableCell className="text-right font-bold">{s.points}</TableCell>
+                      <TableCell className="text-right">{s.penaltyMinutes}</TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell className="text-right">{s.goalsAgainstAverage?.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-bold">{s.savePercentage?.toFixed(3)}</TableCell>
+                      <TableCell className="text-right">{s.shutouts}</TableCell>
+                    </>
+                  )}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    );
   };
 
-  if (isSkater) {
-    const careerTotals = allStats.reduce(
-      (acc, season) => {
-        acc.gamesPlayed += season.gamesPlayed || 0;
-        acc.goals += season.goals || 0;
-        acc.assists += season.assists || 0;
-        acc.points += season.points || 0;
-        acc.penaltyMinutes += season.penaltyMinutes || 0;
-        return acc;
-      },
-      { gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0 }
-    );
-
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Season</TableHead>
-            <TableHead>Team</TableHead>
-            <TableHead>League</TableHead>
-            <TableHead className="text-right">GP</TableHead>
-            <TableHead className="text-right">G</TableHead>
-            <TableHead className="text-right">A</TableHead>
-            <TableHead className="text-right">P</TableHead>
-            <TableHead className="text-right">PIM</TableHead>
-            <TableHead>Captaincy</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {allStats.map((season, index) => (
-            <TableRow key={index} className={currentStats.includes(season) ? "bg-primary/10 font-semibold" : ""}>
-              <TableCell>{season.season}{currentStats.includes(season) ? '*' : ''}</TableCell>
-              <TableCell className="flex items-center gap-2">
-                {findTeamLogo(season.team) && <img src={findTeamLogo(season.team)} alt={season.team} className="h-5 w-5 object-contain" />}
-                {season.team}
-              </TableCell>
-              <TableCell>{season.league}</TableCell>
-              <TableCell className="text-right">{season.gamesPlayed}</TableCell>
-              <TableCell className="text-right">{season.goals}</TableCell>
-              <TableCell className="text-right">{season.assists}</TableCell>
-              <TableCell className="text-right">{season.points}</TableCell>
-              <TableCell className="text-right">{season.penaltyMinutes}</TableCell>
-              <TableCell>
-                {season.captaincy === 'C' && <span className="font-bold text-yellow-700">C</span>}
-                {season.captaincy === 'A' && <span className="font-medium text-yellow-500">A</span>}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow className="font-bold">
-            <TableCell colSpan={3}>Career Totals</TableCell>
-            <TableCell className="text-right">{careerTotals.gamesPlayed}</TableCell>
-            <TableCell className="text-right">{careerTotals.goals}</TableCell>
-            <TableCell className="text-right">{careerTotals.assists}</TableCell>
-            <TableCell className="text-right">{careerTotals.points}</TableCell>
-            <TableCell className="text-right">{careerTotals.penaltyMinutes}</TableCell>
-            <TableCell></TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>
-    );
-  } else {
-    // Goalie Table
-    const careerTotals = allStats.reduce(
-      (acc, season) => {
-        const gp = season.gamesPlayed || 0;
-        acc.gamesPlayed += gp;
-        acc.shutouts += season.shutouts || 0;
-        acc.gaaSum += (season.goalsAgainstAverage || 0) * gp;
-        acc.svSum += (season.savePercentage || 0) * gp;
-        return acc;
-      },
-      { gamesPlayed: 0, shutouts: 0, gaaSum: 0, svSum: 0 }
-    );
-
-    const careerGAA = careerTotals.gamesPlayed > 0 ? (careerTotals.gaaSum / careerTotals.gamesPlayed).toFixed(2) : '0.00';
-    const careerSV = careerTotals.gamesPlayed > 0 ? (careerTotals.svSum / careerTotals.gamesPlayed).toFixed(3) : '.000';
-
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Season</TableHead>
-            <TableHead>Team</TableHead>
-            <TableHead>League</TableHead>
-            <TableHead className="text-right">GP</TableHead>
-            <TableHead className="text-right">GAA</TableHead>
-            <TableHead className="text-right">SV%</TableHead>
-            <TableHead className="text-right">SO</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {allStats.map((season, index) => (
-            <TableRow key={index} className={currentStats.includes(season) ? "bg-primary/10 font-semibold" : ""}>
-              <TableCell>{season.season}{currentStats.includes(season) ? '*' : ''}</TableCell>
-              <TableCell className="flex items-center gap-2">
-                {findTeamLogo(season.team) && <img src={findTeamLogo(season.team)} alt={season.team} className="h-5 w-5 object-contain" />}
-                {season.team}
-              </TableCell>
-              <TableCell>{season.league}</TableCell>
-              <TableCell className="text-right">{season.gamesPlayed}</TableCell>
-              <TableCell className="text-right">{season.goalsAgainstAverage?.toFixed(2)}</TableCell>
-              <TableCell className="text-right">{season.savePercentage?.toFixed(3)}</TableCell>
-              <TableCell className="text-right">{season.shutouts}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow className="font-bold">
-            <TableCell colSpan={3}>Career Totals</TableCell>
-            <TableCell className="text-right">{careerTotals.gamesPlayed}</TableCell>
-            <TableCell className="text-right">{careerGAA}</TableCell>
-            <TableCell className="text-right">{careerSV}</TableCell>
-            <TableCell className="text-right">{careerTotals.shutouts}</TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>
-    );
-  }
+  return (
+    <Tabs defaultValue="league" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="league">League History</TabsTrigger>
+        <TabsTrigger value="nationals">Nationals History</TabsTrigger>
+      </TabsList>
+      <TabsContent value="league" className="pt-4">
+        {renderTable(allLeagueStats)}
+      </TabsContent>
+      <TabsContent value="nationals" className="pt-4">
+        {renderTable(allNationalsStats)}
+      </TabsContent>
+    </Tabs>
+  );
 };
