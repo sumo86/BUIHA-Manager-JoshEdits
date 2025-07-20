@@ -77,6 +77,7 @@ interface TeamContextType {
     simulateFullNationalsTournament: (division: string) => void;
     simulateSingleNationalsGame: (division: string, gameId: string) => void;
     simulateAllNationalsTournaments: () => void;
+    signPlayerFromTransferPool: (playerId: string, toTeamName: string) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -856,23 +857,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         const graduatingPlayers: Player[] = [];
                         const remainingPlayers = team.roster.filter(player => {
                             const eligibilityMap: { [key in Player['eligibility']]: Player['eligibility'] | null } = {
-                                "UG Year 1": "UG Year 2", "UG Year 3": "UG Year 4", "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
+                                "UG Year 1": "UG Year 2", "UG Year 2": "UG Year 3", "UG Year 3": "UG Year 4",
+                                "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
                             };
                             const nextEligibility = eligibilityMap[player.eligibility];
                             
-                            if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
-                                player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
-                                if (player.yearsLeftInProgram < 0) {
-                                    graduatingPlayers.push(player);
-                                    return false;
-                                }
-                            }
+                            // Only consider for graduation if yearsLeftInProgram is 0 or eligibility is UG Year 4
+                            const isGraduating = (player.eligibility === 'UG Year 4' && !player.isContinuingEducation) || 
+                                                 ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && (player.yearsLeftInProgram || 0) <= 0);
 
-                            if (nextEligibility) {
+                            if (isGraduating) {
+                                graduatingPlayers.push(player);
+                                return false; // Remove from current roster
+                            } else if (nextEligibility) {
                                 player.eligibility = nextEligibility;
                                 player.age += 1;
                                 return true;
-                            } else if (player.eligibility !== 'Staff') {
+                            } else if (player.eligibility !== 'Staff') { // If not staff and no next eligibility, they should graduate
                                 graduatingPlayers.push(player);
                                 return false;
                             }
@@ -884,9 +885,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const roll = Math.random();
                             // 30% retire, 40% transfer, 30% new degree
                             if (roll < 0.3) { // Retire
+                                player.alumniStatus = 'Retired';
+                                newAlumni.push(player);
                                 if (isManaged) {
-                                    player.alumniStatus = 'Retired';
-                                    newAlumni.push(player);
                                     toast.info(`${player.name} has retired from university hockey.`);
                                 }
                             } else if (roll < 0.7) { // Transfer
@@ -894,11 +895,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 if (otherTeams.length > 0) {
                                     const newTeam = getRandomItem(otherTeams);
                                     player.eligibility = 'Masters'; // Assume they start a Masters
+                                    player.yearsLeftInProgram = 2; // Default for new Masters
                                     newTeam.roster.push(player);
+                                    player.alumniStatus = 'Active Elsewhere';
+                                    newAlumni.push(player);
                                     if (isManaged) {
-                                        player.alumniStatus = 'Active Elsewhere';
-                                        newAlumni.push(player);
                                         toast.info(`${player.name} has graduated and transferred to ${newTeam.name}.`);
+                                    }
+                                } else { // No other teams to transfer to, so they retire
+                                    player.alumniStatus = 'Retired';
+                                    newAlumni.push(player);
+                                    if (isManaged) {
+                                        toast.info(`${player.name} has retired from university hockey as no transfer options were available.`);
                                     }
                                 }
                             } else { // New Degree
@@ -906,7 +914,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
                                 player.isContinuingEducation = true;
                                 remainingPlayers.push(player);
-                                toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
+                                if (isManaged) {
+                                    toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
+                                }
                             }
                         });
 
@@ -935,7 +945,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                         if (playersToRecruitCount > 0) {
                             recruitmentOccurred = true;
-                            const primaryTeam = orgTeams.sort((a, b) => a.name.localeCompare(b.name))[0];
+                            const primaryTeam = orgTeams.sort((a, b) => b.name.localeCompare(a.name))[0];
                             const prospects = generateRecruits(primaryTeam.leagueDivision, allTeamNames, playersToRecruitCount * 2, primaryTeam.facilities);
                             
                             prospects.sort((a, b) => b.potentialAbility - a.potentialAbility);
@@ -1092,9 +1102,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         if (Math.random() < successChance) {
             toast.success("Transfer Approved!", {
-                description: `${player.name} has agreed to the move and their coach has approved the transfer.`
+                description: `${player.name} has agreed to the move and is now available in the Transfer Portal.`
             });
-            movePlayer(playerId, fromTeamName, toTeamName);
+            
+            setTeams(currentTeams => {
+                const fromTeam = currentTeams.find(t => t.name === fromTeamName);
+                if (!fromTeam) return currentTeams;
+                
+                const playerToRemove = fromTeam.roster.find(p => p.id === playerId);
+                if (!playerToRemove) return currentTeams;
+
+                setTransferPool(prev => [...prev, playerToRemove]);
+
+                const newFromRoster = fromTeam.roster.filter(p => p.id !== playerId);
+                const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
+                
+                return currentTeams.map(t => t.name === fromTeamName ? updatedFromTeam : t);
+            });
         } else {
             const reasonRoll = Math.random();
             let reasonText: string;
@@ -1526,6 +1550,41 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
     const simulateSingleNationalsGame = (division: string, gameId: string) => { console.log('simulateSingleNationalsGame called with:', division, gameId); };
 
+    const signPlayerFromTransferPool = (playerId: string, toTeamName: string) => {
+        const playerToSign = transferPool.find(p => p.id === playerId);
+        const toTeam = teams.find(t => t.name === toTeamName);
+
+        if (!playerToSign || !toTeam) {
+            toast.error("Could not sign player. Player or team not found.");
+            return;
+        }
+
+        setTransferPool(prev => prev.filter(p => p.id !== playerId));
+
+        const toTeamJerseyNumbers = new Set(toTeam.roster.map(p => p.jerseyNumber));
+        if (toTeamJerseyNumbers.has(playerToSign.jerseyNumber)) {
+            let newJerseyNumber = 1;
+            while (toTeamJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
+            toast.warning(`${playerToSign.name}'s jersey #${playerToSign.jerseyNumber} was taken.`, {
+                description: `They have been assigned #${newJerseyNumber}.`
+            });
+            playerToSign.jerseyNumber = newJerseyNumber;
+        }
+        
+        const isSkater = playerToSign.positions[0] !== 'G';
+        const updatedPlayer = {
+            ...playerToSign,
+            starRating: calculateStarRating(playerToSign.currentAbility, isSkater, toTeam.leagueDivision),
+            captaincy: null,
+        };
+
+        const newToRoster = [...toTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+        const updatedToTeam = { ...toTeam, roster: newToRoster };
+
+        updateTeam(updatedToTeam);
+        toast.success(`${playerToSign.name} has been signed to ${toTeamName}.`);
+    };
+
     return (
         <TeamContext.Provider value={{
             teams, updateTeam, userTeam, organizationFinancials, organizationFacilities,
@@ -1538,7 +1597,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             markGameAsCompleted, seasonRecords, careerRecords, alumni,
             playNationalsRound, autoSimulateUserNationalsGame, teamAchievements,
             saveGame, exitToMainMenu, transferPool, seasonHistory, savedGames, loadGame, deleteGame,
-            simulateFullNationalsTournament, simulateSingleNationalsGame, simulateAllNationalsTournaments
+            simulateFullNationalsTournament, simulateSingleNationalsGame, simulateAllNationalsTournaments,
+            signPlayerFromTransferPool
         }}>
             {children}
         </TeamContext.Provider>
