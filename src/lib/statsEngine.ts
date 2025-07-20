@@ -12,13 +12,14 @@ export const processGameResults = (
   const updatedOpponentTeam = { ...opponentTeam, roster: [...opponentTeam.roster] };
 
   const updatePlayerStats = (player: Player, teamName: string, isHomeTeam: boolean) => {
-    let currentSeasonStat = player.currentStats.find(s => s.season === seasonString && s.team === teamName);
+    const leagueIdentifier = isNationalsGame ? 'Nationals' : (teamName === userTeam.name ? userTeam.leagueDivision : opponentTeam.leagueDivision);
+    let currentSeasonStat = player.currentStats.find(s => s.season === seasonString && s.team === teamName && s.league === leagueIdentifier);
 
     if (!currentSeasonStat) {
       currentSeasonStat = {
         season: seasonString,
         team: teamName,
-        league: isNationalsGame ? 'Nationals' : teamName === userTeam.name ? userTeam.leagueDivision : opponentTeam.leagueDivision,
+        league: leagueIdentifier,
         gamesPlayed: 0,
         goals: 0,
         assists: 0,
@@ -77,25 +78,27 @@ export const processGameResults = (
     return newPlayer;
   });
 
-  // Update team records
-  if (gameState.userScore > gameState.opponentScore) {
-    updatedUserTeam.wins = (updatedUserTeam.wins || 0) + 1;
-    updatedOpponentTeam.losses = (updatedOpponentTeam.losses || 0) + 1;
-  } else if (gameState.userScore < gameState.opponentScore) {
-    updatedUserTeam.losses = (updatedUserTeam.losses || 0) + 1;
-    updatedOpponentTeam.wins = (updatedOpponentTeam.wins || 0) + 1;
-  } else {
-    updatedUserTeam.draws = (updatedUserTeam.draws || 0) + 1;
-    updatedOpponentTeam.draws = (updatedOpponentTeam.draws || 0) + 1;
+  // Update team records, but only for league games
+  if (!isNationalsGame) {
+    if (gameState.userScore > gameState.opponentScore) {
+      updatedUserTeam.wins = (updatedUserTeam.wins || 0) + 1;
+      updatedOpponentTeam.losses = (updatedOpponentTeam.losses || 0) + 1;
+    } else if (gameState.userScore < gameState.opponentScore) {
+      updatedUserTeam.losses = (updatedUserTeam.losses || 0) + 1;
+      updatedOpponentTeam.wins = (updatedOpponentTeam.wins || 0) + 1;
+    } else {
+      updatedUserTeam.draws = (updatedUserTeam.draws || 0) + 1;
+      updatedOpponentTeam.draws = (updatedOpponentTeam.draws || 0) + 1;
+    }
+
+    updatedUserTeam.goalsFor = (updatedUserTeam.goalsFor || 0) + gameState.userScore;
+    updatedUserTeam.goalsAgainst = (updatedUserTeam.goalsAgainst || 0) + gameState.opponentScore;
+    updatedOpponentTeam.goalsFor = (updatedOpponentTeam.goalsFor || 0) + gameState.opponentScore;
+    updatedOpponentTeam.goalsAgainst = (updatedOpponentTeam.goalsAgainst || 0) + gameState.userScore;
+
+    updatedUserTeam.points = (updatedUserTeam.wins * 2) + updatedUserTeam.draws;
+    updatedOpponentTeam.points = (updatedOpponentTeam.wins * 2) + updatedOpponentTeam.draws;
   }
-
-  updatedUserTeam.goalsFor = (updatedUserTeam.goalsFor || 0) + gameState.userScore;
-  updatedUserTeam.goalsAgainst = (updatedUserTeam.goalsAgainst || 0) + gameState.opponentScore;
-  updatedOpponentTeam.goalsFor = (updatedOpponentTeam.goalsFor || 0) + gameState.opponentScore;
-  updatedOpponentTeam.goalsAgainst = (updatedOpponentTeam.goalsAgainst || 0) + gameState.userScore;
-
-  updatedUserTeam.points = (updatedUserTeam.wins * 2) + updatedUserTeam.draws;
-  updatedOpponentTeam.points = (updatedOpponentTeam.wins * 2) + updatedOpponentTeam.draws;
 
   // Process injuries
   gameState.injuries.forEach(injury => {

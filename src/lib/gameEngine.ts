@@ -238,8 +238,8 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
     
-    const baseProb = 0.1 * divisionGoalFactor;
-    let goalProbability = baseProb * (1 + offenseFactor * 1.5 - (defenseFactor * 0.5));
+    const baseProb = 0.025 * divisionGoalFactor; // Adjusted base probability for goals
+    let goalProbability = baseProb * (1 + offenseFactor * 2.0 - (defenseFactor * 0.5)); // Amplified offensive impact
     
     if (eventType < goalProbability) {
         possessionChange = true; // Stoppage of play
