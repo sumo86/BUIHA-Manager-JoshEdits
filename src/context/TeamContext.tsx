@@ -926,12 +926,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     let availableForSigning = [...newTransferPoolPlayers];
                     const managedTeamNamesSet = new Set(managedTeamNames); // Convert to Set for efficient lookup
                     const aiTeams = tempTeams.filter(t => !managedTeamNamesSet.has(t.name));
+                    
                     if (aiTeams.length > 0) {
+                        console.log("AI Teams available for signing:", aiTeams.map(t => t.name)); // Log available AI teams
                         const playersSignedByAI: Player[] = [];
                         availableForSigning.forEach(player => {
                             // 80% chance an AI team signs the player, leaving a few for the user
                             if (Math.random() < 0.8) {
                                 const signingTeam = getRandomItem(aiTeams);
+                                console.log(`Player ${player.name} (ID: ${player.id}) signed by: ${signingTeam.name}`); // Log which team signed
                                 const teamIndex = tempTeams.findIndex(t => t.id === signingTeam.id);
                                 if (teamIndex !== -1) {
                                     tempTeams[teamIndex].roster.push(player);
