@@ -74,6 +74,8 @@ const TeamHistoryPage = () => {
     return Array.from(seasonsSet);
   }, [allPlayersInOrg]);
 
+  const managedTeamNames = useMemo(() => managedTeams.map(t => t.name), [managedTeams]);
+
   if (!userTeam) {
     return <div>Select a team to see its history.</div>;
   }
@@ -114,7 +116,7 @@ const TeamHistoryPage = () => {
           <CareerStatsTable players={playersToDisplay} />
         </TabsContent>
         <TabsContent value="seasonal-stats" className="mt-4">
-          <SeasonalStatsTable players={allPlayersInOrg} seasons={allPlayerSeasons} />
+          <SeasonalStatsTable players={allPlayersInOrg} seasons={allPlayerSeasons} managedTeamNames={managedTeamNames} />
         </TabsContent>
       </Tabs>
     </div>

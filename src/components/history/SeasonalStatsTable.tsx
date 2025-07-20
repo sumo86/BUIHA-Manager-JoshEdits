@@ -7,20 +7,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 interface SeasonalStatsTableProps {
   players: Player[];
   seasons: string[];
+  managedTeamNames: string[];
 }
 
 type DisplayStat = Player['history'][0] & { playerName: string };
 
-export const SeasonalStatsTable = ({ players, seasons }: SeasonalStatsTableProps) => {
+export const SeasonalStatsTable = ({ players, seasons, managedTeamNames }: SeasonalStatsTableProps) => {
   const sortedSeasons = useMemo(() => seasons.sort((a, b) => b.localeCompare(a)), [seasons]);
   const [selectedSeason, setSelectedSeason] = useState<string | undefined>(sortedSeasons[0]);
 
   const statsForSeason = useMemo((): DisplayStat[] => {
     if (!selectedSeason) return [];
     
+    const managedTeamNamesSet = new Set(managedTeamNames);
     const allStats: DisplayStat[] = [];
     players.forEach(player => {
-      const seasonStats = player.history.filter(h => h.season === selectedSeason);
+      const seasonStats = player.history.filter(h => 
+        h.season === selectedSeason && managedTeamNamesSet.has(h.team)
+      );
       seasonStats.forEach(stat => {
         allStats.push({
           ...stat,
@@ -29,7 +33,7 @@ export const SeasonalStatsTable = ({ players, seasons }: SeasonalStatsTableProps
       });
     });
     return allStats;
-  }, [players, selectedSeason]);
+  }, [players, selectedSeason, managedTeamNames]);
 
   const skaters = useMemo(() => 
     statsForSeason

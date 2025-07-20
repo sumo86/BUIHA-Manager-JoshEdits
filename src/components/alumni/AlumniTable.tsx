@@ -1,6 +1,7 @@
 import { Player } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getPlayerLastTeam } from '@/lib/playerUtils';
+import { Link } from 'react-router-dom';
 
 interface AlumniTableProps {
   alumni: Player[];
@@ -22,7 +23,11 @@ export const AlumniTable = ({ alumni }: AlumniTableProps) => {
           {alumni.length > 0 ? (
             alumni.map(player => (
               <TableRow key={player.id}>
-                <TableCell className="font-medium">{player.name}</TableCell>
+                <TableCell className="font-medium">
+                  <Link to={`/player/${player.id}`} className="text-blue-600 hover:underline">
+                    {player.name}
+                  </Link>
+                </TableCell>
                 <TableCell>{player.age}</TableCell>
                 <TableCell>{getPlayerLastTeam(player)}</TableCell>
                 <TableCell>{player.alumniStatus}</TableCell>
