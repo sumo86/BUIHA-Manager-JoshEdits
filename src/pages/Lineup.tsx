@@ -97,8 +97,8 @@ const Lineup = () => {
         ].filter((id): id is string => id !== null); // Filter out nulls here
 
         return lineupPlayerIds.reduce((count, id) => {
-            const player = playerMap.get(id);
-            if (player && player.eligibility === 'Staff') { // Check if player exists and then its eligibility
+            const player = playerMap.get(id); 
+            if (player && player.eligibility === 'Staff') { 
                 return count + 1;
             }
             return count;
@@ -132,360 +132,511 @@ const Lineup = () => {
     const getAvailablePlayers = (position: Position, currentSelection: string | null): Player[] => {
         const skaters = team.roster.filter(p => !p.positions.includes('G'));
         const goalies = team.roster.filter(p => p.positions.includes('G'));
-        const players = position === 'G' ? goalies : skaters;
-        const staffLimitReached = staffInLineupCount >= 2;
+        <dyad-problem-report summary="20 problems">
+<problem file="src/context/TeamContext.tsx" line="17" column="34" code="1005">'from' expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="17" column="34" code="1141">String literal expected.</problem>
+<problem file="src/context/TeamContext.tsx" line="1386" column="13" code="2353">Object literal may only specify known properties, and 'teams' does not exist in type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1418" column="31" code="2339">Property 'teams' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1419" column="32" code="2339">Property 'alumni' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1420" column="40" code="2339">Property 'activeTeamName' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1421" column="45" code="2339">Property 'managedOrganization' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1422" column="39" code="2339">Property 'isManagingOrg' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1423" column="34" code="2339">Property 'schedule' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1424" column="39" code="2339">Property 'nationalsData' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1425" column="39" code="2339">Property 'seasonRecords' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1426" column="39" code="2339">Property 'careerRecords' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1427" column="42" code="2339">Property 'teamAchievements' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1428" column="38" code="2339">Property 'transferPool' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1429" column="39" code="2339">Property 'seasonHistory' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1430" column="38" code="2339">Property 'scoutingPool' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1431" column="39" code="2339">Property 'recruitedPool' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1432" column="36" code="2339">Property 'fairHosted' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1434" column="44" code="2339">Property 'developmentHistory' does not exist on type 'SaveGameSlot'.</problem>
+<problem file="src/context/TeamContext.tsx" line="1585" column="13" code="18004">No value exists in scope for the shorthand property 'startFacilityProject'. Either declare one or provide an initializer.</problem>
+</dyad-problem-report><think>Deciding which files are relevant...
 
-        return players
-            .filter(p => {
-                if (assignedPlayerIds.has(p.id) && p.id !== currentSelection) {
-                    return false;
-                }
-                if (p.eligibility === 'Staff' && staffLimitReached && p.id !== currentSelection) {
-                    return false;
-                }
-                return true;
-            })
-            .sort((a, b) => {
-                const aIsNatural = a.positions.includes(position);
-                const bIsNatural = b.positions.includes(position);
-                if (aIsNatural && !bIsNatural) return -1;
-                if (!aIsNatural && bIsNatural) return 1;
-                return b.starRating - a.starRating;
-            });
+**Tackling Compile Errors**
+
+I'm methodically working through the TypeScript errors. The first one, in `TeamContext.tsx` on line 17, is a syntax issue: a missing 'from'. Looks like a simple fix, will address it immediately. Subsequent errors likely depend on the initial fix, so I will keep moving forward.
+
+
+**Correcting Imports**
+
+I've pinpointed the initial error to a syntax issue on line 17 of `TeamContext.tsx`, stemming from an incorrect import statement. The `=>` was the culprit; it needed to be `from`. Fixing this should resolve the subsequent errors flagged.
+
+
+**Defining Save Game Slots**
+
+I've moved onto `types/index.ts`. Currently, the `SaveGameSlot` type is too simplistic. I'm inspecting the `saveGame` function in `TeamContext.tsx` to identify all the properties that need to be saved and incorporated into the `SaveGameSlot` definition, which includes `teams`, `alumni`, `activeTeamName`, and the current date. I'm expanding the type definition.
+
+
+**Expanding the Type**
+
+I've reviewed the `saveGame` function and the current `SaveGameSlot` type. It's clear that the type definition in `types/index.ts` is missing a lot of crucial properties. I'm now updating the `SaveGameSlot` definition to include `teams`, `alumni`, `activeTeamName`, `managedOrganization`, `isManagingOrg`, `schedule`, `nationalsData`, `seasonRecords`, `careerRecords`, `teamAchievements`, `transferPool`, `seasonHistory`, `scoutingPool`, `recruitedPool`, `fairHosted`, and `developmentHistory`, alongside the already existing properties.
+
+
+**Refining SaveGame Type**
+
+I've identified the missing properties in `SaveGameSlot`. To fully resolve the type errors, I need to update the type definition in `types/index.ts`. The current definition is far too basic. I'm adding `teams`, `alumni`, `activeTeamName`, `managedOrganization`, `isManagingOrg`, `schedule`, `nationalsData`, `seasonRecords`, `careerRecords`, `teamAchievements`, `transferPool`, `seasonHistory`, `scoutingPool`, `recruitedPool`, `fairHosted`, and `developmentHistory` to the `SaveGameSlot` type definition.
+
+
+{
+  "complexity": "low",
+  "relevantFiles": [
+    "src/context/TeamContext.tsx",
+    "src/types/index.ts"
+  ]
+}</think><dyad-codebase-context files="src/context/TeamContext.tsx,src/types/index.ts">Complexity: low</dyad-codebase-context><think>**Examining Compilation Issues**
+
+I'm currently focused on resolving the TypeScript errors. I've started by dissecting the compilation failures, beginning with the first few. I'm applying fixes and making sure everything works. My current approach is error-by-error, with focused attention to details of the errors.
+
+
+**Resolving Syntax Errors**
+
+I've identified and fixed the syntax error in `TeamContext.tsx`, specifically around the import statement. I have corrected the incorrect syntax. I'm ready to address the series of `SaveGameSlot` property errors.
+
+
+**Implementing Error Solutions**
+
+I've fully analyzed the errors and formulated a solution strategy. The plan is to address the import syntax error in `TeamContext.tsx`, then update the `SaveGameSlot` type in `src/types/index.ts` to include the missing properties, and finally implement a basic placeholder function for `startFacilityProject` to resolve the final error.
+
+
+</think>You've hit a few more TypeScript snags, mainly related to an incorrect import syntax and an incomplete `SaveGameSlot` type definition. I'll address these issues to get your application compiling smoothly.
+
+Here's what I'll do:
+
+1.  **Fix Import Syntax:** Correct the `processNationalsRound` import statement in `src/context/TeamContext.tsx` from `=>` to `from`.
+2.  **Update `SaveGameSlot` Type:** Expand the `SaveGameSlot` interface in `src/types/index.ts` to include all the properties that are being saved and loaded in your `TeamContext`, such as `teams`, `alumni`, `schedule`, `nationalsData`, and others. This will resolve all the "Property 'X' does not exist on type 'SaveGameSlot'" errors.
+3.  **Implement `startFacilityProject`:** Add a basic implementation for the `startFacilityProject` function within `TeamProvider` in `src/context/TeamContext.tsx`, as it was declared in the interface but not defined.
+
+Here are the code changes:
+
+<dyad-edit path="src/context/TeamContext.tsx" description="Fixing import syntax and implementing startFacilityProject.">
+```typescript
+// ... existing code ...
+import { rebalanceOrganizationRosters } from '@/lib/aiManager';
+import { processNationalsRound } from '@/lib/nationalsSimulator';
+import { getAggregatedCurrentStats } from '@/lib/statsUtils';
+
+const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
+// ... existing code ...
+    const startFacilityProject = (projectId: string) => {
+        if (!userTeam) return;
+        // Placeholder for actual facility project logic
+        toast.info(`Attempted to start facility project: ${projectId}. (Functionality not yet implemented)`);
     };
-
-    function handleLineupChange(posType: 'forwards', pos: keyof LineupType['forwards'], index: number, playerId: string | null): void;
-    function handleLineupChange(posType: 'defence', pos: keyof LineupType['defence'], index: number, playerId: string | null): void;
-    function handleLineupChange(
-        posType: 'forwards' | 'defence',
-        pos: keyof LineupType['forwards'] | keyof LineupType['defence'],
-        index: number,
-        playerId: string | null
-    ): void {
-        const newLineup = JSON.parse(JSON.stringify(team.lineup)) as LineupType;
-        if (posType === 'forwards') {
-            newLineup.forwards[pos as keyof LineupType['forwards']][index!] = playerId;
-        } else {
-            newLineup.defence[pos as keyof LineupType['defence']][index!] = playerId;
-        }
-        updateTeam({ ...team, lineup: newLineup });
-    }
-
-    const handleGoalieChange = (role: 'starter' | 'backup', playerId: string | null) => {
-        const newLineup = { ...team.lineup };
-        newLineup.goalies[role] = playerId;
-        updateTeam({ ...team, lineup: newLineup });
-    };
-
-    const handleRoleChange = (playerId: string, newRole: string) => {
-        const newRoster = team.roster.map(p => p.id === playerId ? { ...p, role: newRole } : p);
-        updateTeam({ ...team, roster: newRoster });
-    };
-
-    const handleTacticChange = (category: string, tactic: string) => {
-        updateTeam({ ...team, tactics: { ...team.tactics, [category]: tactic } });
-    };
-
-    const autoFillLines = () => {
-        const healthyRoster = team.roster.filter(p => p.healthStatus === 'Healthy');
-    
-        const forwards = healthyRoster.filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
-        const defencemen = healthyRoster.filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
-        const goalies = healthyRoster.filter(p => p.positions.includes('G')).sort((a, b) => b.starRating - a.starRating);
-    
-        const assigned = new Set<string>();
-        let staffCount = 0;
-        const MAX_STAFF = 2;
-    
-        const newLineup: LineupType = {
-            forwards: { lw: [null, null, null], c: [null, null, null], rw: [null, null, null] },
-            defence: { ld: [null, null, null], rd: [null, null, null] },
-            goalies: { starter: null, backup: null }
-        };
-    
-        const findAndAssignPlayer = (playerPool: Player[], position?: Position): string | null => {
-            if (position) {
-                const naturalFit = playerPool.find(p => {
-                    if (assigned.has(p.id)) return false;
-                    if (p.eligibility === 'Staff' && staffCount >= MAX_STAFF) return false;
-                    return p.positions.includes(position);
-                });
-                if (naturalFit) {
-                    assigned.add(naturalFit.id);
-                    if (naturalFit.eligibility === 'Staff') staffCount++;
-                    return naturalFit.id;
-                }
-            }
-    
-            const anyFit = playerPool.find(p => {
-                if (assigned.has(p.id)) return false;
-                if (p.eligibility === 'Staff' && staffCount >= MAX_STAFF) return false;
-                return true;
-            });
-            if (anyFit) {
-                assigned.add(anyFit.id);
-                if (anyFit.eligibility === 'Staff') staffCount++;
-                return anyFit.id;
-            }
-    
-            return null;
-        };
-    
-        for (let i = 0; i < 3; i++) {
-            newLineup.forwards.lw[i] = findAndAssignPlayer(forwards, 'LW');
-            newLineup.forwards.c[i] = findAndAssignPlayer(forwards, 'C');
-            newLineup.forwards.rw[i] = findAndAssignPlayer(forwards, 'RW');
-        }
-    
-        for (let i = 0; i < 3; i++) {
-            newLineup.defence.ld[i] = findAndAssignPlayer(defencemen, 'LD');
-            newLineup.defence.rd[i] = findAndAssignPlayer(defencemen, 'RD');
-        }
-    
-        newLineup.goalies.starter = findAndAssignPlayer(goalies, 'G');
-        newLineup.goalies.backup = findAndAssignPlayer(goalies, 'G');
-    
-        updateTeam({ ...team, lineup: newLineup });
-        toast.success("Lines have been auto-filled with healthy players.");
-    };
-
-    const autoAssignRoles = () => {
-        const newRoster = team.roster.map(p => ({ ...p }));
-        const rosterMap = new Map(newRoster.map(p => [p.id, p]));
-
-        const forwardRoles = roles.filter(r => r.positions.includes('Forward'));
-        const defenceRoles = roles.filter(r => r.positions.includes('Defenceman'));
-
-        const findBestRole = (player: Player, availableRoles: typeof roles): string | null => {
-            if (!player || !player.roleSuitability || availableRoles.length === 0) return null;
-
-            let bestRoleName: string | null = null;
-            let maxSuitability = -1;
-
-            for (const role of availableRoles) {
-                const suitability = player.roleSuitability[role.name] || 0;
-                if (suitability > maxSuitability) {
-                    maxSuitability = suitability;
-                    bestRoleName = role.name;
-                }
-            }
-            return bestRoleName;
-        };
-
-        Object.values(team.lineup.forwards).flat().forEach(playerId => {
-            if (!playerId) return;
-            const player = rosterMap.get(playerId);
-            if (player) { // Type guard for player
-                const bestRole = findBestRole(player, forwardRoles);
-                if (bestRole) player.role = bestRole;
-            }
-        });
-
-        Object.values(team.lineup.defence).flat().forEach(playerId => {
-            if (!playerId) return;
-            const player = rosterMap.get(playerId);
-            if (player) { // Type guard for player
-                const bestRole = findBestRole(player, defenceRoles);
-                if (bestRole) player.role = bestRole;
-            }
-        });
-
-        updateTeam({ ...team, roster: newRoster });
-        toast.success("Player roles have been auto-assigned based on position and suitability.");
-    };
-
-    const autoFillTactics = () => {
-        const newTactics = { ...team.tactics };
-        Object.keys(groupedTactics).forEach(phase => {
-            Object.keys(groupedTactics[phase]).forEach(category => {
-                const bestTactic = groupedTactics[phase][category]
-                    .map(t => ({ tactic: t, suitability: calculateTacticSuitability(t, team.roster) }))
-                    .sort((a, b) => b.suitability.score - a.suitability.score)[0];
-                newTactics[category] = bestTactic.tactic.tactic;
-            });
-        });
-        updateTeam({ ...team, tactics: newTactics });
-    };
-
-    const groupedTactics = useMemo(() => tactics.reduce((acc, t) => {
-        acc[t.phase] = acc[t.phase] || {};
-        acc[t.phase][t.category] = acc[t.phase][t.category] || [];
-        acc[t.phase][t.category].push(t);
-        return acc;
-    }, {} as Record<string, Record<string, typeof tactics>>), []);
-
-    const LineupSlot = ({ posType, pos, index }: { posType: 'forwards' | 'defence' | 'goalies', pos: string, index: number | null }) => {
-        let currentId: string | null;
-        let players: Player[];
-        let onValueChangeHandler: (val: string | null) => void;
-        let placeholderText: string;
-        let positionForFilter: Position;
-
-        if (posType === 'forwards') {
-            const typedPos = pos as keyof LineupType['forwards'];
-            currentId = team.lineup.forwards[typedPos][index!];
-            onValueChangeHandler = (val: string) => handleLineupChange('forwards', typedPos, index!, val === 'empty' ? null : val);
-            positionForFilter = pos.toUpperCase() as Position;
-            placeholderText = `Select ${pos.toUpperCase()}`;
-        } else if (posType === 'defence') {
-            const typedPos = pos as keyof LineupType['defence'];
-            currentId = team.lineup.defence[typedPos][index!];
-            onValueChangeHandler = (val: string) => handleLineupChange('defence', typedPos, index!, val === 'empty' ? null : val);
-            positionForFilter = pos.toUpperCase() as Position;
-            placeholderText = `Select ${pos.toUpperCase()}`;
-        } else { // goalies
-            const typedPos = pos as keyof LineupType['goalies'];
-            currentId = team.lineup.goalies[typedPos];
-            onValueChangeHandler = (val: string) => handleGoalieChange(typedPos, val === 'empty' ? null : val);
-            positionForFilter = 'G';
-            placeholderText = `Select ${pos.toUpperCase()}`;
-        }
-
-        players = getAvailablePlayers(positionForFilter, currentId);
-        const player = currentId ? playerMap.get(currentId) as Player : undefined;
-
-        if (player) {
-            return (
-                <div className="flex flex-col items-center gap-1">
-                    <PlayerLineupCard 
-                        player={player} 
-                        onRoleChange={(newRole) => handleRoleChange(player.id, newRole)} 
-                        displayName={playerDisplayNames.get(player.id) || player.name.split(' ').pop()?.toUpperCase() || ''}
-                    />
-                    <Button variant="link" className="h-auto p-0 text-xs" onClick={() => onValueChangeHandler('empty')}>Remove</Button>
-                </div>
-            );
-        }
-
-        return (
-            <Select value={currentId || 'empty'} onValueChange={(val: string) => onValueChangeHandler(val)}>
-                <SelectTrigger className="w-full h-full min-h-[118px] bg-muted/50 border-dashed">
-                    <SelectValue placeholder={placeholderText} />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="empty">Empty</SelectItem>
-                    {players.map((p: Player) => (
-                        <SelectItem key={p.id} value={p.id}>
-                            {p.name} ({p.positions.join(', ')}) - {p.starRating}⭐ {p.eligibility === 'Staff' && '(Staff)'}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        );
-    };
-
-    const LineRow = ({ title, children }: { title: string, children: React.ReactNode }) => (
-        <div className="grid grid-cols-4 items-start gap-4 py-2 border-b">
-            <div className="font-semibold text-muted-foreground pt-2">{title}</div>
-            <div className="col-span-3">{children}</div>
-        </div>
-    );
 
     return (
-        <Tabs defaultValue="lineup" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="lineup">Lineup</TabsTrigger>
-                <TabsTrigger value="tactics">Tactics</TabsTrigger>
-            </TabsList>
-            <TabsContent value="lineup">
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <CardTitle>Set Your Lines</CardTitle>
-                            <div className="flex items-center gap-2">
-                                <Button onClick={autoAssignRoles} variant="outline">Auto-Assign Roles</Button>
-                                <Button onClick={autoFillLines}>Auto-Fill Lines</Button>
-                            </div>
-                        </div>
-                        <CardDescription>
-                            You can have a maximum of 2 staff members in your lineup. Currently: {staffInLineupCount}/2
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div>
-                            <h3 className="text-lg font-semibold mb-2">Forwards</h3>
-                            {[...Array(3)].map((_, i) => (
-                                <LineRow key={i} title={`Line ${i + 1}`}>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <LineupSlot posType="forwards" pos="lw" index={i} />
-                                        <LineupSlot posType="forwards" pos="c" index={i} />
-                                        <LineupSlot posType="forwards" pos="rw" index={i} />
-                                    </div>
-                                </LineRow>
-                            ))}
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold mb-2">Defence</h3>
-                            {[...Array(3)].map((_, i) => (
-                                <LineRow key={i} title={`Pairing ${i + 1}`}>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <LineupSlot posType="defence" pos="ld" index={i} />
-                                        <LineupSlot posType="defence" pos="rd" index={i} />
-                                    </div>
-                                </LineRow>
-                            ))}
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold mb-2">Goalies</h3>
-                            <LineRow title="Starter"><LineupSlot posType="goalies" pos="starter" index={null} /></LineRow>
-                            <LineRow title="Backup"><LineupSlot posType="goalies" pos="backup" index={null} /></LineRow>
-                        </div>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            <TabsContent value="tactics">
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <CardTitle>Set Your Tactics</CardTitle>
-                            <Button onClick={autoFillTactics}>Auto-Fill Tactics</Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {Object.entries(groupedTactics).map(([phase, categories]) => (
-                            <div key={phase}>
-                                <h3 className="text-lg font-semibold mb-2">{phase}</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {Object.entries(categories).map(([category, tacticList]) => (
-                                        <div key={category}>
-                                            <Label>{category}</Label>
-                                            <Select value={team.tactics[category]} onValueChange={(value) => handleTacticChange(category, value)}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a tactic" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {tacticList.map(tactic => (
-                                                        <TooltipProvider key={tactic.tactic}>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <SelectItem value={tactic.tactic}>
-                                                                        <div className="flex justify-between w-full pr-2">
-                                                                            <span>{tactic.tactic}</span>
-                                                                            <span className="text-muted-foreground text-sm">
-                                                                                Suitability: {calculateTacticSuitability(tactic, team.roster).score * 4}/20
-                                                                            </span>
-                                                                        </div>
-                                                                    </SelectItem>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p className="max-w-xs">{tactic.description}</p>
-                                                                    <p className="text-xs text-muted-foreground mt-1">Best with: {tactic.bestUsedWith}</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
-    );
+        <TeamContext.Provider value={{
+            teams,
+            updateTeam,
+// ... existing code ...
+```
+</dyad-edit>
+
+<dyad-write path="src/types/index.ts" description="Updating the SaveGameSlot type to include all necessary properties for saving and loading game state.">
+```typescript
+export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
+
+export type Instruction = "Encourage" | "Discipline" | "Praise" | "Push Harder" | "Calm Down";
+
+export type ActiveInstruction = {
+  type: Instruction;
+  duration: number; // in game ticks
 };
 
-export default Lineup;
+export type PlayerArchetype = {
+  position: 'Defenceman' | 'Centre' | 'Winger' | 'Goaltender';
+  type: string;
+  physicality: string;
+  description: string;
+};
+
+export type SkaterAttributes = {
+  acceleration: number;
+  agility: number;
+  balance: number;
+  fighting: number;
+  speed: number;
+  stamina: number;
+  strength: number;
+  hitting: number;
+  aggression: number;
+  bravery: number;
+  determination: number;
+  leadership: number;
+  professionalism: number;
+  teamPlayer: number;
+  temperament: number;
+  gettingOpen: number;
+  offensiveRead: number;
+  passing: number;
+  puckhandling: number;
+  screening: number;
+  shootingAccuracy: number;
+  shootingRange: number;
+  checking: number;
+  defensiveRead: number;
+  faceoffs: number;
+  positioning: number;
+  shotBlocking: number;
+  stickchecking: number;
+  aging: number;
+  ambition: number;
+  bigGames: number;
+  coachability: number;
+  controversy: number;
+  developmentRate: number;
+  greed: number;
+  handleFailure: number;
+  handleSuccess: number;
+  handleCritics: number;
+  injuryProneness: number;
+  intelligence: number;
+  loyalty: number;
+  mood: number;
+  sportsmanship: number;
+  passShootTendency: number;
+};
+
+export type GoalieAttributes = {
+  blocker: number;
+  glove: number;
+  lowShots: number;
+  positioning: number;
+  rebound: number;
+  recovery: number;
+  reflexes: number;
+  passing: number;
+  pokeCheck: number;
+  puckhandling: number;
+  skating: number;
+  mentalToughness: number;
+  goaltenderStamina: number;
+  aging: number;
+  ambition: number;
+  bigGames: number;
+  coachability: number;
+  controversy: number;
+  developmentRate: number;
+  greed: number;
+  handleFailure: number;
+  handleSuccess: number;
+  handleCritics: number;
+  injuryProneness: number;
+  intelligence: number;
+  loyalty: number;
+  mood: number;
+  sportsmanship: number;
+  professionalism: number;
+  determination: number;
+  leadership: number;
+};
+
+export type PlayerSeasonStats = {
+  season: string;
+  team: string;
+  league: string;
+  gamesPlayed: number;
+  goals?: number;
+  assists?: number;
+  points?: number;
+  penaltyMinutes?: number;
+  captaincy?: 'C' | 'A' | null;
+  goalsAgainst?: number;
+  shotsAgainst?: number;
+  saves?: number;
+  goalsAgainstAverage?: number;
+  savePercentage?: number;
+  shutouts?: number;
+};
+
+export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
+
+export type Player = {
+  id: string;
+  jerseyNumber: number;
+  name: string;
+  age: number;
+  nationality: string;
+  positions: Position[];
+  starRating: number;
+  morale: "Content" | "Happy" | "Unhappy" | "Angry";
+  healthStatus: "Healthy" | "Injured" | "Suspended";
+  injury: { type: string; duration: number } | null;
+  eligibility: "UG Year 1" | "UG Year 2" | "UG Year 3" | "UG Year 4" | "Masters" | "PhD" | "Staff";
+  archetype: PlayerArchetype;
+  attributes: SkaterAttributes | GoalieAttributes;
+  currentAbility: number;
+  potentialAbility: number;
+  role: string | undefined;
+  roleSuitability: { [key: string]: number };
+  captaincy: 'C' | 'A' | null;
+  yearsLeftInProgram?: number;
+  history: PlayerSeasonStats[];
+  trainingFocus: TrainingFocus;
+  currentStats: PlayerSeasonStats[];
+  activeInstructions: ActiveInstruction[];
+  source?: 'Local' | 'International' | 'Transfer';
+  estimatedQuality?: 'Beginner' | 'Moderate' | 'Intermediate' | 'Experienced' | 'Elite';
+  recruitmentCost?: number;
+  alumniStatus?: 'Retired' | 'Active Elsewhere' | 'Transfer Listed';
+  isContinuingEducation?: boolean;
+  continuingEducationStartSeason?: string;
+};
+
+export type Lineup = {
+  forwards: {
+    lw: (string | null)[];
+    c: (string | null)[];
+    rw: (string | null)[];
+  };
+  defence: {
+    ld: (string | null)[];
+    rd: (string | null)[];
+  };
+  goalies: {
+    starter: string | null;
+    backup: string | null;
+  };
+};
+
+export type TacticsSelection = {
+  [key: string]: string;
+};
+
+export type BudgetCategory = "Travel" | "Equipment" | "Ice Time" | "Recruiting" | "Student Life" | "Facilities";
+
+export type BudgetAllocations = {
+  [key in BudgetCategory]: number;
+};
+
+export type Financials = {
+  totalBudget: number;
+  discretionaryBudget: number;
+  iceTimeCostPerGame: number;
+  equipmentCost: number;
+};
+
+export type FacilityProject = {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  status: 'Not Started' | 'In Progress' | 'Completed';
+  benefit: string;
+  weeksToComplete?: number;
+  category: 'Financial' | 'Player Development' | 'Player Welfare' | 'Recruitment';
+};
+
+export type Team = {
+  id: string;
+  name: string;
+  logo: string;
+  leagueDivision: string;
+  nationalsDivision: string;
+  roster: Player[];
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  lineup: Lineup;
+  tactics: TacticsSelection;
+  financials: Financials;
+  facilities: FacilityProject[];
+};
+
+export type GameEvent = {
+  time: string;
+  period: number;
+  team: string;
+  description: string;
+};
+
+export type PowerPlayState = {
+  isActive: boolean;
+  teamOnPowerPlay: string | null;
+  timeLeft: number; // in game ticks
+};
+
+export type GameSkaterStats = {
+    playerId: string;
+    goals: number;
+    assists: number;
+    penaltyMinutes: number;
+};
+
+export type GameGoalieStats = {
+    playerId: string;
+    shotsAgainst: number;
+    saves: number;
+    goalsAgainst: number;
+    shutout: boolean;
+};
+
+export type GameState = {
+  userScore: number;
+  opponentScore: number;
+  userShots: number;
+  opponentShots: number;
+  period: number;
+  time: number;
+  gameLog: GameEvent[];
+  isGameOver: boolean;
+  isPaused: boolean;
+  injuries: { teamName: string; playerId: string; injuryType: string; duration: number; }[];
+  possessionHolder: string | null;
+  powerPlayState: PowerPlayState;
+  skaterStats: GameSkaterStats[];
+  goalieStats: GameGoalieStats[];
+};
+
+export type GameDate = {
+  year: number;
+  month: string;
+  week: number;
+};
+
+export type ScheduleEntry = {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  date: GameDate;
+  status: 'scheduled' | 'completed';
+  result?: { homeScore: number; awayScore: number };
+  round?: number;
+};
+
+export type DevelopmentLog = {
+  playerId: string;
+  playerName: string;
+  attribute: string;
+  change: number;
+  newRating: number;
+  date: GameDate;
+};
+
+export type Tactic = {
+  phase: string;
+  category: string;
+  tactic: string;
+  description: string;
+  bestUsedWith: string;
+  strongVs: string;
+  weakVs: string;
+};
+
+export type TacticSuitability = {
+  score: number;
+  explanation: string;
+};
+
+export type TeamRecord = {
+  playerName: string;
+  teamName: string;
+  value: number;
+  season?: string;
+};
+
+export type RecordCategory = 'Goals' | 'Assists' | 'Points' | 'PenaltyMinutes' | 'GAA' | 'SavePercentage' | 'Shutouts';
+
+export type LegacyRecord = {
+  playerName: string;
+  teamName: string;
+  category: RecordCategory;
+  type: 'season' | 'career';
+  value: number;
+  season?: string;
+};
+
+// Nationals Types
+export type NationalsStanding = {
+  teamName: string;
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+};
+
+export type NationalsGroup = {
+  name: string; // e.g., "Group A"
+  teams: string[]; // team names
+  standings: NationalsStanding[];
+};
+
+export type NationalsPlayoffMatch = {
+  id: string;
+  round: 'Quarter-Final' | 'Semi-Final' | 'Final' | 'Preliminary';
+  bracket: 'Gold' | 'Silver';
+  homeTeam: string | { winnerOf: string };
+  awayTeam: string | { winnerOf: string };
+  winner?: string;
+  result?: { homeScore: number; awayScore: number };
+  status: 'scheduled' | 'completed';
+  date: GameDate;
+};
+
+export type NationalsTournament = {
+  division: string;
+  year: number;
+  groups: NationalsGroup[];
+  groupStageSchedule: ScheduleEntry[];
+  playoffSchedule: NationalsPlayoffMatch[];
+  status: 'pending' | 'group-stage' | 'silver-playoffs' | 'gold-playoffs' | 'completed';
+  winner?: string;
+  currentRound: number | 'Quarter-Final' | 'Semi-Final' | 'Final';
+};
+
+export type Achievement = {
+    type: 'Division Title' | 'Nationals Gold' | 'Nationals Silver';
+    season: string;
+    division: string;
+};
+
+export type TeamAchievements = {
+    [teamName: string]: Achievement[];
+};
+
+export type TeamSeasonHistory = {
+    teamName: string;
+    leagueDivision: string;
+    nationalsDivision: string;
+    wins: number;
+    losses: number;
+    draws: number;
+    points: number;
+    goalsFor: number;
+    goalsAgainst: number;
+};
+
+export type SeasonHistory = {
+    [season: string]: TeamSeasonHistory[];
+};
+
+export type SaveGameSlot = {
+    saveName: string;
+    savedAt: string;
+    userTeamName: string;
+    currentDate: GameDate;
+    teams: Team[]; // Added
+    alumni: Player[]; // Added
+    activeTeamName: string | null; // Added
+    managedOrganization: string | null; // Added
+    isManagingOrg: boolean; // Added
+    schedule: ScheduleEntry[]; // Added
+    nationalsData: { [year: number]: { [division: string]: NationalsTournament } }; // Added
+    seasonRecords: { [key in RecordCategory]?: TeamRecord }; // Added
+    careerRecords: { [key in RecordCategory]?: TeamRecord }; // Added
+    teamAchievements: TeamAchievements; // Added
+    transferPool: Player[]; // Added
+    seasonHistory: SeasonHistory; // Added
+    scoutingPool: Player[]; // Added
+    recruitedPool: Player[]; // Added
+    fairHosted: boolean; // Added
+    developmentHistory: DevelopmentLog[]; // Added
+};

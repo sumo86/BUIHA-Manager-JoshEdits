@@ -18,6 +18,13 @@ const qualityColorMap: { [key in Player['estimatedQuality'] | 'default']: string
   'default': 'bg-gray-400',
 };
 
+const leagueDivisions = [
+    "BUIHA Division 1",
+    "BUIHA Division 2",
+    "BUIHA Division 3",
+    "BUIHA Division 4",
+];
+
 export const ScoutingTable = ({ data, isTransferPortal = false }: ScoutingTableProps) => {
   const { recruitPlayer, signPlayerFromTransferPool, userTeam, managedTeams } = useTeam();
 
@@ -45,32 +52,58 @@ export const ScoutingTable = ({ data, isTransferPortal = false }: ScoutingTableP
             <TableHead>Name</TableHead>
             <TableHead>Age</TableHead>
             <TableHead>Position</TableHead>
-            <TableHead>Est. Quality</TableHead>
+            <TableHead>{isTransferPortal ? 'Previous Team' : 'Est. Quality'}</TableHead>
             <TableHead className="text-right">Cost</TableHead>
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((player) => (
-            <TableRow key={player.id}>
-              <TableCell className="font-medium">{player.name}</TableCell>
-              <TableCell>{player.age}</TableCell>
-              <TableCell>{player.positions.join(', ')}</TableCell>
-              <TableCell>
-                <Badge className={`${qualityColorMap[player.estimatedQuality || 'default']} hover:${qualityColorMap[player.estimatedQuality || 'default']}`}>
-                  {player.estimatedQuality || 'N/A'}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                {isTransferPortal ? 'Free' : `£${player.recruitmentCost?.toLocaleString() || 500}`}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button size="sm" onClick={() => handleAction(player)}>
-                  {isTransferPortal ? 'Sign' : 'Recruit'}
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {data.map((player) => {
+            const getPreviousTeam = () => {
+                if (!player.history || player.history.length === 0) return 'N/A';
+                
+                const lastSeason = player.history[player.history.length - 1].season;
+                const lastSeasonHistory = player.history.filter(h => h.season === lastSeason);
+
+                if (lastSeasonHistory.length > 0) {
+                    lastSeasonHistory.sort((a, b) => {
+                        const rankA = leagueDivisions.indexOf(a.league);
+                        const rankB = leagueDivisions.indexOf(b.league);
+                        if (rankA === -1) return 1;
+                        if (rankB === -1) return -1;
+                        return rankA - rankB;
+                    });
+                    return lastSeasonHistory[0].team;
+                }
+                // Fallback for safety
+                return player.history[player.history.length - 1].team;
+            };
+
+            return (
+                <TableRow key={player.id}>
+                  <TableCell className="font-medium">{player.name}</TableCell>
+                  <TableCell>{player.age}</TableCell>
+                  <TableCell>{player.positions.join(', ')}</TableCell>
+                  <TableCell>
+                    {isTransferPortal ? (
+                      getPreviousTeam()
+                    ) : (
+                      <Badge className={`${qualityColorMap[player.estimatedQuality || 'default']} hover:${qualityColorMap[player.estimatedQuality || 'default']}`}>
+                        {player.estimatedQuality || 'N/A'}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {isTransferPortal ? 'Free' : `£${player.recruitmentCost?.toLocaleString() || 500}`}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" onClick={() => handleAction(player)}>
+                      {isTransferPortal ? 'Sign' : 'Recruit'}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
