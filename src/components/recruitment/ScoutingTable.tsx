@@ -45,7 +45,7 @@ export const ScoutingTable = ({ data, isTransferPortal = false }: ScoutingTableP
             <TableHead>Name</TableHead>
             <TableHead>Age</TableHead>
             <TableHead>Position</TableHead>
-            <TableHead>Est. Quality</TableHead>
+            <TableHead>{isTransferPortal ? 'Source' : 'Est. Quality'}</TableHead>
             <TableHead className="text-right">Cost</TableHead>
             <TableHead></TableHead>
           </TableRow>
@@ -57,9 +57,13 @@ export const ScoutingTable = ({ data, isTransferPortal = false }: ScoutingTableP
               <TableCell>{player.age}</TableCell>
               <TableCell>{player.positions.join(', ')}</TableCell>
               <TableCell>
-                <Badge className={`${qualityColorMap[player.estimatedQuality || 'default']} hover:${qualityColorMap[player.estimatedQuality || 'default']}`}>
-                  {player.estimatedQuality || 'N/A'}
-                </Badge>
+                {isTransferPortal ? (
+                  player.source || 'N/A'
+                ) : (
+                  <Badge className={`${qualityColorMap[player.estimatedQuality || 'default']} hover:${qualityColorMap[player.estimatedQuality || 'default']}`}>
+                    {player.estimatedQuality || 'N/A'}
+                  </Badge>
+                )}
               </TableCell>
               <TableCell className="text-right">
                 {isTransferPortal ? 'Free' : `£${player.recruitmentCost?.toLocaleString() || 500}`}

@@ -942,12 +942,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const signPlayerFromTransferPool = (playerId: string, toTeamName: string) => {
         const playerToSign = transferPool.find(p => p.id === playerId);
         const toTeam = teams.find(t => t.name === toTeamName);
+
         if (!playerToSign || !toTeam) {
             toast.error("Failed to sign player.");
             return;
         }
-        const newRoster = [...toTeam.roster, playerToSign];
+
+        // Ensure player does not have captaincy when joining from transfer portal
+        const playerWithNoCaptaincy = { ...playerToSign, captaincy: null };
+
+        const newRoster = [...toTeam.roster, playerWithNoCaptaincy];
         const updatedToTeam = { ...toTeam, roster: newRoster };
+
         setTeams(prevTeams => prevTeams.map(t => t.name === toTeamName ? updatedToTeam : t));
         setTransferPool(prev => prev.filter(p => p.id !== playerId));
         toast.success(`${playerToSign.name} signed with ${toTeamName}.`);
