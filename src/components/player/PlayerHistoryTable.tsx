@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Player, PlayerSeasonStats, Team } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import clsx from 'clsx';
 
 interface PlayerHistoryTableProps {
   history: PlayerSeasonStats[];
@@ -81,7 +82,18 @@ export const PlayerHistoryTable = ({ history, isSkater, teams, currentStats }: P
                       <TableCell className="text-right">{s.shutouts}</TableCell>
                     </>
                   )}
-                  <TableCell className="text-center">{s.captaincy || '-'}</TableCell>
+                  <TableCell className="text-center">
+                    {s.captaincy ? (
+                      <span className={clsx({
+                        "font-bold text-yellow-700": s.captaincy === 'C',
+                        "font-medium text-yellow-500": s.captaincy === 'A',
+                      })}>
+                        {s.captaincy}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}
