@@ -97,8 +97,8 @@ const Lineup = () => {
         ].filter((id): id is string => id !== null); // Filter out nulls here
 
         return lineupPlayerIds.reduce((count, id) => {
-            const player = playerMap.get(id); 
-            if (player && player.eligibility === 'Staff') { 
+            const player = playerMap.get(id);
+            if (player && player.eligibility === 'Staff') { // Check if player exists and then its eligibility
                 return count + 1;
             }
             return count;
@@ -132,267 +132,359 @@ const Lineup = () => {
     const getAvailablePlayers = (position: Position, currentSelection: string | null): Player[] => {
         const skaters = team.roster.filter(p => !p.positions.includes('G'));
         const goalies = team.roster.filter(p => p.positions.includes('G'));
+        const players = position === 'G' ? goalies : skaters;
+        const staffLimitReached = staffInLineupCount >= 2;
 
-        const isAssigned = (playerId: string) => assignedPlayerIds.has(playerId) && playerId !== currentSelection;
-
-        if (position === 'G') {
-            return goalies.filter(p => !isAssigned(p.id) && p.healthStatus === 'Healthy');
-        } else {
-            const positionFilter = (p: Player) => {
-                if (position === 'C' && p.positions.includes('C')) return true;
-                if (position === 'LW' && p.positions.includes('LW')) return true;
-                if (position === 'RW' && p.positions.includes('RW')) return true;
-                if (position === 'LD' && p.positions.includes('LD')) return true;
-                if (position === 'RD' && p.positions.includes('RD')) return true;
-                return false;
-            };
-            return skaters.filter(p => !isAssigned(p.id) && p.healthStatus === 'Healthy' && positionFilter(p));
-        }
+        return players
+            .filter(p => {
+                if (assignedPlayerIds.has(p.id) && p.id !== currentSelection) {
+                    return false;
+                }
+                if (p.eligibility === 'Staff' && staffLimitReached && p.id !== currentSelection) {
+                    return false;
+                }
+                return true;
+            })
+            .sort((a, b) => {
+                const aIsNatural = a.positions.includes(position);
+                const bIsNatural = b.positions.includes(position);
+                if (aIsNatural && !bIsNatural) return -1;
+                if (!aIsNatural && bIsNatural) return 1;
+                return b.starRating - a.starRating;
+            });
     };
 
-    const handlePlayerChange = (positionType: 'forwards' | 'defence' | 'goalies', line: 'lw' | 'c' | 'rw' | 'ld' | 'rd' | 'starter' | 'backup', index: number | null, value: string) => {
-        if (!team) return;
-
-        const newTeamLineup = { ...team.lineup };
-        const playerId = value === "EMPTY_SLOT_VALUE" ? null : value; // Interpret special value as null
-
-        if (positionType === 'forwards' || positionType === 'defence') {
-            if (index !== null) {
-                (newTeamLineup[positionType][line] as (string | null)[])[index] = playerId;
-            }
-        } else if (positionType === 'goalies') {
-            (newTeamLineup[positionType] as any)[line] = playerId;
+    function handleLineupChange(posType: 'forwards', pos: keyof LineupType['forwards'], index: number, playerId: string | null): void;
+    function handleLineupChange(posType: 'defence', pos: keyof LineupType['defence'], index: number, playerId: string | null): void;
+    function handleLineupChange(
+        posType: 'forwards' | 'defence',
+        pos: keyof LineupType['forwards'] | keyof LineupType['defence'],
+        index: number,
+        playerId: string | null
+    ): void {
+        const newLineup = JSON.parse(JSON.stringify(team.lineup)) as LineupType;
+        if (posType === 'forwards') {
+            newLineup.forwards[pos as keyof LineupType['forwards']][index!] = playerId;
+        } else {
+            newLineup.defence[pos as keyof LineupType['defence']][index!] = playerId;
         }
+        updateTeam({ ...team, lineup: newLineup });
+    }
 
-        updateTeam({ ...team, lineup: newTeamLineup });
+    const handleGoalieChange = (role: 'starter' | 'backup', playerId: string | null) => {
+        const newLineup = { ...team.lineup };
+        newLineup.goalies[role] = playerId;
+        updateTeam({ ...team, lineup: newLineup });
     };
 
     const handleRoleChange = (playerId: string, newRole: string) => {
-        if (!team) return;
-        const updatedRoster = team.roster.map(p =>
-            p.id === playerId ? { ...p, role: newRole } : p
-        );
-        updateTeam({ ...team, roster: updatedRoster });
+        const newRoster = team.roster.map(p => p.id === playerId ? { ...p, role: newRole } : p);
+        updateTeam({ ...team, roster: newRoster });
     };
 
-    const handleTacticChange = (category: string, value: string) => {
-        if (!team) return;
-        const newTactics = { ...team.tactics, [category]: value };
+    const handleTacticChange = (category: string, tactic: string) => {
+        updateTeam({ ...team, tactics: { ...team.tactics, [category]: tactic } });
+    };
+
+    const autoFillLines = () => {
+        const healthyRoster = team.roster.filter(p => p.healthStatus === 'Healthy');
+    
+        const forwards = healthyRoster.filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
+        const defencemen = healthyRoster.filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.starRating - a.starRating);
+        const goalies = healthyRoster.filter(p => p.positions.includes('G')).sort((a, b) => b.starRating - a.starRating);
+    
+        const assigned = new Set<string>();
+        let staffCount = 0;
+        const MAX_STAFF = 2;
+    
+        const newLineup: LineupType = {
+            forwards: { lw: [null, null, null], c: [null, null, null], rw: [null, null, null] },
+            defence: { ld: [null, null, null], rd: [null, null, null] },
+            goalies: { starter: null, backup: null }
+        };
+    
+        const findAndAssignPlayer = (playerPool: Player[], position?: Position): string | null => {
+            if (position) {
+                const naturalFit = playerPool.find(p => {
+                    if (assigned.has(p.id)) return false;
+                    if (p.eligibility === 'Staff' && staffCount >= MAX_STAFF) return false;
+                    return p.positions.includes(position);
+                });
+                if (naturalFit) {
+                    assigned.add(naturalFit.id);
+                    if (naturalFit.eligibility === 'Staff') staffCount++;
+                    return naturalFit.id;
+                }
+            }
+    
+            const anyFit = playerPool.find(p => {
+                if (assigned.has(p.id)) return false;
+                if (p.eligibility === 'Staff' && staffCount >= MAX_STAFF) return false;
+                return true;
+            });
+            if (anyFit) {
+                assigned.add(anyFit.id);
+                if (anyFit.eligibility === 'Staff') staffCount++;
+                return anyFit.id;
+            }
+    
+            return null;
+        };
+    
+        for (let i = 0; i < 3; i++) {
+            newLineup.forwards.lw[i] = findAndAssignPlayer(forwards, 'LW');
+            newLineup.forwards.c[i] = findAndAssignPlayer(forwards, 'C');
+            newLineup.forwards.rw[i] = findAndAssignPlayer(forwards, 'RW');
+        }
+    
+        for (let i = 0; i < 3; i++) {
+            newLineup.defence.ld[i] = findAndAssignPlayer(defencemen, 'LD');
+            newLineup.defence.rd[i] = findAndAssignPlayer(defencemen, 'RD');
+        }
+    
+        newLineup.goalies.starter = findAndAssignPlayer(goalies, 'G');
+        newLineup.goalies.backup = findAndAssignPlayer(goalies, 'G');
+    
+        updateTeam({ ...team, lineup: newLineup });
+        toast.success("Lines have been auto-filled with healthy players.");
+    };
+
+    const autoAssignRoles = () => {
+        const newRoster = team.roster.map(p => ({ ...p }));
+        const rosterMap = new Map(newRoster.map(p => [p.id, p]));
+
+        const forwardRoles = roles.filter(r => r.positions.includes('Forward'));
+        const defenceRoles = roles.filter(r => r.positions.includes('Defenceman'));
+
+        const findBestRole = (player: Player, availableRoles: typeof roles): string | null => {
+            if (!player || !player.roleSuitability || availableRoles.length === 0) return null;
+
+            let bestRoleName: string | null = null;
+            let maxSuitability = -1;
+
+            for (const role of availableRoles) {
+                const suitability = player.roleSuitability[role.name] || 0;
+                if (suitability > maxSuitability) {
+                    maxSuitability = suitability;
+                    bestRoleName = role.name;
+                }
+            }
+            return bestRoleName;
+        };
+
+        Object.values(team.lineup.forwards).flat().forEach(playerId => {
+            if (!playerId) return;
+            const player = rosterMap.get(playerId);
+            if (player) { // Type guard for player
+                const bestRole = findBestRole(player, forwardRoles);
+                if (bestRole) player.role = bestRole;
+            }
+        });
+
+        Object.values(team.lineup.defence).flat().forEach(playerId => {
+            if (!playerId) return;
+            const player = rosterMap.get(playerId);
+            if (player) { // Type guard for player
+                const bestRole = findBestRole(player, defenceRoles);
+                if (bestRole) player.role = bestRole;
+            }
+        });
+
+        updateTeam({ ...team, roster: newRoster });
+        toast.success("Player roles have been auto-assigned based on position and suitability.");
+    };
+
+    const autoFillTactics = () => {
+        const newTactics = { ...team.tactics };
+        Object.keys(groupedTactics).forEach(phase => {
+            Object.keys(groupedTactics[phase]).forEach(category => {
+                const bestTactic = groupedTactics[phase][category]
+                    .map(t => ({ tactic: t, suitability: calculateTacticSuitability(t, team.roster) }))
+                    .sort((a, b) => b.suitability.score - a.suitability.score)[0];
+                newTactics[category] = bestTactic.tactic.tactic;
+            });
+        });
         updateTeam({ ...team, tactics: newTactics });
     };
 
-    const validateAndSaveLineup = () => {
-        // This function is now handled by advanceWeek in TeamContext
-        // but we can add specific lineup validation here if needed for UI feedback
-        // before advancing week.
-        toast.info("Lineup changes saved automatically.");
-    };
+    const groupedTactics = useMemo(() => tactics.reduce((acc, t) => {
+        acc[t.phase] = acc[t.phase] || {};
+        acc[t.phase][t.category] = acc[t.phase][t.category] || [];
+        acc[t.phase][t.category].push(t);
+        return acc;
+    }, {} as Record<string, Record<string, typeof tactics>>), []);
 
-    if (!team) {
-        return <div className="p-4 text-center">Please select a team to manage your lineup.</div>;
-    }
+    const LineupSlot = ({ posType, pos, index }: { posType: 'forwards' | 'defence' | 'goalies', pos: string, index: number | null }) => {
+        let currentId: string | null;
+        let players: Player[];
+        let onValueChangeHandler: (val: string | null) => void;
+        let placeholderText: string;
+        let positionForFilter: Position;
 
-    const allTactics = useMemo(() => {
-        const groupedTactics: { [key: string]: { [key: string]: any[] } } = {};
-        tactics.forEach(tactic => {
-            if (!groupedTactics[tactic.phase]) {
-                groupedTactics[tactic.phase] = {};
-            }
-            if (!groupedTactics[tactic.phase][tactic.category]) {
-                groupedTactics[tactic.phase][tactic.category] = [];
-            }
-            groupedTactics[tactic.phase][tactic.category].push(tactic);
-        });
-        return groupedTactics;
-    }, []);
+        if (posType === 'forwards') {
+            const typedPos = pos as keyof LineupType['forwards'];
+            currentId = team.lineup.forwards[typedPos][index!];
+            onValueChangeHandler = (val: string) => handleLineupChange('forwards', typedPos, index!, val === 'empty' ? null : val);
+            positionForFilter = pos.toUpperCase() as Position;
+            placeholderText = `Select ${pos.toUpperCase()}`;
+        } else if (posType === 'defence') {
+            const typedPos = pos as keyof LineupType['defence'];
+            currentId = team.lineup.defence[typedPos][index!];
+            onValueChangeHandler = (val: string) => handleLineupChange('defence', typedPos, index!, val === 'empty' ? null : val);
+            positionForFilter = pos.toUpperCase() as Position;
+            placeholderText = `Select ${pos.toUpperCase()}`;
+        } else { // goalies
+            const typedPos = pos as keyof LineupType['goalies'];
+            currentId = team.lineup.goalies[typedPos];
+            onValueChangeHandler = (val: string) => handleGoalieChange(typedPos, val === 'empty' ? null : val);
+            positionForFilter = 'G';
+            placeholderText = `Select ${pos.toUpperCase()}`;
+        }
 
-    const renderPlayerSelect = (playerId: string | null, position: Position, lineType: 'forwards' | 'defence' | 'goalies', lineName: 'lw' | 'c' | 'rw' | 'ld' | 'rd' | 'starter' | 'backup', index: number | null = null) => {
-        const selectedPlayer = playerId ? playerMap.get(playerId) : null;
-        const availablePlayers = getAvailablePlayers(position, playerId);
+        players = getAvailablePlayers(positionForFilter, currentId);
+        const player = currentId ? playerMap.get(currentId) as Player : undefined;
+
+        if (player) {
+            return (
+                <div className="flex flex-col items-center gap-1">
+                    <PlayerLineupCard 
+                        player={player} 
+                        onRoleChange={(newRole) => handleRoleChange(player.id, newRole)} 
+                        displayName={playerDisplayNames.get(player.id) || player.name.split(' ').pop()?.toUpperCase() || ''}
+                    />
+                    <Button variant="link" className="h-auto p-0 text-xs" onClick={() => onValueChangeHandler('empty')}>Remove</Button>
+                </div>
+            );
+        }
 
         return (
-            <Select
-                value={playerId || "EMPTY_SLOT_VALUE"} // Set initial value to the special string if null
-                onValueChange={(value) => handlePlayerChange(lineType, lineName, index, value)}
-            >
-                <SelectTrigger className="w-full h-8 text-xs">
-                    <SelectValue placeholder="Select Player">
-                        {selectedPlayer ? (
-                            <div className="flex items-center">
-                                <span className="font-medium">{playerDisplayNames.get(selectedPlayer.id) || selectedPlayer.name}</span>
-                                <span className="ml-2 text-muted-foreground">#{selectedPlayer.jerseyNumber}</span>
-                            </div>
-                        ) : (
-                            "Select Player"
-                        )}
-                    </SelectValue>
+            <Select value={currentId || 'empty'} onValueChange={(val: string) => onValueChangeHandler(val)}>
+                <SelectTrigger className="w-full h-full min-h-[118px] bg-muted/50 border-dashed">
+                    <SelectValue placeholder={placeholderText} />
                 </SelectTrigger>
                 <SelectContent>
-                    {availablePlayers.map(player => (
-                        <SelectItem key={player.id} value={player.id}>
-                            <div className="flex items-center">
-                                <span className="font-medium">{player.name}</span>
-                                <span className="ml-2 text-muted-foreground">#{player.jerseyNumber}</span>
-                                <span className="ml-auto text-xs text-gray-500">{player.positions.join('/')}</span>
-                            </div>
+                    <SelectItem value="empty">Empty</SelectItem>
+                    {players.map((p: Player) => (
+                        <SelectItem key={p.id} value={p.id}>
+                            {p.name} ({p.positions.join(', ')}) - {p.starRating}⭐ {p.eligibility === 'Staff' && '(Staff)'}
                         </SelectItem>
                     ))}
-                    {selectedPlayer && !availablePlayers.some(p => p.id === selectedPlayer.id) && (
-                        <SelectItem key={selectedPlayer.id} value={selectedPlayer.id} className="bg-gray-100 text-gray-500" disabled>
-                            <div className="flex items-center">
-                                <span className="font-medium">{selectedPlayer.name}</span>
-                                <span className="ml-2 text-muted-foreground">#{selectedPlayer.jerseyNumber}</span>
-                                <span className="ml-auto text-xs text-gray-500">(Current)</span>
-                            </div>
-                        </SelectItem>
-                    )}
-                    <SelectItem value="EMPTY_SLOT_VALUE" className="text-muted-foreground">
-                        (Empty Slot)
-                    </SelectItem>
                 </SelectContent>
             </Select>
         );
     };
 
+    const LineRow = ({ title, children }: { title: string, children: React.ReactNode }) => (
+        <div className="grid grid-cols-4 items-start gap-4 py-2 border-b">
+            <div className="font-semibold text-muted-foreground pt-2">{title}</div>
+            <div className="col-span-3">{children}</div>
+        </div>
+    );
+
     return (
-        <div className="p-4 space-y-6">
-            <h1 className="text-3xl font-bold">Lineup & Tactics</h1>
-
-            <Tabs defaultValue="lineup">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="lineup">Lineup</TabsTrigger>
-                    <TabsTrigger value="tactics">Tactics</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="lineup" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Forwards</CardTitle>
-                            <CardDescription>Set your forward lines.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {['Line 1', 'Line 2', 'Line 3', 'Line 4'].map((lineName, lineIndex) => (
-                                <div key={lineIndex} className="grid grid-cols-4 gap-4 items-center">
-                                    <Label className="text-right">{lineName}</Label>
-                                    {renderPlayerSelect(team.lineup.forwards.lw[lineIndex], 'LW', 'forwards', 'lw', lineIndex)}
-                                    {renderPlayerSelect(team.lineup.forwards.c[lineIndex], 'C', 'forwards', 'c', lineIndex)}
-                                    {renderPlayerSelect(team.lineup.forwards.rw[lineIndex], 'RW', 'forwards', 'rw', lineIndex)}
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-
-                    <Card className="mt-6">
-                        <CardHeader>
-                            <CardTitle>Defence</CardTitle>
-                            <CardDescription>Set your defensive pairings.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {['Pairing 1', 'Pairing 2', 'Pairing 3'].map((pairingName, pairIndex) => (
-                                <div key={pairIndex} className="grid grid-cols-3 gap-4 items-center">
-                                    <Label className="text-right">{pairingName}</Label>
-                                    {renderPlayerSelect(team.lineup.defence.ld[pairIndex], 'LD', 'defence', 'ld', pairIndex)}
-                                    {renderPlayerSelect(team.lineup.defence.rd[pairIndex], 'RD', 'defence', 'rd', pairIndex)}
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-
-                    <Card className="mt-6">
-                        <CardHeader>
-                            <CardTitle>Goalies</CardTitle>
-                            <CardDescription>Select your starting and backup goaltenders.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-3 gap-4 items-center">
-                                <Label className="text-right">Starter</Label>
-                                {renderPlayerSelect(team.lineup.goalies.starter, 'G', 'goalies', 'starter')}
+        <Tabs defaultValue="lineup" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="lineup">Lineup</TabsTrigger>
+                <TabsTrigger value="tactics">Tactics</TabsTrigger>
+            </TabsList>
+            <TabsContent value="lineup">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle>Set Your Lines</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <Button onClick={autoAssignRoles} variant="outline">Auto-Assign Roles</Button>
+                                <Button onClick={autoFillLines}>Auto-Fill Lines</Button>
                             </div>
-                            <div className="grid grid-cols-3 gap-4 items-center">
-                                <Label className="text-right">Backup</Label>
-                                {renderPlayerSelect(team.lineup.goalies.backup, 'G', 'goalies', 'backup')}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="mt-6">
-                        <CardHeader>
-                            <CardTitle>Player Roles</CardTitle>
-                            <CardDescription>Assign roles to players in your lineup for tactical benefits.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {[
-                                ...team.lineup.forwards.lw, ...team.lineup.forwards.c, ...team.lineup.forwards.rw,
-                                ...team.lineup.defence.ld, ...team.lineup.defence.rd,
-                                team.lineup.goalies.starter, team.lineup.goalies.backup
-                            ]
-                            .filter((id): id is string => id !== null)
-                            .filter((id, index, self) => self.indexOf(id) === index) // Unique players
-                            .map(playerId => {
-                                const player = playerMap.get(playerId);
-                                if (!player) return null;
-                                return (
-                                    <PlayerLineupCard
-                                        key={player.id}
-                                        player={player}
-                                        onRoleChange={(newRole) => handleRoleChange(player.id, newRole)}
-                                        displayName={playerDisplayNames.get(player.id) || player.name}
-                                    />
-                                );
-                            })}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="tactics" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Team Tactics</CardTitle>
-                            <CardDescription>Set your team's overall tactical approach.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {Object.entries(allTactics).map(([phase, categories]) => (
-                                <div key={phase} className="space-y-4">
-                                    <h3 className="text-lg font-semibold">{phase}</h3>
-                                    {Object.entries(categories).map(([category, tacticsList]) => (
-                                        <div key={category} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                                            <Label className="font-medium">{category}</Label>
-                                            <Select
-                                                value={team.tactics[category] || ''}
-                                                onValueChange={(value) => handleTacticChange(category, value)}
-                                            >
+                        </div>
+                        <CardDescription>
+                            You can have a maximum of 2 staff members in your lineup. Currently: {staffInLineupCount}/2
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Forwards</h3>
+                            {[...Array(3)].map((_, i) => (
+                                <LineRow key={i} title={`Line ${i + 1}`}>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <LineupSlot posType="forwards" pos="lw" index={i} />
+                                        <LineupSlot posType="forwards" pos="c" index={i} />
+                                        <LineupSlot posType="forwards" pos="rw" index={i} />
+                                    </div>
+                                </LineRow>
+                            ))}
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Defence</h3>
+                            {[...Array(3)].map((_, i) => (
+                                <LineRow key={i} title={`Pairing ${i + 1}`}>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <LineupSlot posType="defence" pos="ld" index={i} />
+                                        <LineupSlot posType="defence" pos="rd" index={i} />
+                                    </div>
+                                </LineRow>
+                            ))}
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Goalies</h3>
+                            <LineRow title="Starter"><LineupSlot posType="goalies" pos="starter" index={null} /></LineRow>
+                            <LineRow title="Backup"><LineupSlot posType="goalies" pos="backup" index={null} /></LineRow>
+                        </div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="tactics">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle>Set Your Tactics</CardTitle>
+                            <Button onClick={autoFillTactics}>Auto-Fill Tactics</Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {Object.entries(groupedTactics).map(([phase, categories]) => (
+                            <div key={phase}>
+                                <h3 className="text-lg font-semibold mb-2">{phase}</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {Object.entries(categories).map(([category, tacticList]) => (
+                                        <div key={category}>
+                                            <Label>{category}</Label>
+                                            <Select value={team.tactics[category]} onValueChange={(value) => handleTacticChange(category, value)}>
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder={`Select ${category} tactic`} />
+                                                    <SelectValue placeholder="Select a tactic" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {tacticsList.map((tactic: any) => (
-                                                        <SelectItem key={tactic.tactic} value={tactic.tactic}>
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger className="w-full text-left">
-                                                                        {tactic.tactic}
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>{tactic.description}</p>
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            Best Used With: {tactic.bestUsedWith || 'N/A'} | Strong Vs: {tactic.strongVs || 'N/A'} | Weak Vs: {tactic.weakVs || 'N/A'}
-                                                                        </p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        </SelectItem>
+                                                    {tacticList.map(tactic => (
+                                                        <TooltipProvider key={tactic.tactic}>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <SelectItem value={tactic.tactic}>
+                                                                        <div className="flex justify-between w-full pr-2">
+                                                                            <span>{tactic.tactic}</span>
+                                                                            <span className="text-muted-foreground text-sm">
+                                                                                Suitability: {calculateTacticSuitability(tactic, team.roster).score * 4}/20
+                                                                            </span>
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p className="max-w-xs">{tactic.description}</p>
+                                                                    <p className="text-xs text-muted-foreground mt-1">Best with: {tactic.bestUsedWith}</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
                                         </div>
                                     ))}
                                 </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-        </div>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
     );
 };
 

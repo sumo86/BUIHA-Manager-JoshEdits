@@ -227,7 +227,7 @@ export type GameSkaterStats = {
     playerId: string;
     goals: number;
     assists: number;
-    points: number; // Added this line
+    points: number;
     penaltyMinutes: number;
 };
 
@@ -386,20 +386,4 @@ export type SaveGameSlot = {
     savedAt: string;
     userTeamName: string;
     currentDate: GameDate;
-    teams: Team[];
-    alumni: Player[];
-    activeTeamName: string | null;
-    managedOrganization: string | null;
-    isManagingOrg: boolean;
-    schedule: ScheduleEntry[];
-    nationalsData: { [year: number]: { [division: string]: NationalsTournament } };
-    seasonRecords: { [key in RecordCategory]?: TeamRecord };
-    careerRecords: { [key in RecordCategory]?: TeamRecord };
-    teamAchievements: TeamAchievements;
-    transferPool: Player[];
-    seasonHistory: SeasonHistory;
-    scoutingPool: Player[];
-    recruitedPool: Player[];
-    fairHosted: boolean;
-    developmentHistory: DevelopmentLog[];
 };
