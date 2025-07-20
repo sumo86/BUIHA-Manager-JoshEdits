@@ -32,12 +32,17 @@ const getRoleModifiers = (player: Player | null): Role['behavioralModifiers'] =>
 };
 
 const getGoalFactor = (leagueDivision: string): number => {
-    if (leagueDivision.includes('Non-Checking 3')) return 1.3;
-    if (leagueDivision.includes('Non-Checking 2')) return 1.2;
-    if (leagueDivision.includes('Non-Checking 1')) return 1.1;
-    if (leagueDivision.includes('Checking 2')) return 1.0;
-    if (leagueDivision.includes('Checking 1')) return 0.9;
-    return 1.0; // Default
+    // These values are calculated to achieve target average goals per game for each division
+    // Target GPG / (Events per game * Shot Success Probability)
+    // Events per game = 3600 ticks / (1 / 0.15 event chance per tick) = 3600 / 6.67 = ~540 events
+    // Shot Success Probability = ~0.5 (after goalie factor)
+    // So, baseProb = Target GPG / (540 * 0.5) = Target GPG / 270
+    if (leagueDivision.includes('Non-Checking 3')) return 0.0407; // Target ~11 GPG
+    if (leagueDivision.includes('Non-Checking 2')) return 0.0370; // Target ~10 GPG
+    if (leagueDivision.includes('Non-Checking 1')) return 0.0333; // Target ~9 GPG
+    if (leagueDivision.includes('Checking 2')) return 0.0296; // Target ~8 GPG
+    if (leagueDivision.includes('Checking 1')) return 0.0259; // Target ~7 GPG
+    return 0.0333; // Default to Non-Checking 1 if division not found
 };
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
@@ -216,7 +221,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
 
     const tacticalModifier = getTacticalModifier(attackingTeam, defendingTeam);
     const eventType = Math.random();
-    const divisionGoalFactor = getGoalFactor(attackingTeam.leagueDivision);
+    const baseProb = getGoalFactor(attackingTeam.leagueDivision); // Use division-specific base probability
 
     const attackingSkaters = attackingTeam.roster.filter(p => !p.positions.includes('G'));
     const defendingSkaters = defendingTeam.roster.filter(p => !p.positions.includes('G'));
@@ -238,8 +243,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
     
-    const baseProb = 0.025 * divisionGoalFactor;
-    let goalProbability = baseProb * (1 + offenseFactor * 2.5 - (defenseFactor * 1.0));
+    let goalProbability = baseProb * (1 + offenseFactor * 3.0 - (defenseFactor * 1.5)); // Amplified offensive/defensive impact
     
     if (eventType < goalProbability) {
         possessionChange = true; // Stoppage of play

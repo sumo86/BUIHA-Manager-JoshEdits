@@ -52,6 +52,7 @@ export const PlayerHistoryTable = ({ history, isSkater, teams, currentStats }: P
                   <TableHead className="text-right">SO</TableHead>
                 </>
               )}
+              <TableHead className="text-center">C/A</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -80,6 +81,7 @@ export const PlayerHistoryTable = ({ history, isSkater, teams, currentStats }: P
                       <TableCell className="text-right">{s.shutouts}</TableCell>
                     </>
                   )}
+                  <TableCell className="text-center">{s.captaincy || '-'}</TableCell>
                 </TableRow>
               );
             })}
