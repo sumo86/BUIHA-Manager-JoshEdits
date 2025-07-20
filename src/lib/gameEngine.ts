@@ -38,12 +38,12 @@ const getGoalFactor = (leagueDivision: string): number => {
     // Event chance per tick = 0.15
     // Shot success probability = ~0.5 (after goalie factor)
     // So, baseProb = Target GPG / (3600 * 0.15 * 0.5) = Target GPG / 270
-    if (leagueDivision.includes('Non-Checking 3')) return 0.0150; // Target ~4.06 GPG
-    if (leagueDivision.includes('Non-Checking 2')) return 0.0139; // Target ~3.75 GPG
-    if (leagueDivision.includes('Non-Checking 1')) return 0.0127; // Target ~3.43 GPG
-    if (leagueDivision.includes('Checking 2')) return 0.0116; // Target ~3.125 GPG
-    if (leagueDivision.includes('Checking 1')) return 0.0104; // Target ~2.81 GPG
-    return 0.0127; // Default to Non-Checking 1
+    if (leagueDivision.includes('Non-Checking 3')) return 0.0296; // Target ~8.0 GPG
+    if (leagueDivision.includes('Non-Checking 2')) return 0.0278; // Target ~7.5 GPG
+    if (leagueDivision.includes('Non-Checking 1')) return 0.0259; // Target ~7.0 GPG
+    if (leagueDivision.includes('Checking 2')) return 0.0241; // Target ~6.5 GPG
+    if (leagueDivision.includes('Checking 1')) return 0.0222; // Target ~6.0 GPG
+    return 0.0259; // Default to Non-Checking 1
 };
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
@@ -261,22 +261,58 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         if (Math.random() < shotSuccessProb) { // Shot is a goal
             const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4) * getRoleModifiers(p).shootTendency);
             if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
-            const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
-            let assists: string[] = [];
-            const passTendency = (attacker.attributes as SkaterAttributes).passShootTendency || 10;
-            if (potentialAssisters.length > 0 && Math.random() < (0.3 + passTendency / 25)) { 
-                const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing, 4) * getRoleModifiers(p).passTendency);
-                if (assist1) assists.push(assist1.name);
-            }
-            const assistText = assists.length > 0 ? `Assists: ${assists.join(', ')}` : "Unassisted";
 
-            // Record goal scorer and assist
-            gameState.skaterStats.push({
-                playerId: attacker.id,
-                goals: 1,
-                assists: assists.length,
-                points: 1 + assists.length,
-                penaltyMinutes: 0,
+            // Update goalie stats for goal against
+            if (defendingGoalie) {
+                let goalieStat = gameState.goalieStats.find(s => s.playerId === defendingGoalie.id);
+                if (goalieStat) {
+                    goalieStat.goalsAgainst++;
+                    goalieStat.shotsAgainst++;
+                } else {
+                    gameState.goalieStats.push({ playerId: defendingGoalie.id, goalsAgainst: 1, shotsAgainst: 1, saves: 0, shutout: false });
+                }
+            }
+
+            const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
+            let assists: Player[] = [];
+            
+            // First assist
+            if (potentialAssisters.length > 0 && Math.random() < 0.85) { // 85% chance of a first assist
+                const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing, 4) * getRoleModifiers(p).passTendency);
+                if (assist1) {
+                    assists.push(assist1);
+                    
+                    // Second assist
+                    const potentialSecondAssisters = potentialAssisters.filter(p => p.id !== assist1.id);
+                    if (potentialSecondAssisters.length > 0 && Math.random() < 0.6) { // 60% chance of a second assist if there was a first
+                        const assist2 = selectPlayerWeighted(potentialSecondAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing, 4) * getRoleModifiers(p).passTendency);
+                        if (assist2) {
+                            assists.push(assist2);
+                        }
+                    }
+                }
+            }
+
+            const assistText = assists.length > 0 ? `Assists: ${assists.map(a => a.name).join(', ')}` : "Unassisted";
+
+            // Record goal scorer
+            let attackerStat = gameState.skaterStats.find(s => s.playerId === attacker.id);
+            if (attackerStat) {
+                attackerStat.goals++;
+                attackerStat.points++;
+            } else {
+                gameState.skaterStats.push({ playerId: attacker.id, goals: 1, assists: 0, points: 1, penaltyMinutes: 0 });
+            }
+
+            // Record assists
+            assists.forEach(p => {
+                let assisterStat = gameState.skaterStats.find(s => s.playerId === p.id);
+                if (assisterStat) {
+                    assisterStat.assists++;
+                    assisterStat.points++;
+                } else {
+                    gameState.skaterStats.push({ playerId: p.id, goals: 0, assists: 1, points: 1, penaltyMinutes: 0 });
+                }
             });
 
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` }, possessionChange, shotOnGoal };
@@ -286,13 +322,13 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
             
             // Record shot on goal (saved)
             if (defendingGoalie) {
-                gameState.goalieStats.push({
-                    playerId: defendingGoalie.id,
-                    goalsAgainst: 0,
-                    shotsAgainst: 1,
-                    saves: 1,
-                    shutout: false, // Will be determined at end of game
-                });
+                let goalieStat = gameState.goalieStats.find(s => s.playerId === defendingGoalie.id);
+                if (goalieStat) {
+                    goalieStat.shotsAgainst++;
+                    goalieStat.saves++;
+                } else {
+                    gameState.goalieStats.push({ playerId: defendingGoalie.id, goalsAgainst: 0, shotsAgainst: 1, saves: 1, shutout: false });
+                }
             }
 
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` }, possessionChange, shotOnGoal };
@@ -341,13 +377,12 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
             const infraction = getRandomItem(infractions);
             
             // Record penalty
-            gameState.skaterStats.push({
-                playerId: player.id,
-                goals: 0,
-                assists: 0,
-                points: 0,
-                penaltyMinutes: 2, // Assuming 2 minutes for simplicity
-            });
+            let playerStat = gameState.skaterStats.find(s => s.playerId === player.id);
+            if (playerStat) {
+                playerStat.penaltyMinutes += 2;
+            } else {
+                gameState.skaterStats.push({ playerId: player.id, goals: 0, assists: 0, points: 0, penaltyMinutes: 2 });
+            }
 
             return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange, shotOnGoal: false };
         }
@@ -489,6 +524,13 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
 
     gameState.isGameOver = true;
     gameState.isPaused = true;
+
+    // Set shutout status for goalies
+    gameState.goalieStats.forEach(stat => {
+        if (stat.goalsAgainst === 0 && stat.shotsAgainst > 0) {
+            stat.shutout = true;
+        }
+    });
 
     return gameState;
 };
