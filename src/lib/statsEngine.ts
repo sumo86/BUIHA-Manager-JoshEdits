@@ -6,7 +6,9 @@ export const processGameResults = (
   opponentTeam: Team,
   gameState: GameState,
   seasonString: string,
-  isNationalsGame: boolean
+  isNationalsGame: boolean,
+  nationalsDivision?: string, // Added optional parameter
+  gameId?: string // Added optional parameter
 ) => {
   const updatedUserTeam = { ...userTeam, roster: [...userTeam.roster] };
   const updatedOpponentTeam = { ...opponentTeam, roster: [...opponentTeam.roster] };

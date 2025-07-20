@@ -855,32 +855,33 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     tempTeams = tempTeams.map(team => {
                         const graduatingPlayers: Player[] = [];
-                        const remainingPlayers = team.roster.filter(player => {
-                            const eligibilityMap: { [key in Player['eligibility']]: Player['eligibility'] | null } = {
-                                "UG Year 1": "UG Year 2", "UG Year 2": "UG Year 3", "UG Year 3": "UG Year 4",
-                                "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
-                            };
-                            const nextEligibility = eligibilityMap[player.eligibility];
-                            
-                            // Only consider for graduation if yearsLeftInProgram is 0 or eligibility is UG Year 4
+                        const continuingPlayers: Player[] = [];
+
+                        team.roster.forEach(player => {
                             const isGraduating = (player.eligibility === 'UG Year 4' && !player.isContinuingEducation) || 
                                                  ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && (player.yearsLeftInProgram || 0) <= 0);
-
+                            
                             if (isGraduating) {
                                 graduatingPlayers.push(player);
-                                return false; // Remove from current roster
-                            } else if (nextEligibility) {
-                                player.eligibility = nextEligibility;
-                                player.age += 1;
-                                if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
-                                    player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
-                                }
-                                return true;
-                            } else if (player.eligibility !== 'Staff') { // If not staff and no next eligibility, they should graduate
-                                graduatingPlayers.push(player);
-                                return false;
+                            } else {
+                                continuingPlayers.push(player);
                             }
-                            return true; // Staff remain
+                        });
+
+                        const eligibilityMap: { [key in Player['eligibility']]: Player['eligibility'] | null } = {
+                            "UG Year 1": "UG Year 2", "UG Year 2": "UG Year 3", "UG Year 3": "UG Year 4",
+                            "UG Year 4": null, "Masters": null, "PhD": null, "Staff": "Staff"
+                        };
+
+                        // Update continuing players for the new season
+                        let updatedContinuingPlayers = continuingPlayers.map(player => {
+                            const nextEligibility = eligibilityMap[player.eligibility];
+                            return {
+                                ...player,
+                                age: player.age + 1,
+                                eligibility: nextEligibility || player.eligibility, // Update if there's a next step
+                                yearsLeftInProgram: (player.eligibility === 'Masters' || player.eligibility === 'PhD') ? (player.yearsLeftInProgram || 1) - 1 : player.yearsLeftInProgram,
+                            };
                         });
 
                         graduatingPlayers.forEach(player => {
@@ -901,18 +902,21 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     toast.info(`${player.name} has graduated and entered the transfer portal.`);
                                 }
                             } else { // New Degree (5% chance)
-                                player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
-                                player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
-                                player.isContinuingEducation = true;
-                                player.continuingEducationStartSeason = `${prevDate.year}-${prevDate.year + 1}`;
-                                remainingPlayers.push(player);
+                                const newPlayerState = {
+                                    ...player,
+                                    eligibility: player.eligibility === 'UG Year 4' ? 'Masters' as const : 'PhD' as const,
+                                    yearsLeftInProgram: player.eligibility === 'UG Year 4' ? 2 : 4,
+                                    isContinuingEducation: true,
+                                    continuingEducationStartSeason: `${prevDate.year}-${prevDate.year + 1}`
+                                };
+                                updatedContinuingPlayers.push(newPlayerState);
                                 if (isManaged) {
-                                    toast.info(`${player.name} has graduated and enrolled in a ${player.eligibility} program to stay with the team!`);
+                                    toast.info(`${player.name} has graduated and enrolled in a ${newPlayerState.eligibility} program to stay with the team!`);
                                 }
                             }
                         });
 
-                        team.roster = remainingPlayers;
+                        team.roster = updatedContinuingPlayers;
                         return team;
                     });
 

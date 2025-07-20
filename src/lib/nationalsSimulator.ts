@@ -106,11 +106,11 @@ export const processNationalsRound = (
             if (game.bracket === currentBracket && game.round === tournament.currentRound && game.status === 'scheduled') {
                 if (typeof game.homeTeam !== 'string') {
                     const feederMatch = allPlayoffGames.find(m => m.id === (game.homeTeam as { winnerOf: string }).winnerOf);
-                    if (feederMatch && feederMatch.status === 'completed') game.homeTeam = getWinner(feederMatch) || 'TBD';
+                    if (feederMatch && feederMatch.status === 'completed') game.homeTeam = feederMatch.winner || 'TBD';
                 }
                 if (typeof game.awayTeam !== 'string') {
                     const feederMatch = allPlayoffGames.find(m => m.id === (game.awayTeam as { winnerOf: string }).winnerOf);
-                    if (feederMatch && feederMatch.status === 'completed') game.awayTeam = getWinner(feederMatch) || 'TBD';
+                    if (feederMatch && feederMatch.status === 'completed') game.awayTeam = feederMatch.winner || 'TBD';
                 }
             }
         });
