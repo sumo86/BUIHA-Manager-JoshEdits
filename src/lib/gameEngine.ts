@@ -1,6 +1,6 @@
-import { Team, GameEvent, GameState, SkaterAttributes, GoalieAttributes, Player, Instruction } from '@/types';
+import { Team, GameEvent, GameState, SkaterAttributes, GoalieAttributes, Player, Instruction, Role } from '@/types';
 import { tactics } from '@/data/tactics';
-import { roles, Role } from '@/data/roles';
+import { roles } from '@/data/roles';
 import { calculateTacticSuitability } from '@/lib/tactics';
 import { aiMakeAdjustments } from '@/lib/aiManager';
 import { populateLineup } from '@/lib/lineupUtils';

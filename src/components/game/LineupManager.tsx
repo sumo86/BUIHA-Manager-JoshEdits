@@ -1,8 +1,8 @@
-import { Lineup, Player, Position } from '@/types';
+import { Lineup, Player, Position, Role } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Star, StarHalf } from 'lucide-react';
-import { roles, Role } from '@/data/roles'; // Corrected import for Role
+import { roles } from '@/data/roles';
 
 interface LineupManagerProps {
   lineup: Lineup;
