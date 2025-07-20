@@ -538,3 +538,27 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
 
     return gameState;
 };
+
+export const simulateOvertime = (gameState: GameState, homeTeam: Team, awayTeam: Team, isBigGame?: boolean): GameState => {
+    let otGameState = { ...gameState };
+    otGameState.period++; // e.g., Period 4
+    otGameState.time = 0;
+    otGameState.isPaused = false;
+    otGameState.isGameOver = false;
+    otGameState.gameLog.unshift({ time: "20:00", period: otGameState.period, team: "System", description: `Start of Overtime Period.` });
+
+    const initialHomeScore = otGameState.userScore;
+    const initialAwayScore = otGameState.opponentScore;
+
+    // Simulate until a goal is scored (with a safety break)
+    for (let t = 0; t < 1200 * 5; t++) { // Safety break after 5 OT periods
+        otGameState = simulateTick(otGameState, homeTeam, awayTeam, isBigGame);
+        if (otGameState.userScore !== initialHomeScore || otGameState.opponentScore !== initialAwayScore) {
+            break; // Goal scored
+        }
+    }
+    
+    otGameState.isGameOver = true;
+    otGameState.isPaused = true;
+    return otGameState;
+};

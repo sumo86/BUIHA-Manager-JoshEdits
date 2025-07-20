@@ -4,42 +4,51 @@ import { AlumniTable } from '@/components/alumni/AlumniTable';
 import { AdditionalDegreesTable } from '@/components/alumni/AdditionalDegreesTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getTeamOrganizations } from '@/data/teams';
 
 const AlumniPage = () => {
-  const { alumni, managedTeams, userTeam } = useTeam();
-  const [filterScope, setFilterScope] = useState<'organization' | string>('organization');
+  const { alumni, teams } = useTeam();
+  const [filterScope, setFilterScope] = useState<string>('all');
+
+  const organizations = useMemo(() => getTeamOrganizations(), []);
 
   const filterOptions = useMemo(() => {
-    const options = [{ value: 'organization', label: 'Organization' }];
-    if (userTeam) {
-      managedTeams.forEach(team => {
-        options.push({ value: team.name, label: team.name });
-      });
-    }
+    const options = [{ value: 'all', label: 'All Organizations' }];
+    organizations.forEach(org => {
+        options.push({ value: org.name, label: org.name });
+    });
     return options;
-  }, [userTeam, managedTeams]);
+  }, [organizations]);
 
   const filteredAlumni = useMemo(() => {
-    if (filterScope === 'organization') {
+    if (filterScope === 'all') {
       return alumni;
     }
-    return alumni.filter(player => {
-      const lastTeam = player.history[player.history.length - 1]?.team;
-      return lastTeam === filterScope;
-    });
-  }, [alumni, filterScope]);
+    const org = organizations.find(o => o.name === filterScope);
+    if (!org) return [];
+    const orgTeamNames = new Set(org.teams.map(t => t.name));
+    return alumni.filter(player => 
+        player.history.some(record => orgTeamNames.has(record.team))
+    );
+  }, [alumni, filterScope, organizations]);
 
   const continuingEducationPlayers = useMemo(() => {
-    return managedTeams.flatMap(team => team.roster.filter(p => p.isContinuingEducation));
-  }, [managedTeams]);
+    return teams.flatMap(team => team.roster.filter(p => p.isContinuingEducation));
+  }, [teams]);
 
   const filteredContinuingEducationPlayers = useMemo(() => {
-    if (filterScope === 'organization') {
+    if (filterScope === 'all') {
       return continuingEducationPlayers;
     }
-    const team = managedTeams.find(t => t.name === filterScope);
-    return team ? team.roster.filter(p => p.isContinuingEducation) : [];
-  }, [continuingEducationPlayers, filterScope, managedTeams]);
+    const org = organizations.find(o => o.name === filterScope);
+    if (!org) return [];
+    const orgTeamNames = new Set(org.teams.map(t => t.name));
+    
+    return continuingEducationPlayers.filter(player => {
+        const playerTeam = teams.find(t => t.roster.some(p => p.id === player.id));
+        return playerTeam && orgTeamNames.has(playerTeam.name);
+    });
+  }, [continuingEducationPlayers, filterScope, organizations, teams]);
 
   return (
     <div className="space-y-6">
@@ -52,7 +61,7 @@ const AlumniPage = () => {
         </div>
         <Select value={filterScope} onValueChange={setFilterScope}>
           <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder="Filter by team..." />
+            <SelectValue placeholder="Filter by organization..." />
           </SelectTrigger>
           <SelectContent>
             {filterOptions.map(opt => (

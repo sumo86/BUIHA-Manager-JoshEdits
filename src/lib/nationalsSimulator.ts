@@ -1,5 +1,5 @@
 import { Team, NationalsTournament, NationalsPlayoffMatch, ScheduleEntry } from '@/types';
-import { simulateFullGame } from './gameEngine';
+import { simulateFullGame, simulateOvertime } from './gameEngine';
 import { processGameResults as processGameResultsEngine } from './statsEngine';
 import { generatePlayoffBracket } from './nationalsGenerator';
 import { toast } from 'sonner';
@@ -8,8 +8,8 @@ const getWinner = (match: NationalsPlayoffMatch): string | undefined => {
     if (!match.result) return undefined;
     if (match.result.homeScore > match.result.awayScore) return typeof match.homeTeam === 'string' ? match.homeTeam : undefined;
     if (match.result.awayScore > match.result.homeScore) return typeof match.awayTeam === 'string' ? match.awayTeam : undefined;
-    // Random winner on a draw for now to prevent getting stuck.
-    return Math.random() > 0.5 ? (typeof match.homeTeam === 'string' ? match.homeTeam : undefined) : (typeof match.awayTeam === 'string' ? match.awayTeam : undefined);
+    // A draw should not happen in playoffs anymore.
+    return undefined;
 };
 
 export const processNationalsRound = (
@@ -133,7 +133,13 @@ export const processNationalsRound = (
             const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
 
             if (homeTeam && awayTeam) {
-                const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+                let finalGameState = simulateFullGame(homeTeam, awayTeam, true);
+                
+                if (finalGameState.userScore === finalGameState.opponentScore) {
+                    toast.info(`Playoff game between ${homeTeam.name} and ${awayTeam.name} is going to overtime!`);
+                    finalGameState = simulateOvertime(finalGameState, homeTeam, awayTeam, true);
+                }
+
                 const currentSeasonString = `${currentYear}-${currentYear + 1}`;
                 const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(homeTeam, awayTeam, finalGameState, currentSeasonString, true);
                 tempTeams = tempTeams.map((t: Team) => {
