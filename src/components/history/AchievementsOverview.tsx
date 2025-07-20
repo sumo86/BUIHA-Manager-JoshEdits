@@ -9,9 +9,6 @@ interface AchievementsOverviewProps {
 }
 
 export const AchievementsOverview = ({ achievements, title }: AchievementsOverviewProps) => {
-  // Temporary log to help debug if achievements are being passed correctly
-  console.log(`Achievements received for ${title}:`, achievements);
-
   const divisionTitles = useMemo(() => achievements.filter(a => a.type === 'Division Title'), [achievements]);
   const nationalsGold = useMemo(() => achievements.filter(a => a.type === 'Nationals Gold'), [achievements]);
   const nationalsSilver = useMemo(() => achievements.filter(a => a.type === 'Nationals Silver'), [achievements]);

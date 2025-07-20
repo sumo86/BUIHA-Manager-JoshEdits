@@ -40,6 +40,7 @@ const StandingsPage = () => {
         return {
           ...player,
           currentStats: statsForThisTeam,
+          // This ensures the team name displayed is correct for the context of the division standings
           history: [{ ...(player.history[player.history.length - 1] || {}), team: team.name }],
         } as Player;
       })
@@ -61,7 +62,7 @@ const StandingsPage = () => {
         <h1 className="text-3xl font-bold">League Standings</h1>
         <p className="text-muted-foreground">View team standings and player leaderboards.</p>
       </div>
-      <Select value={selectedLeague || leagues[0] || ''} onValueChange={(value) => setSelectedLeague(value)}>
+      <Select value={selectedLeague || leagues[0] || ''} onValueChange={setSelectedLeague}>
         <SelectTrigger className="w-[280px]">
           <SelectValue placeholder="Select a league" />
         </SelectTrigger>
