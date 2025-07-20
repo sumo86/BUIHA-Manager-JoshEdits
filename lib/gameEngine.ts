@@ -238,8 +238,8 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
     
-    const baseProb = 0.1 * divisionGoalFactor;
-    let goalProbability = baseProb * (1 + offenseFactor * 1.5 - (defenseFactor * 0.5));
+    const baseProb = 0.12 * divisionGoalFactor;
+    let goalProbability = baseProb * (1 + offenseFactor * 1.8 - (defenseFactor * 0.5));
     
     if (eventType < goalProbability) {
         possessionChange = true; // Stoppage of play
@@ -260,10 +260,32 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
                 if (assist1) assists.push(assist1.name);
             }
             const assistText = assists.length > 0 ? `Assists: ${assists.join(', ')}` : "Unassisted";
+
+            // Record goal scorer and assist
+            gameState.skaterStats.push({
+                playerId: attacker.id,
+                goals: 1,
+                assists: assists.length,
+                points: 1 + assists.length,
+                penaltyMinutes: 0,
+            });
+
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` }, possessionChange, shotOnGoal };
         } else {
             const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame) * getRoleModifiers(p).shootTendency);
             if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
+            
+            // Record shot on goal (saved)
+            if (defendingGoalie) {
+                gameState.goalieStats.push({
+                    playerId: defendingGoalie.id,
+                    goalsAgainst: 0,
+                    shotsAgainst: 1,
+                    saves: 1,
+                    shutout: false, // Will be determined at end of game
+                });
+            }
+
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` }, possessionChange, shotOnGoal };
         }
     } else if (eventType < 0.35) {
@@ -308,6 +330,16 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const personalityModifier = (1 + (aggression - 10) / 20) * (1 - (sportsmanship - 10) / 30);
         if (Math.random() < basePenaltyChance * personalityModifier * instructionMods.penaltyChance * roleMods.penaltyTendency) {
             const infraction = getRandomItem(infractions);
+            
+            // Record penalty
+            gameState.skaterStats.push({
+                playerId: player.id,
+                goals: 0,
+                assists: 0,
+                points: 0,
+                penaltyMinutes: 2, // Assuming 2 minutes for simplicity
+            });
+
             return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange, shotOnGoal: false };
         }
     } else {
@@ -375,12 +407,7 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
             const defender = defendingTeam.roster.find(p => p.name === defenderName);
             if (defender && defender.healthStatus === 'Healthy') {
                 const injuryProneness = (defender.attributes as SkaterAttributes).injuryProneness || 10;
-                let injuryChance = 0.01 + (injuryProneness / 2000);
-                const hasNutritionPlan = defendingTeam.facilities.some(f => f.id === 'nutrition_plan_1' && f.status === 'Completed');
-                if (hasNutritionPlan) {
-                    injuryChance *= 0.8; // 20% reduction
-                }
-                if (Math.random() < injuryChance) {
+                if (Math.random() < 0.01 + (injuryProneness / 2000)) {
                     const injuryRoll = Math.random();
                     let injuryType: string, duration: number;
                     if (injuryRoll < 0.6) { injuryType = getRandomItem(["Bruised Ribs", "Minor Strain"]); duration = getRandomValueInRange(1, 3); } 
@@ -423,6 +450,8 @@ export const simulateFullGame = (homeTeam: Team, awayTeam: Team, isBigGame?: boo
             teamOnPowerPlay: null,
             timeLeft: 0,
         },
+        skaterStats: [], // Initialize skaterStats
+        goalieStats: [], // Initialize goalieStats
     };
 
     let currentHomeTeam = JSON.parse(JSON.stringify(homeTeam));

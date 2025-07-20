@@ -1,176 +1,162 @@
-import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes, PlayerSeasonStats, FacilityProject } from "@/types";
+import { v4 as uuidv4 } from 'uuid';
+import { Player, Position, PlayerArchetype, SkaterAttributes, GoalieAttributes, FacilityProject } from "@/types";
 import { archetypes } from "@/data/archetypes";
-import { roles }ages/Recruitment.tsx" description="Adding optional chaining to prevent 'length' property access on undefined variables.">
-import { useTeam } from '@/context/TeamContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ScoutingTable } from '@/components/recruitment/ScoutingTable';
-import { RecruitsTable } from '@/components/recruitment/RecruitsTable';
-import { useState } from 'react';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Player, Position } from '@/types';
+import { roles } from '@/data/roles';
+import { getRandomNationality } from '@/data/nationalityDistributions'; // Correct import for nationality
+import { nameData } from '@/data/names'; // Import nameData for firstNames and lastNames
+import { getPotentialAbilityRange, skaterAbilityRanges, goalieAbilityRanges } from '@/data/abilityRanges'; // Correct imports for ability ranges
 
-const qualityOrder: (Player['estimatedQuality'])[] = ['Beginner', 'Moderate', 'Intermediate', 'Experienced', 'Elite'];
-
-const Recruitment = () => {
-  const { userTeam, scoutingPool, recruitedPool, transferPool } = useTeam();
-  const recruitingBudget = userTeam?.financials.discretionaryBudget;
-
-  // Filter state
-  const [qualityFilter, setQualityFilter] = useState('All');
-  const [positionFilter, setPositionFilter] = useState('All');
-  const [sourceFilter, setSourceFilter] = useState('All');
-
-  // Added optional chaining to prevent error if pools are undefined
-  if (!userTeam || (scoutingPool?.length === 0 && recruitedPool?.length === 0 && transferPool?.length === 0)) {
-    return (
-      <div>
-        <h1 className="text-3xl font-bold mb-4">Recruitment</h1>
-        <p className="text-lg text-muted-foreground">
-          There are no players to scout right now. Host the student fair from the Dashboard to find new talent.
-        </p>
-      </div>
-    );
-  }
-
-  const uniqueQualities = ['All', ...qualityOrder];
-  const positionCategories = ['All', 'Forward', 'Defence', 'Goaltender'];
-  // Added optional chaining and nullish coalescing for safety
-  const uniqueSources = ['All', ...Array.from(new Set(scoutingPool?.map(p => p.source) || []))];
-  const forwardPositions: Position[] = ['C', 'LW', 'RW'];
-  const defencePositions: Position[] = ['LD', 'RD'];
-
-  // Added optional chaining and nullish coalescing for safety
-  const filteredScoutingPool = scoutingPool?.filter(player => {
-    if (qualityFilter !== 'All' && player.estimatedQuality !== qualityFilter) {
-      return false;
-    }
-    if (positionFilter !== 'All') {
-      const isForward = forwardPositions.some(p => player.positions.includes(p));
-      const isDefence = defencePositions.some(p => player.positions.includes(p));
-      const isGoaltender = player.positions.includes('G');
-
-      if (positionFilter === 'Forward' && !isForward) return false;
-      if (positionFilter === 'Defence' && !isDefence) return false;
-      if (positionFilter === 'Goaltender' && !isGoaltender) return false;
-    }
-    if (sourceFilter !== 'All' && player.source !== sourceFilter) {
-      return false;
-    }
-    return true;
-  }) || [];
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Recruitment</h1>
-          <p className="text-lg text-muted-foreground">
-            Find the next generation of talent for your team.
-          </p>
-        </div>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Recruiting Budget</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">£{recruitingBudget?.toLocaleString() || 0}</div>
-          </CardContent>
-        </Card>
-      </div>
-      <Tabs defaultValue="scouting" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="scouting">Scouting Pool</TabsTrigger>
-          <TabsTrigger value="transfer">Transfer Portal</TabsTrigger>
-          <TabsTrigger value="recruits">Your Recruits</TabsTrigger>
-        </TabsList>
-        <TabsContent value="scouting" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Scouting Pool</CardTitle>
-              <CardDescription>
-                Potential players from the student fair. Their exact abilities are unknown until you recruit them.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Filters</CardTitle>
-                </CardHeader>
-                <CardContent className="grid sm:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="quality-filter">Est. Quality</Label>
-                    <Select value={qualityFilter} onValueChange={setQualityFilter}>
-                      <SelectTrigger id="quality-filter">
-                        <SelectValue placeholder="Filter by quality" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {uniqueQualities.map((q) => <SelectItem key={q} value={q as string}>{q}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="position-filter">Position</Label>
-                    <Select value={positionFilter} onValueChange={setPositionFilter}>
-                      <SelectTrigger id="position-filter">
-                        <SelectValue placeholder="Filter by position" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {positionCategories.map(pos => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="source-filter">Source</Label>
-                    <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                      <SelectTrigger id="source-filter">
-                        <SelectValue placeholder="Filter by source" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {uniqueSources.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-              <ScoutingTable data={filteredScoutingPool} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="transfer" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Transfer Portal</CardTitle>
-              <CardDescription>
-                Players who have graduated from other universities and are looking for a new team. Their recruitment cost is free due to your program's prestige.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {transferPool?.length > 0 ? (
-                <ScoutingTable data={transferPool} />
-              ) : (
-                <p className="text-muted-foreground text-center py-8">The Transfer Portal is currently empty. Check back at the start of next season.</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="recruits" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Recruits</CardTitle>
-              <CardDescription>
-                Players you have recruited. Review their full profile and decide whether to assign them to your roster or discard them.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RecruitsTable />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const getRandomValueInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const getRandomGaussian = (mean: number, stdDev: number): number => {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    return z * stdDev + mean;
 };
 
-export default Recruitment;
+const assignArchetype = (position: Position): PlayerArchetype => {
+    const possibleArchetypes = archetypes.filter(a => {
+        if (position === 'G') return a.position === 'Goaltender';
+        if (['C', 'LW', 'RW'].includes(position)) return ['Centre', 'Winger'].includes(a.position);
+        if (['LD', 'RD'].includes(position)) return a.position === 'Defenceman';
+        return false;
+    });
+    return getRandomItem(possibleArchetypes);
+};
+
+const generateAttributes = (isSkater: boolean, potentialAbility: number): SkaterAttributes | GoalieAttributes => {
+    // Adjust base to match the scale of abilityRanges (e.g., 0-500) to attributes (1-20)
+    // If potentialAbility is 400, and we want average attribute to be 15, then 400 / X = 15 => X = 26.6
+    const attributeScaleFactor = 26.6; // Derived from (Max CA in Checking 1 / Avg Max Attribute)
+    const base = potentialAbility / attributeScaleFactor;
+    const generateAttr = () => Math.max(1, Math.min(20, getRandomGaussian(base, 3)));
+
+    if (isSkater) {
+        return {
+            acceleration: generateAttr(), agility: generateAttr(), balance: generateAttr(), fighting: generateAttr(),
+            speed: generateAttr(), stamina: generateAttr(), strength: generateAttr(), hitting: generateAttr(),
+            aggression: generateAttr(), bravery: generateAttr(), determination: generateAttr(), leadership: generateAttr(),
+            professionalism: generateAttr(), teamPlayer: generateAttr(), temperament: generateAttr(), gettingOpen: generateAttr(),
+            offensiveRead: generateAttr(), passing: generateAttr(), puckhandling: generateAttr(), screening: generateAttr(),
+            shootingAccuracy: generateAttr(), shootingRange: generateAttr(), checking: generateAttr(), defensiveRead: generateAttr(),
+            faceoffs: generateAttr(), positioning: generateAttr(), shotBlocking: generateAttr(), stickchecking: generateAttr(),
+            aging: generateAttr(), ambition: generateAttr(), bigGames: generateAttr(), coachability: generateAttr(),
+            controversy: generateAttr(), developmentRate: generateAttr(), greed: generateAttr(), handleFailure: generateAttr(),
+            handleSuccess: generateAttr(), handleCritics: generateAttr(), injuryProneness: generateAttr(), intelligence: generateAttr(),
+            loyalty: generateAttr(), mood: generateAttr(), sportsmanship: generateAttr(), passShootTendency: generateAttr(),
+        };
+    } else {
+        return {
+            blocker: generateAttr(), glove: generateAttr(), lowShots: generateAttr(), positioning: generateAttr(),
+            rebound: generateAttr(), recovery: generateAttr(), reflexes: generateAttr(), passing: generateAttr(),
+            pokeCheck: generateAttr(), puckhandling: generateAttr(), skating: generateAttr(), mentalToughness: generateAttr(),
+            goaltenderStamina: generateAttr(), aging: generateAttr(), ambition: generateAttr(), bigGames: generateAttr(),
+            coachability: generateAttr(), controversy: generateAttr(), developmentRate: generateAttr(), greed: generateAttr(),
+            handleFailure: generateAttr(), handleSuccess: generateAttr(), handleCritics: generateAttr(), injuryProneness: generateAttr(),
+            intelligence: generateAttr(), loyalty: generateAttr(), mood: generateAttr(), sportsmanship: generateAttr(),
+            professionalism: generateAttr(), determination: generateAttr(), leadership: generateAttr(),
+        };
+    }
+};
+
+export const calculateCurrentAbility = (attributes: SkaterAttributes | GoalieAttributes, isSkater: boolean): number => {
+    const attrs = Object.values(attributes);
+    const sum = attrs.reduce((acc, val) => acc + (val || 0), 0);
+    // Scale sum of attributes (1-20) to the ability range (0-500)
+    // Assuming ~30-40 attributes, max sum ~600-800.
+    // If max CA is 500, and max sum is 800, then scale by 500/800 = 0.625
+    // Let's use a more direct scaling based on the number of attributes
+    const numAttributes = attrs.length;
+    const maxPossibleSum = numAttributes * 20; // Max value for each attribute is 20
+    const targetMaxAbility = isSkater ? 500 : 250; // Approximate max from abilityRanges
+    return (sum / maxPossibleSum) * targetMaxAbility;
+};
+
+export const calculateStarRating = (currentAbility: number, isSkater: boolean, leagueDivision: string): number => {
+    const ranges = isSkater ? skaterAbilityRanges[leagueDivision] : goalieAbilityRanges[leagueDivision];
+    if (!ranges) {
+        console.warn(`Star rating ranges not found for division: ${leagueDivision}. Using default "Checking 2" ranges.`);
+        const defaultRanges = isSkater ? skaterAbilityRanges["Checking 2"] : goalieAbilityRanges["Checking 2"];
+        if (currentAbility >= defaultRanges["5"].min) return 5;
+        if (currentAbility >= defaultRanges["4.5"].min) return 4.5;
+        if (currentAbility >= defaultRanges["4"].min) return 4;
+        if (currentAbility >= defaultRanges["3.5"].min) return 3.5;
+        if (currentAbility >= defaultRanges["3"].min) return 3;
+        if (currentAbility >= defaultRanges["2.5"].min) return 2.5;
+        if (currentAbility >= defaultRanges["2"].min) return 2;
+        if (currentAbility >= defaultRanges["1.5"].min) return 1.5;
+        return 1;
+    }
+
+    // Check from highest star rating down
+    if (currentAbility >= ranges["5"].min) return 5;
+    if (currentAbility >= ranges["4.5"].min) return 4.5;
+    if (currentAbility >= ranges["4"].min) return 4;
+    if (currentAbility >= ranges["3.5"].min) return 3.5;
+    if (currentAbility >= ranges["3"].min) return 3;
+    if (currentAbility >= ranges["2.5"].min) return 2.5;
+    if (currentAbility >= ranges["2"].min) return 2;
+    if (currentAbility >= ranges["1.5"].min) return 1.5;
+    return 1;
+};
+
+export const generatePlayer = (leagueDivision: string, existingTeamNames: string[], position?: Position): Player => {
+    const isSkater = position !== 'G';
+    const { paMin, paMax } = getPotentialAbilityRange(leagueDivision, isSkater); // Use new function
+    const potentialAbility = getRandomValueInRange(paMin, paMax);
+    const currentAbility = potentialAbility * (Math.random() * 0.3 + 0.6); // 60-90% of PA
+
+    const playerPosition = position || getRandomItem(['C', 'LW', 'RW', 'LD', 'RD', 'G'] as Position[]);
+    const nationalityName = getRandomNationality(); // Get nationality string
+    const name = `${getRandomItem(nameData.firstNames[nationalityName] || nameData.firstNames.Other)} ${getRandomItem(nameData.lastNames[nationalityName] || nameData.lastNames.Other)}`;
+
+    const attributes = generateAttributes(isSkater, potentialAbility);
+
+    const player: Player = {
+        id: uuidv4(),
+        jerseyNumber: 0,
+        name,
+        age: getRandomValueInRange(18, 22),
+        nationality: nationalityName, // Use nationality string
+        positions: [playerPosition],
+        starRating: calculateStarRating(currentAbility, isSkater, leagueDivision),
+        morale: 'Content',
+        healthStatus: 'Healthy',
+        injury: null,
+        eligibility: 'UG Year 1',
+        archetype: assignArchetype(playerPosition),
+        attributes,
+        currentAbility,
+        potentialAbility,
+        role: undefined,
+        roleSuitability: {},
+        captaincy: null,
+        history: [],
+        trainingFocus: null,
+        currentStats: [],
+        activeInstructions: [],
+    };
+
+    return player;
+};
+
+export const generateRecruits = (leagueDivision: string, existingTeamNames: string[], count = 20, facilities: FacilityProject[] = []): Player[] => {
+    const recruits: Player[] = [];
+    for (let i = 0; i < count; i++) {
+        const player = generatePlayer(leagueDivision, existingTeamNames);
+        player.recruitmentCost = getRandomValueInRange(100, 1000);
+        player.source = getRandomItem(['Local', 'International', 'Transfer']);
+        player.estimatedQuality = getRandomItem(['Beginner', 'Moderate', 'Intermediate', 'Experienced', 'Elite']);
+        recruits.push(player);
+    }
+    return recruits;
+};
+
+export const getGamesPlayedForDivision = (division: string): number => {
+    if (division.includes("1")) return 20;
+    if (division.includes("2")) return 16;
+    if (division.includes("3")) return 12;
+    return 16;
+};

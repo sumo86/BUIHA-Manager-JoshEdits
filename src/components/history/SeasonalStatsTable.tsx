@@ -20,13 +20,13 @@ export const SeasonalStatsTable = ({ players, seasons }: SeasonalStatsTableProps
     
     const allStats: DisplayStat[] = [];
     players.forEach(player => {
-      const seasonStat = player.history.find(h => h.season === selectedSeason);
-      if (seasonStat) {
+      const seasonStats = player.history.filter(h => h.season === selectedSeason);
+      seasonStats.forEach(stat => {
         allStats.push({
-          ...seasonStat,
+          ...stat,
           playerName: player.name,
         });
-      }
+      });
     });
     return allStats;
   }, [players, selectedSeason]);
@@ -82,6 +82,7 @@ export const SeasonalStatsTable = ({ players, seasons }: SeasonalStatsTableProps
                 <TableRow>
                   <TableHead>Player</TableHead>
                   <TableHead>Team</TableHead>
+                  <TableHead>League</TableHead>
                   <TableHead className="text-right">GP</TableHead>
                   <TableHead className="text-right">G</TableHead>
                   <TableHead className="text-right">A</TableHead>
@@ -91,9 +92,10 @@ export const SeasonalStatsTable = ({ players, seasons }: SeasonalStatsTableProps
               </TableHeader>
               <TableBody>
                 {skaters.length > 0 ? skaters.map(stat => (
-                  <TableRow key={`${stat.playerName}-${stat.season}`}>
+                  <TableRow key={`${stat.playerName}-${stat.season}-${stat.team}-${stat.league}`}>
                     <TableCell className="font-medium">{stat.playerName}</TableCell>
                     <TableCell>{stat.team}</TableCell>
+                    <TableCell>{stat.league}</TableCell>
                     <TableCell className="text-right">{stat.gamesPlayed}</TableCell>
                     <TableCell className="text-right">{stat.goals}</TableCell>
                     <TableCell className="text-right">{stat.assists}</TableCell>
@@ -102,7 +104,7 @@ export const SeasonalStatsTable = ({ players, seasons }: SeasonalStatsTableProps
                   </TableRow>
                 )) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={8} className="h-24 text-center">
                       No skater stats for this season.
                     </TableCell>
                   </TableRow>
@@ -120,6 +122,7 @@ export const SeasonalStatsTable = ({ players, seasons }: SeasonalStatsTableProps
                 <TableRow>
                   <TableHead>Player</TableHead>
                   <TableHead>Team</TableHead>
+                  <TableHead>League</TableHead>
                   <TableHead className="text-right">GP</TableHead>
                   <TableHead className="text-right">GAA</TableHead>
                   <TableHead className="text-right">SV%</TableHead>
@@ -128,9 +131,10 @@ export const SeasonalStatsTable = ({ players, seasons }: SeasonalStatsTableProps
               </TableHeader>
               <TableBody>
                 {goalies.length > 0 ? goalies.map(stat => (
-                  <TableRow key={`${stat.playerName}-${stat.season}`}>
+                  <TableRow key={`${stat.playerName}-${stat.season}-${stat.team}-${stat.league}`}>
                     <TableCell className="font-medium">{stat.playerName}</TableCell>
                     <TableCell>{stat.team}</TableCell>
+                    <TableCell>{stat.league}</TableCell>
                     <TableCell className="text-right">{stat.gamesPlayed}</TableCell>
                     <TableCell className="text-right">{stat.goalsAgainstAverage?.toFixed(2)}</TableCell>
                     <TableCell className="text-right font-bold">{stat.savePercentage?.toFixed(3)}</TableCell>
@@ -138,7 +142,7 @@ export const SeasonalStatsTable = ({ players, seasons }: SeasonalStatsTableProps
                   </TableRow>
                 )) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       No goalie stats for this season.
                     </TableCell>
                   </TableRow>

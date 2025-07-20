@@ -128,3 +128,17 @@ export const goalieAbilityRanges: FullRanges = {
     "1":   { min: 0,   max: 83 },
   },
 };
+
+export const getPotentialAbilityRange = (leagueDivision: string, isSkater: boolean) => {
+  const ranges = isSkater ? skaterAbilityRanges : goalieAbilityRanges;
+  const divisionRanges = ranges[leagueDivision];
+  if (!divisionRanges) {
+    console.warn(`Potential ability ranges not found for division: ${leagueDivision}. Using default "Checking 2" ranges.`);
+    const defaultRanges = isSkater ? skaterAbilityRanges["Checking 2"] : goalieAbilityRanges["Checking 2"];
+    return { paMin: defaultRanges["1"].min, paMax: defaultRanges["5"].max === Infinity ? 500 : defaultRanges["5"].max };
+  }
+
+  const paMin = divisionRanges["1"].min;
+  const paMax = divisionRanges["5"].max === Infinity ? 500 : divisionRanges["5"].max; // Cap Infinity for practical generation
+  return { paMin, paMax };
+};

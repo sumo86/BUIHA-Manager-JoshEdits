@@ -917,15 +917,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     tempTeams = tempTeams.map(team => {
                         const updatedRoster = team.roster.map(player => {
                             if (player.currentStats && player.currentStats.length > 0) {
-                                const aggregatedStats = getAggregatedCurrentStats(player);
-                                const seasonHistoryEntry: PlayerSeasonStats = {
-                                    ...aggregatedStats,
-                                    season: seasonString,
-                                    team: team.name,
-                                    league: team.leagueDivision,
-                                    captaincy: player.captaincy, // Add captaincy here
-                                };
-                                const newHistory = player.history ? [...player.history, seasonHistoryEntry] : [seasonHistoryEntry];
+                                const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
                                 return { ...player, history: newHistory, currentStats: [] };
                             }
                             return player;
