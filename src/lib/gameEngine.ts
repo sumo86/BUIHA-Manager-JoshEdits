@@ -31,15 +31,18 @@ const getRoleModifiers = (player: Player | null): Role['behavioralModifiers'] =>
     return roleData ? roleData.behavioralModifiers : defaultModifiers;
 };
 
-const getGoalFactor = (leagueDivision: string): number => {
-    // These values represent the target average goals per game (GPG) divided by total ticks (3600).
-    // This is the target probability of a goal occurring per tick.
-    if (leagueDivision.includes('Non-Checking 3')) return 13.0 / 3600; // Target ~13.0 GPG
-    if (leagueDivision.includes('Non-Checking 2')) return 12.0 / 3600; // Target ~12.0 GPG
-    if (leagueDivision.includes('Non-Checking 1')) return 11.0 / 3600; // Target ~11.0 GPG
-    if (leagueDivision.includes('Checking 2')) return 10.5 / 3600; // Target ~10.5 GPG
-    if (leagueDivision.includes('Checking 1')) return 10.0 / 3600; // Target ~10.0 GPG
-    return 11.0 / 3600; // Default to Non-Checking 1
+const getGoalFactor = (leagueDivision: string, isBigGame: boolean): number => {
+    // These values represent the target average goals per game (GPG).
+    // This function returns the target GPG, which will then be converted to a per-tick probability.
+    if (isBigGame) {
+        return getRandomValueInRange(2, 4); // Nationals: 2-4 GPG
+    }
+    if (leagueDivision.includes('Non-Checking 3')) return getRandomValueInRange(11, 13); // Target ~11-13 GPG
+    if (leagueDivision.includes('Non-Checking 2')) return getRandomValueInRange(10, 12); // Target ~10-12 GPG
+    if (leagueDivision.includes('Non-Checking 1')) return getRandomValueInRange(9, 11); // Target ~9-11 GPG
+    if (leagueDivision.includes('Checking 2')) return getRandomValueInRange(9, 11); // Target ~9-11 GPG
+    if (leagueDivision.includes('Checking 1')) return getRandomValueInRange(8, 10); // Target ~8-10 GPG
+    return getRandomValueInRange(10, 12); // Default
 };
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
@@ -202,8 +205,6 @@ const determineFaceoffWinner = (teamA: Team, teamB: Team): string => {
 };
 
 const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): { event: GameEvent | null, possessionChange: boolean, shotOnGoal: boolean } => {
-    if (Math.random() > 0.15) return { event: null, possessionChange: false, shotOnGoal: false }; // Event happens 85% of the time
-
     const eventTime = formatTime(gameState.time);
     let possessionChange = false;
     let shotOnGoal = false;
@@ -217,11 +218,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const defendingTeam = attackingTeam.id === userTeam.id ? opponentTeam : userTeam;
 
     const tacticalModifier = getTacticalModifier(attackingTeam, defendingTeam);
-    const eventType = Math.random();
     
-    // This is the target probability of a goal occurring per tick, based on league division.
-    const targetGoalProbPerTick = getGoalFactor(attackingTeam.leagueDivision); 
-
     const attackingSkaters = attackingTeam.roster.filter(p => !p.positions.includes('G'));
     const defendingSkaters = defendingTeam.roster.filter(p => !p.positions.includes('G'));
     const defendingGoalie = defendingTeam.roster.find(p => p.id === defendingTeam.lineup.goalies.starter);
@@ -244,129 +241,123 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
     
-    // Calculate the base probability that an event (which happens 85% of the time) is a shot.
-    // This is derived from the targetGoalProbPerTick, accounting for the 85% event chance and ~50% shot success.
-    const baseShotProbGivenEvent = targetGoalProbPerTick / (0.85 * 0.5); // 0.85 is P(event happens), 0.5 is avg shot success prob
-    
-    // Adjust the shot probability based on team offense/defense factors
-    let shotEventProbability = baseShotProbGivenEvent * (1 + offenseFactor * 0.5) / (1 + defenseFactor * 0.5);
-    
-    // Ensure shotEventProbability is within reasonable bounds (e.g., 0 to 1)
-    shotEventProbability = Math.max(0, Math.min(1, shotEventProbability));
+    // Base probabilities per tick
+    const totalGameTicks = 3600; // 3 periods * 20 mins * 60 seconds
+    const baseTargetGPG = getGoalFactor(attackingTeam.leagueDivision, isBigGame || false);
+    let baseGoalProbPerTick = baseTargetGPG / totalGameTicks;
 
-    if (eventType < shotEventProbability) { // This event is a shot event
+    // Adjust goal probability based on team offense/defense factors
+    let actualGoalProbPerTick = baseGoalProbPerTick * (1 + offenseFactor * 0.5) / (1 + defenseFactor * 0.5);
+    actualGoalProbPerTick = Math.max(0, Math.min(1, actualGoalProbPerTick)); // Clamp between 0 and 1
+
+    // Calculate shot success probability based on goalie ability
+    const goalieFactor = (defendingGoalieAbility - 10) / 10;
+    const shotSuccessProb = Math.max(0.05, Math.min(0.95, 0.5 - (goalieFactor * 0.5)));
+    
+    // Probability of a saved shot (if a shot occurs but isn't a goal)
+    // P(Saved Shot) = P(Goal) * (1/ShotSuccessProb - 1)
+    let actualSavedShotProbPerTick = actualGoalProbPerTick * (1 / shotSuccessProb - 1);
+    actualSavedShotProbPerTick = Math.max(0, actualSavedShotProbPerTick); // Ensure non-negative
+
+    // Other event probabilities (fixed per tick)
+    const penaltyProbPerTick = 4.5 / totalGameTicks; // ~4.5 penalties per game
+    const hitProbPerTick = 25.0 / totalGameTicks; // ~25 hits per game
+    const puckMovementProbPerTick = 100.0 / totalGameTicks; // ~100 puck movements/turnovers per game
+
+    // Sum of all event probabilities
+    const totalEventProb = actualGoalProbPerTick + actualSavedShotProbPerTick + penaltyProbPerTick + hitProbPerTick + puckMovementProbPerTick;
+
+    const roll = Math.random();
+    let cumulativeProb = 0;
+
+    // Determine event type based on weighted probabilities
+    if (roll < (cumulativeProb += actualGoalProbPerTick)) { // Goal event
         possessionChange = true; // Stoppage of play
         shotOnGoal = true;
-        const avgScreening = attackingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).screening, 0) / attackingSkaters.length;
-        defendingGoalieAbility *= (1 - ((avgScreening - 10) / 150));
-        const goalieFactor = (defendingGoalieAbility - 10) / 10;
-        const shotSuccessProb = Math.max(0.05, Math.min(0.95, 0.5 - (goalieFactor * 0.5)));
-        
-        if (Math.random() < shotSuccessProb) { // Shot is a goal
-            const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4) * getRoleModifiers(p).shootTendency);
-            if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
+        const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4) * getRoleModifiers(p).shootTendency);
+        if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
 
-            // Update goalie stats for goal against
-            if (defendingGoalie) {
-                let goalieStat = gameState.goalieStats.find(s => s.playerId === defendingGoalie.id);
-                if (goalieStat) {
-                    goalieStat.goalsAgainst++;
-                    goalieStat.shotsAgainst++;
-                } else {
-                    gameState.goalieStats.push({ playerId: defendingGoalie.id, goalsAgainst: 1, shotsAgainst: 1, saves: 0, shutout: false });
-                }
+        // Update goalie stats for goal against
+        if (defendingGoalie) {
+            let goalieStat = gameState.goalieStats.find(s => s.playerId === defendingGoalie.id);
+            if (goalieStat) {
+                goalieStat.goalsAgainst++;
+                goalieStat.shotsAgainst++;
+            } else {
+                gameState.goalieStats.push({ playerId: defendingGoalie.id, goalsAgainst: 1, shotsAgainst: 1, saves: 0, shutout: false });
             }
+        }
 
-            const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
-            let assists: Player[] = [];
-            
-            // First assist
-            if (potentialAssisters.length > 0 && Math.random() < 0.85) { // 85% chance of a first assist
-                const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing, 4) * getRoleModifiers(p).passTendency);
-                if (assist1) {
-                    assists.push(assist1);
-                    
-                    // Second assist
-                    const potentialSecondAssisters = potentialAssisters.filter(p => p.id !== assist1.id);
-                    if (potentialSecondAssisters.length > 0 && Math.random() < 0.6) { // 60% chance of a second assist if there was a first
-                        const assist2 = selectPlayerWeighted(potentialSecondAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing, 4) * getRoleModifiers(p).passTendency);
-                        if (assist2) {
-                            assists.push(assist2);
-                        }
+        const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
+        let assists: Player[] = [];
+        
+        // First assist
+        if (potentialAssisters.length > 0 && Math.random() < 0.85) { // 85% chance of a first assist
+            const assist1 = selectPlayerWeighted(potentialAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing, 4) * getRoleModifiers(p).passTendency);
+            if (assist1) {
+                assists.push(assist1);
+                
+                // Second assist
+                const potentialSecondAssisters = potentialAssisters.filter(p => p.id !== assist1.id);
+                if (potentialSecondAssisters.length > 0 && Math.random() < 0.6) { // 60% chance of a second assist if there was a first
+                    const assist2 = selectPlayerWeighted(potentialSecondAssisters, p => Math.pow((p.attributes as SkaterAttributes).passing, 4) * getRoleModifiers(p).passTendency);
+                    if (assist2) {
+                        assists.push(assist2);
                     }
                 }
             }
-
-            const assistText = assists.length > 0 ? `Assists: ${assists.map(a => a.name).join(', ')}` : "Unassisted";
-
-            // Record goal scorer
-            let attackerStat = gameState.skaterStats.find(s => s.playerId === attacker.id);
-            if (attackerStat) {
-                attackerStat.goals++;
-                attackerStat.points++;
-            } else {
-                gameState.skaterStats.push({ playerId: attacker.id, goals: 1, assists: 0, points: 1, penaltyMinutes: 0 });
-            }
-
-            // Record assists
-            assists.forEach(p => {
-                let assisterStat = gameState.skaterStats.find(s => s.playerId === p.id);
-                if (assisterStat) {
-                    assisterStat.assists++;
-                    assisterStat.points++;
-                } else {
-                    gameState.skaterStats.push({ playerId: p.id, goals: 0, assists: 1, points: 1, penaltyMinutes: 0 });
-                }
-            });
-
-            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` }, possessionChange, shotOnGoal };
-        } else { // Shot is saved
-            const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame) * getRoleModifiers(p).shootTendency);
-            if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
-            
-            // Record shot on goal (saved)
-            if (defendingGoalie) {
-                let goalieStat = gameState.goalieStats.find(s => s.playerId === defendingGoalie.id);
-                if (goalieStat) {
-                    goalieStat.shotsAgainst++;
-                    goalieStat.saves++;
-                } else {
-                    gameState.goalieStats.push({ playerId: defendingGoalie.id, goalsAgainst: 0, shotsAgainst: 1, saves: 1, shutout: false });
-                }
-            }
-
-            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` }, possessionChange, shotOnGoal };
         }
-    } else if (eventType < 0.35) { // Shot blocked event
-        const avgBravery = defendingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).bravery, 0) / defendingSkaters.length;
-        if (Math.random() < (avgBravery - 5) / 100) {
-            const blocker = selectPlayerWeighted(defendingSkaters, p => ((p.attributes as SkaterAttributes).shotBlocking + (p.attributes as SkaterAttributes).bravery) * getRoleModifiers(p).shotBlockTendency);
-            if (!blocker) return { event: null, possessionChange: false, shotOnGoal: false };
-            return { event: { time: eventTime, period: gameState.period, team: defendingTeam.name, description: `Shot blocked by ${blocker.name}!` }, possessionChange: false, shotOnGoal: false };
-        }
-    } else if (eventType < 0.65) { // Neutral zone / puck movement events
-        const player1 = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).puckhandling);
-        if (!player1) return { event: null, possessionChange: false, shotOnGoal: false };
-        const movementType = Math.random();
-        const player1Modifiers = getRoleModifiers(player1);
-        if (movementType < 0.6 * player1Modifiers.passTendency) {
-            const player2 = selectPlayerWeighted(attackingSkaters.filter(p => p.id !== player1.id), p => (p.attributes as SkaterAttributes).gettingOpen);
-            if (player2) return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} passes to ${player2.name}.` }, possessionChange: false, shotOnGoal: false };
+
+        const assistText = assists.length > 0 ? `Assists: ${assists.map(a => a.name).join(', ')}` : "Unassisted";
+
+        // Record goal scorer
+        let attackerStat = gameState.skaterStats.find(s => s.playerId === attacker.id);
+        if (attackerStat) {
+            attackerStat.goals++;
+            attackerStat.points++;
         } else {
-            possessionChange = true;
-            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} turns over the puck.` }, possessionChange, shotOnGoal: false };
+            gameState.skaterStats.push({ playerId: attacker.id, goals: 1, assists: 0, points: 1, penaltyMinutes: 0 });
         }
-    } else if (eventType > 0.92) { // Penalty event
+
+        // Record assists
+        assists.forEach(p => {
+            let assisterStat = gameState.skaterStats.find(s => s.playerId === p.id);
+            if (assisterStat) {
+                assisterStat.assists++;
+                assisterStat.points++;
+            } else {
+                gameState.skaterStats.push({ playerId: p.id, goals: 0, assists: 1, points: 1, penaltyMinutes: 0 });
+            }
+        });
+
+        return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` }, possessionChange, shotOnGoal };
+    } else if (roll < (cumulativeProb += actualSavedShotProbPerTick)) { // Saved shot event
+        possessionChange = true; // Stoppage of play
+        shotOnGoal = true;
+        const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame) * getRoleModifiers(p).shootTendency);
+        if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
+        
+        // Record shot on goal (saved)
+        if (defendingGoalie) {
+            let goalieStat = gameState.goalieStats.find(s => s.playerId === defendingGoalie.id);
+            if (goalieStat) {
+                goalieStat.shotsAgainst++;
+                goalieStat.saves++;
+            } else {
+                gameState.goalieStats.push({ playerId: defendingGoalie.id, goalsAgainst: 0, shotsAgainst: 1, saves: 1, shutout: false });
+            }
+        }
+
+        return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` }, possessionChange, shotOnGoal };
+    } else if (roll < (cumulativeProb += penaltyProbPerTick)) { // Penalty event
         possessionChange = true; // Stoppage of play
         const penaltyTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
         
-        // Ensure roster is not empty before trying to select a player for a penalty
         if (penaltyTeam.roster.length === 0) {
             return { event: null, possessionChange: false, shotOnGoal: false }; 
         }
         const player = penaltyTeam.roster[Math.floor(Math.random() * penaltyTeam.roster.length)];
         
-        // Defensive check, though the above check should prevent player from being undefined
         if (!player) {
             return { event: null, possessionChange: false, shotOnGoal: false };
         }
@@ -375,7 +366,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const roleMods = getRoleModifiers(player);
         const aggression = (player.attributes as SkaterAttributes).aggression || 10;
         const sportsmanship = (player.attributes as SkaterAttributes).sportsmanship || 10;
-        const basePenaltyChance = 0.1;
+        const basePenaltyChance = 0.1; // This is a base chance for a player to get a penalty if a penalty event is rolled
         const personalityModifier = (1 + (aggression - 10) / 20) * (1 - (sportsmanship - 10) / 30);
         if (Math.random() < basePenaltyChance * personalityModifier * instructionMods.penaltyChance * roleMods.penaltyTendency) {
             const infraction = getRandomItem(infractions);
@@ -390,12 +381,40 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
 
             return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange, shotOnGoal: false };
         }
-    } else { // Hit event
+    } else if (roll < (cumulativeProb += hitProbPerTick)) { // Hit event
         const attacker = selectPlayerWeighted(attackingSkaters, p => ((p.attributes as SkaterAttributes).hitting + (p.attributes as SkaterAttributes).strength) * getRoleModifiers(p).hitTendency);
         const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
         if (!attacker || !defender) return { event: null, possessionChange: false, shotOnGoal: false };
         const hitDescriptions = [`${attacker.name} lays a big hit on ${defender.name}.`, `${attacker.name} delivers a crushing check to ${defender.name}.`, `${defender.name} is rocked by a huge hit from ${attacker.name}.`, `${attacker.name} finishes his check on ${defender.name} with authority.`, `${defender.name} gets stood up at the blue line by ${attacker.name}.`];
+        
+        // Injury check for hit
+        if (defender.healthStatus === 'Healthy') {
+            const injuryProneness = (defender.attributes as SkaterAttributes).injuryProneness || 10;
+            if (Math.random() < 0.01 + (injuryProneness / 2000)) { // Base 1% chance + proneness
+                const injuryRoll = Math.random();
+                let injuryType: string, duration: number;
+                if (injuryRoll < 0.6) { injuryType = getRandomItem(["Bruised Ribs", "Minor Strain"]); duration = getRandomValueInRange(1, 3); } 
+                else if (injuryRoll < 0.9) { injuryType = getRandomItem(["Sprained Ankle", "Mild Concussion"]); duration = getRandomValueInRange(4, 8); } 
+                else { injuryType = getRandomItem(["Broken Arm", "Torn ACL"]); duration = getRandomValueInRange(10, 24); }
+                if (!gameState.injuries.some(i => i.playerId === defender.id)) {
+                    gameState.injuries.push({ teamName: defendingTeam.name, playerId: defender.id, injuryType, duration });
+                    return { event: { time: eventTime, period: gameState.period, team: defendingTeam.name, description: `INJURY! ${defender.name} is injured. (${injuryType})` }, possessionChange: false, shotOnGoal: false };
+                }
+            }
+        }
         return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: getRandomItem(hitDescriptions) }, possessionChange: false, shotOnGoal: false };
+    } else if (roll < (cumulativeProb += puckMovementProbPerTick)) { // Puck movement / turnover event
+        const player1 = selectPlayerWeighted(attackingSkaters, p => (p.attributes as SkaterAttributes).puckhandling);
+        if (!player1) return { event: null, possessionChange: false, shotOnGoal: false };
+        const movementType = Math.random();
+        const player1Modifiers = getRoleModifiers(player1);
+        if (movementType < 0.6 * player1Modifiers.passTendency) {
+            const player2 = selectPlayerWeighted(attackingSkaters.filter(p => p.id !== player1.id), p => (p.attributes as SkaterAttributes).gettingOpen);
+            if (player2) return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} passes to ${player2.name}.` }, possessionChange: false, shotOnGoal: false };
+        } else {
+            possessionChange = true;
+            return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} turns over the puck.` }, possessionChange, shotOnGoal: false };
+        }
     }
     return { event: null, possessionChange: false, shotOnGoal: false };
 };
@@ -448,26 +467,7 @@ export const simulateTick = (gameState: GameState, userTeam: Team, opponentTeam:
             };
             newGameState.gameLog = [{ time: newEvent.time, period: newEvent.period, team: "System", description: `${teamOnPowerPlay} is now on the power play.` }, ...newGameState.gameLog];
         }
-        if (newEvent.description.includes('hit on') || newEvent.description.includes('check to') || newEvent.description.includes('rocked by a huge hit') || newEvent.description.includes('finishes his check') || newEvent.description.includes('stood up')) {
-            const defenderNameMatch = newEvent.description.match(/(?:on|to|from|by)\s(.*?)(?:\.|with|after|$)/);
-            const defenderName = defenderNameMatch ? defenderNameMatch[1].trim().replace("'s", "") : null;
-            const defendingTeam = newEvent.team === userTeam.name ? opponentTeam : userTeam;
-            const defender = defendingTeam.roster.find(p => p.name === defenderName);
-            if (defender && defender.healthStatus === 'Healthy') {
-                const injuryProneness = (defender.attributes as SkaterAttributes).injuryProneness || 10;
-                if (Math.random() < 0.01 + (injuryProneness / 2000)) {
-                    const injuryRoll = Math.random();
-                    let injuryType: string, duration: number;
-                    if (injuryRoll < 0.6) { injuryType = getRandomItem(["Bruised Ribs", "Minor Strain"]); duration = getRandomValueInRange(1, 3); } 
-                    else if (injuryRoll < 0.9) { injuryType = getRandomItem(["Sprained Ankle", "Mild Concussion"]); duration = getRandomValueInRange(4, 8); } 
-                    else { injuryType = getRandomItem(["Broken Arm", "Torn ACL"]); duration = getRandomValueInRange(10, 24); }
-                    if (!newGameState.injuries.some(i => i.playerId === defender.id)) {
-                        newGameState.injuries.push({ teamName: defendingTeam.name, playerId: defender.id, injuryType, duration });
-                        newGameState.gameLog = [{ time: newEvent.time, period: newEvent.period, team: defendingTeam.name, description: `INJURY! ${defender.name} is injured. (${injuryType})` }, ...newGameState.gameLog];
-                    }
-                }
-            }
-        }
+        // Injury check for hit events is now handled directly within generateGameEvent
     }
 
     if (newGameState.time >= 1200) {
