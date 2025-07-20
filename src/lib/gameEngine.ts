@@ -33,16 +33,17 @@ const getRoleModifiers = (player: Player | null): Role['behavioralModifiers'] =>
 
 const getGoalFactor = (leagueDivision: string): number => {
     // These values are calculated to achieve target average goals per game for each division
-    // Target GPG / (Events per game * Shot Success Probability)
-    // Events per game = 3600 ticks / (1 / 0.15 event chance per tick) = 3600 / 6.67 = ~540 events
-    // Shot Success Probability = ~0.5 (after goalie factor)
-    // So, baseProb = Target GPG / (540 * 0.5) = Target GPG / 270
-    if (leagueDivision.includes('Non-Checking 3')) return 0.0407; // Target ~11 GPG
-    if (leagueDivision.includes('Non-Checking 2')) return 0.0370; // Target ~10 GPG
-    if (leagueDivision.includes('Non-Checking 1')) return 0.0333; // Target ~9 GPG
-    if (leagueDivision.includes('Checking 2')) return 0.0296; // Target ~8 GPG
-    if (leagueDivision.includes('Checking 1')) return 0.0259; // Target ~7 GPG
-    return 0.0333; // Default to Non-Checking 1 if division not found
+    // Target GPG / (Total ticks * Event chance per tick * Shot success probability)
+    // Total ticks = 3600 (3 periods * 1200 ticks/period)
+    // Event chance per tick = 0.15
+    // Shot success probability = ~0.5 (after goalie factor)
+    // So, baseProb = Target GPG / (3600 * 0.15 * 0.5) = Target GPG / 270
+    if (leagueDivision.includes('Non-Checking 3')) return 0.0150; // Target ~4.06 GPG
+    if (leagueDivision.includes('Non-Checking 2')) return 0.0139; // Target ~3.75 GPG
+    if (leagueDivision.includes('Non-Checking 1')) return 0.0127; // Target ~3.43 GPG
+    if (leagueDivision.includes('Checking 2')) return 0.0116; // Target ~3.125 GPG
+    if (leagueDivision.includes('Checking 1')) return 0.0104; // Target ~2.81 GPG
+    return 0.0127; // Default to Non-Checking 1
 };
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
@@ -205,7 +206,7 @@ const determineFaceoffWinner = (teamA: Team, teamB: Team): string => {
 };
 
 const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: Team, isBigGame?: boolean): { event: GameEvent | null, possessionChange: boolean, shotOnGoal: boolean } => {
-    if (Math.random() > 0.15) return { event: null, possessionChange: false, shotOnGoal: false }; // Increased event frequency
+    if (Math.random() > 0.15) return { event: null, possessionChange: false, shotOnGoal: false }; // Event happens 15% of the time
 
     const eventTime = formatTime(gameState.time);
     let possessionChange = false;
@@ -221,7 +222,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
 
     const tacticalModifier = getTacticalModifier(attackingTeam, defendingTeam);
     const eventType = Math.random();
-    const baseProb = getGoalFactor(attackingTeam.leagueDivision); // Use division-specific base probability
+    const baseProb = getGoalFactor(attackingTeam.leagueDivision); // Base probability of a shot event per tick
 
     const attackingSkaters = attackingTeam.roster.filter(p => !p.positions.includes('G'));
     const defendingSkaters = defendingTeam.roster.filter(p => !p.positions.includes('G'));
@@ -240,12 +241,16 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
 
     const modifiedAttackRating = avgAttackingOffense * tacticalModifier * powerPlayModifier;
     const modifiedDefenseRating = avgDefendingDefense / tacticalModifier;
+    
+    // Normalize ratings to a -0.9 to 1 range (assuming 1-20 attributes, 10 is average)
     const offenseFactor = (modifiedAttackRating - 10) / 10;
     const defenseFactor = (modifiedDefenseRating - 10) / 10;
     
-    let goalProbability = baseProb * (1 + offenseFactor * 3.0 - (defenseFactor * 1.5)); // Amplified offensive/defensive impact
+    // New goal probability formula: baseProb * (offensive_impact) / (defensive_impact)
+    // The 0.5 multiplier controls the sensitivity to team ratings
+    let goalProbability = baseProb * (1 + offenseFactor * 0.5) / (1 + defenseFactor * 0.5);
     
-    if (eventType < goalProbability) {
+    if (eventType < goalProbability) { // This event is a shot event
         possessionChange = true; // Stoppage of play
         shotOnGoal = true;
         const avgScreening = attackingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).screening, 0) / attackingSkaters.length;
@@ -253,7 +258,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         const goalieFactor = (defendingGoalieAbility - 10) / 10;
         const shotSuccessProb = Math.max(0.05, Math.min(0.95, 0.5 - (goalieFactor * 0.5)));
         
-        if (Math.random() < shotSuccessProb) {
+        if (Math.random() < shotSuccessProb) { // Shot is a goal
             const attacker = selectPlayerWeighted(attackingSkaters, p => Math.pow(getSkaterOffensiveRating(p, isBigGame), 4) * getRoleModifiers(p).shootTendency);
             if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
             const potentialAssisters = attackingSkaters.filter(p => p.id !== attacker.id);
@@ -275,7 +280,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
             });
 
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `GOAL! ${attacker.name} scores. ${assistText}` }, possessionChange, shotOnGoal };
-        } else {
+        } else { // Shot is saved
             const attacker = selectPlayerWeighted(attackingSkaters, p => getSkaterOffensiveRating(p, isBigGame) * getRoleModifiers(p).shootTendency);
             if (!attacker) return { event: null, possessionChange: true, shotOnGoal };
             
@@ -292,7 +297,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
 
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${attacker.name} takes a shot, saved by ${defendingGoalie?.name || 'the goalie'}.` }, possessionChange, shotOnGoal };
         }
-    } else if (eventType < 0.35) {
+    } else if (eventType < 0.35) { // Shot blocked event
         const avgBravery = defendingSkaters.reduce((sum, p) => sum + (p.attributes as SkaterAttributes).bravery, 0) / defendingSkaters.length;
         if (Math.random() < (avgBravery - 5) / 100) {
             const blocker = selectPlayerWeighted(defendingSkaters, p => ((p.attributes as SkaterAttributes).shotBlocking + (p.attributes as SkaterAttributes).bravery) * getRoleModifiers(p).shotBlockTendency);
@@ -311,7 +316,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
             possessionChange = true;
             return { event: { time: eventTime, period: gameState.period, team: attackingTeam.name, description: `${player1.name} turns over the puck.` }, possessionChange, shotOnGoal: false };
         }
-    } else if (eventType > 0.92) {
+    } else if (eventType > 0.92) { // Penalty event
         possessionChange = true; // Stoppage of play
         const penaltyTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
         
@@ -346,7 +351,7 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
 
             return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange, shotOnGoal: false };
         }
-    } else {
+    } else { // Hit event
         const attacker = selectPlayerWeighted(attackingSkaters, p => ((p.attributes as SkaterAttributes).hitting + (p.attributes as SkaterAttributes).strength) * getRoleModifiers(p).hitTendency);
         const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
         if (!attacker || !defender) return { event: null, possessionChange: false, shotOnGoal: false };
