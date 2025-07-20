@@ -150,10 +150,11 @@ const Lineup = () => {
         }
     };
 
-    const handlePlayerChange = (positionType: 'forwards' | 'defence' | 'goalies', line: 'lw' | 'c' | 'rw' | 'ld' | 'rd' | 'starter' | 'backup', index: number | null, playerId: string) => {
+    const handlePlayerChange = (positionType: 'forwards' | 'defence' | 'goalies', line: 'lw' | 'c' | 'rw' | 'ld' | 'rd' | 'starter' | 'backup', index: number | null, value: string) => {
         if (!team) return;
 
         const newTeamLineup = { ...team.lineup };
+        const playerId = value === "EMPTY_SLOT_VALUE" ? null : value; // Interpret special value as null
 
         if (positionType === 'forwards' || positionType === 'defence') {
             if (index !== null) {
@@ -211,7 +212,7 @@ const Lineup = () => {
 
         return (
             <Select
-                value={playerId || ''}
+                value={playerId || "EMPTY_SLOT_VALUE"} // Set initial value to the special string if null
                 onValueChange={(value) => handlePlayerChange(lineType, lineName, index, value)}
             >
                 <SelectTrigger className="w-full h-8 text-xs">
@@ -245,7 +246,7 @@ const Lineup = () => {
                             </div>
                         </SelectItem>
                     )}
-                    <SelectItem value="" className="text-muted-foreground">
+                    <SelectItem value="EMPTY_SLOT_VALUE" className="text-muted-foreground">
                         (Empty Slot)
                     </SelectItem>
                 </SelectContent>
