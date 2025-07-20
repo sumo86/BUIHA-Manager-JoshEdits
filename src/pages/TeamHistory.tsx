@@ -59,9 +59,15 @@ const TeamHistoryPage = () => {
     return teamNamesToInclude.flatMap(name => teamAchievements[name] || []);
   }, [filterScope, managedTeams, teamAchievements]);
 
+  const managedTeamNamesForRecords = useMemo(() => {
+    return filterScope === 'organization'
+      ? managedTeams.map(t => t.name)
+      : [filterScope];
+  }, [filterScope, managedTeams]);
+
   const { careerRecords } = useMemo(() => {
-    return calculateRecords(playersToDisplay, schedule);
-  }, [playersToDisplay, schedule]);
+    return calculateRecords(playersToDisplay, schedule, managedTeamNamesForRecords);
+  }, [playersToDisplay, schedule, managedTeamNamesForRecords]);
 
   // Collect all unique seasons from all players' history
   const allPlayerSeasons = useMemo(() => {

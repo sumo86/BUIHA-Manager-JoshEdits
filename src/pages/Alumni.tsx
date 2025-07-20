@@ -5,6 +5,7 @@ import { AdditionalDegreesTable } from '@/components/alumni/AdditionalDegreesTab
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getTeamOrganizations } from '@/data/teams';
+import { getPlayerLastTeam } from '@/lib/playerUtils';
 
 const AlumniPage = () => {
   const { alumni, teams, managedTeams } = useTeam();
@@ -27,9 +28,10 @@ const AlumniPage = () => {
     const org = organizations.find(o => o.name === filterScope);
     if (!org) return [];
     const orgTeamNames = new Set(org.teams.map(t => t.name));
-    return alumni.filter(player => 
-        player.history.some(record => orgTeamNames.has(record.team))
-    );
+    return alumni.filter(player => {
+        const lastTeam = getPlayerLastTeam(player);
+        return orgTeamNames.has(lastTeam);
+    });
   }, [alumni, filterScope, organizations]);
 
   const continuingEducationPlayers = useMemo(() => {

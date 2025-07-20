@@ -836,23 +836,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     if (newAchievements.length > 0) {
                         setTeamAchievements(prev => {
-                            const updatedAchievements = JSON.parse(JSON.stringify(prev));
+                            const updated = JSON.parse(JSON.stringify(prev));
                             newAchievements.forEach(({ teamName, achievement }) => {
-                                if (!updatedAchievements[teamName]) {
-                                    updatedAchievements[teamName] = [];
-                                }
+                                if (!updated[teamName]) updated[teamName] = [];
                                 // Avoid duplicates
-                                if (!updatedAchievements[teamName].some((ach: Achievement) => ach.type === achievement.type && ach.season === achievement.season && ach.division === achievement.division)) {
-                                    updatedAchievements[teamName].push(achievement);
+                                if (!updated[teamName].some((ach: Achievement) => ach.type === achievement.type && ach.season === achievement.season && ach.division === achievement.division)) {
+                                    updated[teamName].push(achievement);
                                 }
                             });
-                            return updatedAchievements; // Return the updated state
+                            return updated; // Return the updated state
                         });
                     }
                     
                     tempSeasonRecords = {}; // Reset season records
                     
                     const newAlumni: Player[] = [];
+                    const newTransferPoolPlayers: Player[] = [];
+
                     tempTeams = tempTeams.map(team => {
                         const graduatingPlayers: Player[] = [];
                         const remainingPlayers = team.roster.filter(player => {
@@ -872,6 +872,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             } else if (nextEligibility) {
                                 player.eligibility = nextEligibility;
                                 player.age += 1;
+                                if (player.eligibility === 'Masters' || player.eligibility === 'PhD') {
+                                    player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
+                                }
                                 return true;
                             } else if (player.eligibility !== 'Staff') { // If not staff and no next eligibility, they should graduate
                                 graduatingPlayers.push(player);
@@ -891,23 +894,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     toast.info(`${player.name} has retired from university hockey.`);
                                 }
                             } else if (roll < 0.7) { // Transfer
-                                const otherTeams = tempTeams.filter(t => t.name !== team.name);
-                                if (otherTeams.length > 0) {
-                                    const newTeam = getRandomItem(otherTeams);
-                                    player.eligibility = 'Masters'; // Assume they start a Masters
-                                    player.yearsLeftInProgram = 2; // Default for new Masters
-                                    newTeam.roster.push(player);
-                                    player.alumniStatus = 'Active Elsewhere';
-                                    newAlumni.push(player);
-                                    if (isManaged) {
-                                        toast.info(`${player.name} has graduated and transferred to ${newTeam.name}.`);
-                                    }
-                                } else { // No other teams to transfer to, so they retire
-                                    player.alumniStatus = 'Retired';
-                                    newAlumni.push(player);
-                                    if (isManaged) {
-                                        toast.info(`${player.name} has retired from university hockey as no transfer options were available.`);
-                                    }
+                                player.alumniStatus = 'Transfer Listed';
+                                newTransferPoolPlayers.push(player);
+                                newAlumni.push(player); // Also add to alumni to track them
+                                if (isManaged) {
+                                    toast.info(`${player.name} has graduated and entered the transfer portal.`);
                                 }
                             } else { // New Degree
                                 player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
@@ -926,6 +917,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     if (newAlumni.length > 0) {
                         setAlumni(prev => [...prev, ...newAlumni]);
+                    }
+                    if (newTransferPoolPlayers.length > 0) {
+                        setTransferPool(prev => [...prev, ...newTransferPoolPlayers]);
+                        toast.info(`${newTransferPoolPlayers.length} new players have entered the transfer portal.`);
                     }
 
                     // AI Recruitment Logic
