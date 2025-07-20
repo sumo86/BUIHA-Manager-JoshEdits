@@ -38,12 +38,12 @@ const getGoalFactor = (leagueDivision: string): number => {
     // Event chance per tick = 0.15
     // Shot success probability = ~0.5 (after goalie factor)
     // So, baseProb = Target GPG / (3600 * 0.15 * 0.5) = Target GPG / 270
-    if (leagueDivision.includes('Non-Checking 3')) return 0.0296; // Target ~8.0 GPG
-    if (leagueDivision.includes('Non-Checking 2')) return 0.0278; // Target ~7.5 GPG
-    if (leagueDivision.includes('Non-Checking 1')) return 0.0259; // Target ~7.0 GPG
-    if (leagueDivision.includes('Checking 2')) return 0.0241; // Target ~6.5 GPG
-    if (leagueDivision.includes('Checking 1')) return 0.0222; // Target ~6.0 GPG
-    return 0.0259; // Default to Non-Checking 1
+    if (leagueDivision.includes('Non-Checking 3')) return 0.0407; // Target ~11.0 GPG
+    if (leagueDivision.includes('Non-Checking 2')) return 0.0389; // Target ~10.5 GPG
+    if (leagueDivision.includes('Non-Checking 1')) return 0.0370; // Target ~10.0 GPG
+    if (leagueDivision.includes('Checking 2')) return 0.0352; // Target ~9.5 GPG
+    if (leagueDivision.includes('Checking 1')) return 0.0333; // Target ~9.0 GPG
+    return 0.0370; // Default to Non-Checking 1
 };
 
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
