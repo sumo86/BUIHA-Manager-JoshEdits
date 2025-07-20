@@ -1014,6 +1014,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
             tempSchedule = generateSeasonSchedule(tempTeams, newDate);
             toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
+            // Reset scouting pool and fair hosted status for new season
+            setScoutingPool([]);
+            setFairHosted(false);
         }
 
         if (newDate.month === 'May' && newDate.week === 1 && !(currentDate.month === 'May' && currentDate.week === 1)) {
