@@ -948,8 +948,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         let teamAssignIndex = 0;
                         const playersSignedByAI: Player[] = [];
 
-                        availableForSigning.forEach(player => {
-                            if (Math.random() < 0.8) {
+                        // Distribute players more evenly among AI teams
+                        for (const player of availableForSigning) {
+                            // Only attempt to sign if there are AI teams available
+                            if (shuffledAiTeams.length > 0) {
                                 const signingTeam = shuffledAiTeams[teamAssignIndex % shuffledAiTeams.length];
                                 const teamIndexInTemp = tempTeams.findIndex(t => t.id === signingTeam.id);
                                 
@@ -959,7 +961,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 }
                                 teamAssignIndex++;
                             }
-                        });
+                        }
                         
                         const signedPlayerIds = new Set(playersSignedByAI.map(p => p.id));
                         availableForSigning = availableForSigning.filter(p => !signedPlayerIds.has(p.id));
@@ -1029,16 +1031,21 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         });
                         return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
                     });
-
-                    setFairHosted(false);
-                    toast.info("New Season Started", {
-                        description: "The recruitment fair is now available for the upcoming season."
-                    });
                 }
                 month = months[nextMonthIndex];
             }
             return { month, week, year };
         })(currentDate);
+
+        // This block was moved outside the tempTeams.map loop
+        if (currentDate.month === 'July' && currentDate.week === 4) { // Check for end of July, before August 1
+            if (userTeam) {
+                setFairHosted(false);
+                toast.info("New Season Started", {
+                    description: "The recruitment fair is now available for the upcoming season."
+                });
+            }
+        }
 
         if (newDate.month === 'April' && newDate.week === 1 && !(currentDate.month === 'April' && currentDate.week === 1)) {
             toast.info("Generating Nationals Tournaments...");
@@ -1193,12 +1200,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const processGameResults = (userTeam: Team, opponentTeam: Team, gameState: GameState, isNationalsGame: boolean = false, nationalsDivision?: string, gameId?: string) => {
         const currentSeasonString = `${currentDate.year}-${currentDate.year + 1}`;
-        const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(userTeam, opponentTeam, gameState, currentSeasonString, isNationalsGame);
+        const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(userTeam, opponentTeam, gameState, currentSeasonString, isNationalsGame);
         
         setTeams(currentTeams =>
             currentTeams.map(t => {
-                if (t.name === updatedUserTeam.name) return updatedUserTeam;
-                if (t.name === updatedOpponentTeam.name) return updatedOpponentTeam;
+                if (t.name === updatedHomeTeam.name) return updatedHomeTeam;
+                if (t.name === updatedAwayTeam.name) return updatedAwayTeam;
                 return t;
             })
         );
