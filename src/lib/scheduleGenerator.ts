@@ -11,13 +11,13 @@ const shuffleArray = <T>(array: T[]): T[] => {
 };
 
 export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): ScheduleEntry[] => {
-    const seasonMonths = ["September", "October", "November", "December", "January", "February", "March", "April"];
+    const seasonMonths = ["September", "October", "November", "December", "January", "February", "March"];
     const gameWeeks: GameDate[] = [];
     
     const seasonYear = startDate.year;
     seasonMonths.forEach(month => {
         for (let week = 1; week <= 4; week++) {
-            const displayYear = (["January", "February", "March", "April"].includes(month)) ? seasonYear + 1 : seasonYear;
+            const displayYear = (["January", "February", "March"].includes(month)) ? seasonYear + 1 : seasonYear;
             gameWeeks.push({ month, week, year: displayYear });
         }
     });
