@@ -1,33 +1,14 @@
 import { useTeam } from '@/context/TeamContext';
+import { getTeamOrganizations } from '@/data/teams';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { format } from 'date-fns';
-import { Trash2, PlusCircle } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { CreateClubDialog } from '@/components/dialogs/CreateClubDialog';
-import { Team } from '@/types';
+import { Trash2 } from 'lucide-react';
 
 const TeamSelection = () => {
-    const { teams, selectTeam, selectOrganization, savedGames, loadGame, deleteGame } = useTeam();
-    const [isCreateClubDialogOpen, setCreateClubDialogOpen] = useState(false);
-
-    const organizations = useMemo(() => {
-        const orgMap = new Map<string, { name: string, teams: Team[] }>();
-        if (!teams) return [];
-        
-        teams.forEach(team => {
-            const orgName = team.organizationName;
-            if (!orgMap.has(orgName)) {
-                orgMap.set(orgName, { name: orgName, teams: [] });
-            }
-            const org = orgMap.get(orgName);
-            if (org) {
-                org.teams.push(team);
-            }
-        });
-        return Array.from(orgMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-    }, [teams]);
+    const { selectTeam, selectOrganization, savedGames, loadGame, deleteGame } = useTeam();
+    const organizations = getTeamOrganizations();
 
     const handleSelectTeam = (teamName: string) => {
         selectTeam(teamName);
@@ -39,7 +20,6 @@ const TeamSelection = () => {
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
-            <CreateClubDialog isOpen={isCreateClubDialogOpen} onOpenChange={setCreateClubDialogOpen} />
             <div className="w-full max-w-3xl space-y-8">
                 {savedGames && savedGames.length > 0 && (
                     <Card>
@@ -75,12 +55,9 @@ const TeamSelection = () => {
                 <Card className="w-full">
                     <CardHeader>
                         <CardTitle className="text-2xl">Start a New Game</CardTitle>
-                        <CardDescription>Select an existing team or create your own club from scratch.</CardDescription>
+                        <CardDescription>Select a team or an entire organization to begin your managerial career.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Button className="w-full mb-4" onClick={() => setCreateClubDialogOpen(true)}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Create New Club
-                        </Button>
                         <Accordion type="single" collapsible className="w-full">
                             {organizations.map(org => (
                                 <AccordionItem value={org.name} key={org.name}>

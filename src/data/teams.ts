@@ -1,9 +1,9 @@
 import { Team, Lineup, TacticsSelection, Player } from "@/types";
-import { generateRoster } from "@/lib/playerGenerator";
-import { getGamesPlayedForDivision } from '@/lib/leagueUtils'; // Corrected import path
+import { generateRoster, getGamesPlayedForDivision } from "@/lib/playerGenerator";
 import { initialFacilityProjects } from './facilities';
 import { teamLogos } from './logos';
 import { getTierName as getNationalsDivision } from '@/lib/leagueUtils';
+import { populateLineup } from '@/lib/lineupUtils';
 
 const teamData = [
     // Checking 1 - North
@@ -111,6 +111,7 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
 
     return org.teamsData.map(teamInfo => {
         const roster = generateRoster(teamInfo.leagueDivision, teamInfo.name);
+        const lineup = populateLineup(roster);
         const teamBudget = isMultiTeamOrg ? orgTotalBudget / org.teamsData.length : 15000;
         const equipmentCost = Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500;
 
@@ -126,6 +127,7 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
             ...teamInfo,
             nationalsDivision: getNationalsDivision(teamInfo.leagueDivision),
             roster: roster,
+            lineup: lineup,
             tactics: defaultTactics,
             wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0,
             logo: teamLogos[org.name],
