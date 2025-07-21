@@ -56,7 +56,15 @@ export const CreateClubDialog = ({ isOpen, onOpenChange }: CreateClubDialogProps
         toast.error("Initialization error", { description: "The function to create a club is not available."});
         return;
     }
-    startNewCustomClub(values);
+    // Ensure all required fields are strings, even if Zod/RHF makes them optional in inference
+    const clubData = {
+      organizationName: values.organizationName || '',
+      teamName: values.teamName || '',
+      leagueDivision: values.leagueDivision || '',
+      nationalsDivision: values.nationalsDivision || '',
+      logo: values.logo || '', // Already handled
+    };
+    startNewCustomClub(clubData);
     onOpenChange(false);
   };
 
