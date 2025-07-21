@@ -254,8 +254,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             localStorage.removeItem('activeTeamName');
             localStorage.removeItem('managedOrganization');
             localStorage.removeItem('isManagingOrg');
-            setActiveTeamName(null);
             setManagedOrganization(null);
+            setActiveTeamName(null);
             setIsManagingOrg(false);
         }
     };
