@@ -10,7 +10,7 @@ import { processGameResults as processGameResultsEngine } from '@/lib/statsEngin
 import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
-import { createNationalsTournament } => '@/lib/nationalsGenerator';
+import { createNationalsTournament } from '@/lib/nationalsGenerator';
 import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { processNationalsRound } from '@/lib/nationalsSimulator';
