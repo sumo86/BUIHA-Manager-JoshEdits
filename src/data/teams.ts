@@ -123,6 +123,7 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
         const initialFixedCosts = iceTimeCost + travelCost + equipmentCost;
 
         return {
+            id: crypto.randomUUID(),
             ...teamInfo,
             nationalsDivision: getNationalsDivision(teamInfo.leagueDivision),
             roster: roster,

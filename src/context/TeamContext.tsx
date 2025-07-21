@@ -940,11 +940,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     // AI teams sign players from the transfer pool
                     let availableForSigning = [...newTransferPoolPlayers];
-                    const managedTeamNamesSet = new Set(managedTeamNames);
-                    const aiTeams = tempTeams.filter(t => !managedTeamNamesSet.has(t.name));
+                    
+                    const allOrgs = getTeamOrganizations();
+                    const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
 
-                    if (aiTeams.length > 0) {
-                        const shuffledAiTeams = shuffleArray(aiTeams);
+                    if (aiOrgs.length > 0) {
+                        const shuffledAiOrgs = shuffleArray(aiOrgs);
                         const playersForAISigning: Player[] = [];
                         
                         // Determine which players AI will sign (80%)
@@ -954,16 +955,19 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             }
                         });
 
-                        // Assign players to AI teams in a round-robin fashion
-                        let teamAssignIndex = 0;
+                        // Assign players to AI organizations in a round-robin fashion
+                        let orgAssignIndex = 0;
                         playersForAISigning.forEach(player => {
-                            const signingTeam = shuffledAiTeams[teamAssignIndex % shuffledAiTeams.length];
-                            const teamIndexInTemp = tempTeams.findIndex(t => t.id === signingTeam.id);
+                            const signingOrg = shuffledAiOrgs[orgAssignIndex % shuffledAiOrgs.length];
+                            
+                            // Assign to the lowest-tier team in the org. Teams are sorted A, B, C... so the last one is the lowest tier.
+                            const lowestTierTeamInOrg = signingOrg.teams[signingOrg.teams.length - 1];
+                            const teamIndexInTemp = tempTeams.findIndex(t => t.name === lowestTierTeamInOrg.name);
                             
                             if (teamIndexInTemp !== -1) {
                                 tempTeams[teamIndexInTemp].roster.push(player);
                             }
-                            teamAssignIndex++;
+                            orgAssignIndex++;
                         });
                         
                         // Filter out players signed by AI from the availableForSigning pool
@@ -977,8 +981,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }
 
                     // AI Recruitment Logic (for new recruits, not transfers)
-                    const allOrgs = getTeamOrganizations();
-                    const aiOrgsList = allOrgs.filter(org => org.name !== managedOrganization);
+                    const allOrgsList = getTeamOrganizations();
+                    const aiOrgsList = allOrgsList.filter(org => org.name !== managedOrganization);
                     const allTeamNames = tempTeams.map(t => t.name);
                     let recruitmentOccurred = false;
 
@@ -1044,6 +1048,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         // This block ensures fairHosted is reset when the new date is August, Week 1
         if (newDate.month === 'August' && newDate.week === 1 && userTeam) {
             setFairHosted(false);
+            setScoutingPool([]);
+            setRecruitedPool([]);
             toast.info("New Season Started", {
                 description: "The recruitment fair is now available for the upcoming season."
             });
