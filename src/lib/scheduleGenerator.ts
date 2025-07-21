@@ -52,17 +52,11 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
     const shuffledMatchups = shuffleArray(allMatchups);
     const schedule: ScheduleEntry[] = [];
     
-    // Distribute games as evenly as possible across the available weeks
-    let weekIndex = 0;
-    while (shuffledMatchups.length > 0) {
-        const date = gameWeeks[weekIndex % gameWeeks.length];
-        const teamsPlayingThisWeek = new Set(
-            schedule.filter(g => g.date.month === date.month && g.date.week === date.week && g.date.year === date.year)
-                    .flatMap(g => [g.homeTeam, g.awayTeam])
-        );
-
-        // Find a game for this week where neither team is already playing
-        let gameScheduledThisTurn = false;
+    // Distribute games by iterating through weeks and filling them up
+    gameWeeks.forEach(date => {
+        const teamsPlayingThisWeek = new Set<string>();
+        
+        // Find games for this week where neither team is already playing
         for (let i = shuffledMatchups.length - 1; i >= 0; i--) {
             const matchup = shuffledMatchups[i];
             if (!teamsPlayingThisWeek.has(matchup.homeTeam) && !teamsPlayingThisWeek.has(matchup.awayTeam)) {
@@ -73,40 +67,41 @@ export const generateSeasonSchedule = (teams: Team[], startDate: GameDate): Sche
                     date: date,
                     status: 'scheduled',
                 });
+                
+                // Add teams to the set for this week to prevent them from being scheduled again in this same week
+                teamsPlayingThisWeek.add(matchup.homeTeam);
+                teamsPlayingThisWeek.add(matchup.awayTeam);
+
                 shuffledMatchups.splice(i, 1); // Remove the scheduled game
-                gameScheduledThisTurn = true;
-                break;
             }
         }
+    });
 
-        // Move to the next week
-        weekIndex++;
-
-        // Safety break to prevent infinite loops if a game can't be scheduled
-        if (weekIndex > gameWeeks.length * 3 && shuffledMatchups.length > 0) {
-             console.warn(`Could not schedule ${shuffledMatchups.length} games through normal distribution. Forcing them into available slots.`);
-             shuffledMatchups.forEach(matchup => {
-                // Find the first available week with the fewest games
-                let bestWeek = gameWeeks[0];
-                let minGames = Infinity;
-                gameWeeks.forEach(week => {
-                    const gamesInWeek = schedule.filter(g => g.date.month === week.month && g.date.week === week.week).length;
-                    if (gamesInWeek < minGames) {
-                        minGames = gamesInWeek;
-                        bestWeek = week;
-                    }
-                });
-                 schedule.push({
-                    id: uuidv4(),
-                    homeTeam: matchup.homeTeam,
-                    awayTeam: matchup.awayTeam,
-                    date: bestWeek,
-                    status: 'scheduled',
-                });
-             });
-             shuffledMatchups.length = 0; // Clear the array
-        }
+    // If any matchups are left (e.g., not enough weeks), force them into the schedule
+    if (shuffledMatchups.length > 0) {
+        console.warn(`Could not schedule ${shuffledMatchups.length} games through normal distribution. Forcing them into available slots.`);
+        shuffledMatchups.forEach(matchup => {
+            // Find the week with the fewest games
+            let bestWeek = gameWeeks[0];
+            let minGames = Infinity;
+            gameWeeks.forEach(week => {
+                const gamesInWeek = schedule.filter(g => g.date.month === week.month && g.date.week === week.week && g.date.year === week.year).length;
+                if (gamesInWeek < minGames) {
+                    minGames = gamesInWeek;
+                    bestWeek = week;
+                }
+            });
+            schedule.push({
+                id: uuidv4(),
+                homeTeam: matchup.homeTeam,
+                awayTeam: matchup.awayTeam,
+                date: bestWeek,
+                status: 'scheduled',
+            });
+        });
+        shuffledMatchups.length = 0; // Clear the array
     }
+
 
     // Sort the final schedule by date to ensure it's chronological
     schedule.sort((a, b) => {

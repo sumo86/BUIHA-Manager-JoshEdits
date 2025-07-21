@@ -10,7 +10,7 @@ const StandingsPage = () => {
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
 
   const leagues = useMemo(() => {
-    const leagueSet = new Set(teams.map(team => team.leagueDivision));
+    const leagueSet = new Set(teams.map(team => team.leagueDivision).filter(Boolean));
     return Array.from(leagueSet).sort();
   }, [teams]);
 

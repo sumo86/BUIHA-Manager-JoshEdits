@@ -342,7 +342,7 @@ const Lineup = () => {
         }
 
         players = getAvailablePlayers(positionForFilter, currentId);
-        const player = currentId ? playerMap.get(currentId) as Player : undefined;
+        const player = currentId ? playerMap.get(currentId) : undefined;
 
         if (player) {
             return (
