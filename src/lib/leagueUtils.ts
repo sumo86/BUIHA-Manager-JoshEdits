@@ -1,3 +1,5 @@
+import { Team } from "@/types";
+
 // A mapping of tier names to their stats, used for various calculations.
 // Note: The 'skater' and 'goalie' average abilities here are now secondary to the precise ranges in abilityRanges.ts for star rating,
 // but they can still be useful for other game logic like recruit generation quality estimation.
@@ -34,4 +36,21 @@ export const getTierStats = (leagueDivision: string): { name: string, skater: nu
     const tier = Object.values(divisionTierStats).find(t => t.name === tierName);
     // Fallback to the lowest tier if no match is found, to prevent errors.
     return tier || divisionTierStats[5];
+};
+
+/**
+ * Statically calculates the number of games in a season for a given division.
+ * This is based on the typical size of these divisions.
+ * @param leagueDivision The full name of the league division.
+ * @returns The number of games to be played.
+ */
+export const getGamesPlayedForDivision = (leagueDivision: string): number => {
+    if (leagueDivision.includes('Checking 1')) return 10;
+    if (leagueDivision.includes('Checking 2')) return 6;
+    if (leagueDivision.includes('Non-Checking 1')) return 10;
+    if (leagueDivision.includes('Non-Checking 2 - South')) return 12;
+    if (leagueDivision.includes('Non-Checking 2')) return 6;
+    if (leagueDivision.includes('Non-Checking 3 - South')) return 12;
+    if (leagueDivision.includes('Non-Checking 3')) return 14; // North has 8 teams, so 14 games
+    return 10; // Default fallback
 };

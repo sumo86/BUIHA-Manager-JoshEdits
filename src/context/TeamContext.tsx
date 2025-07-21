@@ -2,7 +2,7 @@ import { createContext, useState, useContext, ReactNode, useEffect, useMemo } fr
 import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
 import { initialFacilityProjects } from '@/data/facilities';
-import { generateRecruits, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator'; 
+import { generateRecruits, calculateStarRating } from '@/lib/playerGenerator'; 
 import { toast } from 'sonner';
 import { calculateCurrentAbility } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
@@ -16,7 +16,7 @@ import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { processNationalsRound } from '@/lib/nationalsSimulator';
 import { getAggregatedCurrentStats } from '@/lib/statsUtils';
 import { v4 as uuidv4 } from 'uuid';
-import { getTierStats } from '@/lib/leagueUtils';
+import { getTierStats, getGamesPlayedForDivision } from '@/lib/leagueUtils'; // Corrected import path
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -36,6 +36,26 @@ const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['
     const newIndex = Math.max(0, Math.min(moraleLevels.length - 1, currentIndex + change));
     return moraleLevels[newIndex];
 };
+
+type GameSaveData = {
+    teams: Team[];
+    alumni: Player[];
+    activeTeamName: string | null;
+    managedOrganization: string | null;
+    isManagingOrg: boolean;
+    schedule: ScheduleEntry[];
+    nationalsData: { [year: number]: { [division: string]: NationalsTournament } };
+    seasonRecords: { [key in RecordCategory]?: TeamRecord };
+    careerRecords: { [key in RecordCategory]?: TeamRecord };
+    teamAchievements: TeamAchievements;
+    transferPool: Player[];
+    seasonHistory: SeasonHistory;
+    scoutingPool: Player[];
+    recruitedPool: Player[];
+    fairHosted: boolean;
+    currentDate: GameDate;
+    developmentHistory: DevelopmentLog[];
+}
 
 interface TeamContextType {
     teams: Team[];
@@ -102,101 +122,28 @@ export const useTeam = () => {
 
 export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element => {
     const [teams, setTeams] = useState<Team[]>(() => {
-        try {
-            const savedTeamsJSON = localStorage.getItem('teams');
-            if (savedTeamsJSON) {
-                const savedTeams = JSON.parse(savedTeamsJSON) as Team[];
-                // Patch for saves that don't have organizationName
-                if (savedTeams.length > 0 && !savedTeams[0].organizationName) {
-                    return savedTeams.map(team => ({
-                        ...team,
-                        organizationName: getOrganizationName(team.name)
-                    }));
-                }
-                return savedTeams;
-            }
-        } catch (error) {
-            console.error("Failed to load teams from localStorage:", error);
-        }
-        // If no saved teams, or error, initialize from initialTeams and patch them
         const patchedInitialTeams = initialTeams.map(team => ({
             ...team,
             organizationName: getOrganizationName(team.name)
         }));
-        localStorage.setItem('teams', JSON.stringify(patchedInitialTeams));
         return patchedInitialTeams;
     });
-
-    useEffect(() => {
-        localStorage.setItem('teams', JSON.stringify(teams));
-    }, [teams]);
-
-    const [alumni, setAlumni] = useState<Player[]>(() => {
-        try {
-            const saved = localStorage.getItem('alumni');
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) { return []; }
-    });
-
-    useEffect(() => {
-        localStorage.setItem('alumni', JSON.stringify(alumni));
-    }, [alumni]);
-
-    const [activeTeamName, setActiveTeamName] = useState<string | null>(() => localStorage.getItem('activeTeamName') || null);
-    const [managedOrganization, setManagedOrganization] = useState<string | null>(() => localStorage.getItem('managedOrganization') || null);
-    const [isManagingOrg, setIsManagingOrg] = useState<boolean>(() => localStorage.getItem('isManagingOrg') === 'true');
-    
-    const [schedule, setSchedule] = useState<ScheduleEntry[]>(() => {
-        try {
-            const saved = localStorage.getItem('schedule');
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) { return []; }
-    });
-
-    useEffect(() => {
-        localStorage.setItem('schedule', JSON.stringify(schedule));
-    }, [schedule]);
-
-    const [nationalsData, setNationalsData] = useState<{ [year: number]: { [division: string]: NationalsTournament } }>(() => {
-        try {
-            const saved = localStorage.getItem('nationalsData');
-            return saved ? JSON.parse(saved) : {};
-        } catch (error) { return {}; }
-    });
-
-    useEffect(() => {
-        localStorage.setItem('nationalsData', JSON.stringify(nationalsData));
-    }, [nationalsData]);
-
-    const [seasonRecords, setSeasonRecords] = useState<{ [key in RecordCategory]?: TeamRecord }>(() => {
-        try { const saved = localStorage.getItem('seasonRecords'); return saved ? JSON.parse(saved) : {}; } catch (error) { return {}; }
-    });
-    const [careerRecords, setCareerRecords] = useState<{ [key in RecordCategory]?: TeamRecord }>(() => {
-        try { const saved = localStorage.getItem('careerRecords'); return saved ? JSON.parse(saved) : {}; } catch (error) { return {}; }
-    });
-
-    useEffect(() => { localStorage.setItem('seasonRecords', JSON.stringify(seasonRecords)); }, [seasonRecords]);
-    useEffect(() => { localStorage.setItem('careerRecords', JSON.stringify(careerRecords)); }, [careerRecords]);
-
-    const [teamAchievements, setTeamAchievements] = useState<TeamAchievements>(() => {
-        try {
-            const saved = localStorage.getItem('teamAchievements');
-            return saved ? JSON.parse(saved) : {};
-        } catch (error) { return {}; }
-    });
-
-    useEffect(() => { localStorage.setItem('teamAchievements', JSON.stringify(teamAchievements)); }, [teamAchievements]);
-
+    const [alumni, setAlumni] = useState<Player[]>([]);
+    const [activeTeamName, setActiveTeamName] = useState<string | null>(null);
+    const [managedOrganization, setManagedOrganization] = useState<string | null>(null);
+    const [isManagingOrg, setIsManagingOrg] = useState<boolean>(false);
+    const [schedule, setSchedule] = useState<ScheduleEntry[]>([]);
+    const [nationalsData, setNationalsData] = useState<{ [year: number]: { [division: string]: NationalsTournament } }>({});
+    const [seasonRecords, setSeasonRecords] = useState<{ [key in RecordCategory]?: TeamRecord }>({});
+    const [careerRecords, setCareerRecords] = useState<{ [key in RecordCategory]?: TeamRecord }>({});
+    const [teamAchievements, setTeamAchievements] = useState<TeamAchievements>({});
     const [transferPool, setTransferPool] = useState<Player[]>([]);
-    const [seasonHistory, setSeasonHistory] = useState<SeasonHistory>(() => {
-        try {
-            const saved = localStorage.getItem('seasonHistory');
-            return saved ? JSON.parse(saved) : {};
-        } catch (error) { return {}; }
-    });
-    useEffect(() => {
-        localStorage.setItem('seasonHistory', JSON.stringify(seasonHistory));
-    }, [seasonHistory]);
+    const [seasonHistory, setSeasonHistory] = useState<SeasonHistory>({});
+    const [scoutingPool, setScoutingPool] = useState<Player[]>([]);
+    const [recruitedPool, setRecruitedPool] = useState<Player[]>([]);
+    const [fairHosted, setFairHosted] = useState<boolean>(false);
+    const [currentDate, setCurrentDate] = useState<GameDate>({ month: 'August', week: 1, year: new Date().getFullYear() });
+    const [developmentHistory, setDevelopmentHistory] = useState<DevelopmentLog[]>([]);
 
     const [savedGames, setSavedGames] = useState<SaveGameSlot[]>(() => {
         try {
@@ -248,12 +195,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return acc;
         }, [] as FacilityProject[]);
 
-        return uniqueFacilities.map(project => {
+        return uniqueFacilities.map((project: FacilityProject) => { // Explicitly type project here
             const allVersions = managedTeams.flatMap(t => t.facilities).filter(p => p.id === project.id);
             const completed = allVersions.find(p => p.status === 'Completed');
             const inProgress = allVersions.find(p => p.status === 'In Progress');
             
-            const newStatus = (completed?.status || inProgress?.status || 'Not Started') as FacilityProject['status']; // Explicit cast
+            const newStatus = (completed?.status ?? inProgress?.status ?? 'Not Started') as FacilityProject['status'];
             return { ...project, status: newStatus };
         });
     }, [managedOrganization, managedTeams]);
@@ -262,17 +209,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (teamName) {
             const team = teams.find(t => t.name === teamName);
             if (team) {
-                localStorage.setItem('activeTeamName', teamName);
-                localStorage.setItem('managedOrganization', team.organizationName);
-                localStorage.setItem('isManagingOrg', 'false');
                 setActiveTeamName(teamName);
                 setManagedOrganization(team.organizationName);
                 setIsManagingOrg(false);
             }
         } else {
-            localStorage.removeItem('activeTeamName');
-            localStorage.removeItem('managedOrganization');
-            localStorage.removeItem('isManagingOrg');
             setManagedOrganization(null);
             setActiveTeamName(null);
             setIsManagingOrg(false);
@@ -284,17 +225,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const orgTeams = teams.filter(t => t.organizationName === orgName);
             if (orgTeams.length > 0) {
                 const mainTeam = orgTeams.sort((a,b) => a.name.localeCompare(b.name))[0];
-                localStorage.setItem('managedOrganization', orgName);
-                localStorage.setItem('activeTeamName', mainTeam.name);
-                localStorage.setItem('isManagingOrg', 'true');
                 setManagedOrganization(orgName);
                 setActiveTeamName(mainTeam.name);
                 setIsManagingOrg(true);
             }
         } else {
-            localStorage.removeItem('managedOrganization');
-            localStorage.removeItem('activeTeamName');
-            localStorage.removeItem('isManagingOrg');
             setManagedOrganization(null);
             setActiveTeamName(null);
             setIsManagingOrg(false);
@@ -304,58 +239,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const setActiveTeam = (teamName: string) => {
         const teamExistsInOrg = managedTeams.some(t => t.name === teamName);
         if (managedOrganization && teamExistsInOrg) {
-            localStorage.setItem('activeTeamName', teamName);
             setActiveTeamName(teamName);
         }
     };
 
-    const [scoutingPool, setScoutingPool] = useState<Player[]>(() => {
-        try {
-            const saved = localStorage.getItem('scoutingPool');
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) { return []; }
-    });
-
-    const [recruitedPool, setRecruitedPool] = useState<Player[]>(() => {
-        try {
-            const saved = localStorage.getItem('recruitedPool');
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) { return []; }
-    });
-
-    const [fairHosted, setFairHosted] = useState<boolean>(() => {
-        try {
-            const saved = localStorage.getItem('fairHosted');
-            return saved ? JSON.parse(saved) : false;
-        } catch (error) { return false; }
-    });
-
-    const [currentDate, setCurrentDate] = useState<GameDate>(() => {
-        try {
-            const saved = localStorage.getItem('currentDate');
-            return saved ? JSON.parse(saved) : { month: 'August', week: 1, year: new Date().getFullYear() };
-        } catch (error) { return { month: 'August', week: 1, year: new Date().getFullYear() }; }
-    });
-
-    const [developmentHistory, setDevelopmentHistory] = useState<DevelopmentLog[]>(() => {
-        try {
-            const saved = localStorage.getItem('developmentHistory');
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) { return []; }
-    });
-
-    useEffect(() => { localStorage.setItem('scoutingPool', JSON.stringify(scoutingPool)); }, [scoutingPool]);
-    useEffect(() => { localStorage.setItem('recruitedPool', JSON.stringify(recruitedPool)); }, [recruitedPool]);
-    useEffect(() => { localStorage.setItem('fairHosted', JSON.stringify(fairHosted)); }, [fairHosted]);
-    useEffect(() => { localStorage.setItem('currentDate', JSON.stringify(currentDate)); }, [currentDate]);
-    useEffect(() => { localStorage.setItem('developmentHistory', JSON.stringify(developmentHistory)); }, [developmentHistory]);
-    useEffect(() => {
-        if (managedOrganization) {
-            localStorage.setItem('managedOrganization', managedOrganization);
-        } else {
-            localStorage.removeItem('managedOrganization');
-        }
-    }, [managedOrganization]);
+    const updateTeam = (updatedTeam: Team) => {
+        setTeams(currentTeams =>
+            currentTeams.map(t => (t.name === updatedTeam.name ? updatedTeam : t))
+        );
+    };
 
     const gameForCurrentWeek = useMemo(() => {
         if (!userTeam) return null;
@@ -418,12 +310,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         return null;
     }, [userTeam, schedule, currentDate, nationalsData]);
 
-    const updateTeam = (updatedTeam: Team) => {
-        setTeams(currentTeams =>
-            currentTeams.map(t => (t.name === updatedTeam.name ? updatedTeam : t))
-        );
-    };
-
     const advanceWeek = () => {
         if (gameForCurrentWeek && userTeam) {
             const validationError = validateLineup(userTeam);
@@ -477,9 +363,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         let newDevelopmentLogs: DevelopmentLog[] = [];
         const managedTeamNames = managedTeams.map(t => t.name);
 
-        const currentYear = currentDate.year.valueOf(); // Use valueOf() to ensure it's a primitive number
+        const currentYear = currentDate.year.valueOf();
 
-        // Declare and initialize temporary variables for records and nationals data
         let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as { [year: number]: { [division: string]: NationalsTournament } };
         let tempSeasonRecords = JSON.parse(JSON.stringify(seasonRecords)) as { [key in RecordCategory]?: TeamRecord };
         let tempCareerRecords = JSON.parse(JSON.stringify(careerRecords)) as { [key in RecordCategory]?: TeamRecord };
@@ -669,7 +554,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                     (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                     playerChanged = true;
-                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
+                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: -improvement, newRating: newAttrValue, date: currentDate });
                                 }
                             }
                         }
@@ -1455,8 +1340,25 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const startNewCustomClub = (data: { organizationName: string; teamName: string; leagueDivision: string; nationalsDivision: string; logo: string; }) => {
         const startingBudget = 15000; // Fixed budget as per request
 
+        // Temporary team object to calculate games played for the new division
+        const newTeamForCosts: Team = {
+            id: '', // Temp ID
+            name: data.teamName,
+            organizationName: data.organizationName,
+            leagueDivision: data.leagueDivision,
+            nationalsDivision: data.nationalsDivision,
+            roster: [],
+            wins: 0, losses: 0, draws: 0, points: 0, goalsFor: 0, goalsAgainst: 0,
+            logo: data.logo || '/logos/UoH_Logo.png',
+            lineup: { forwards: { lw: [], c: [], rw: [] }, defence: { ld: [], rd: [] }, goalies: { starter: null, backup: null } },
+            tactics: { "Offensive Style": "Standard", "Defensive Style": "Standard", "Powerplay": "Standard", "Penalty Kill": "Standard", "Pace": "Normal", "Mentality": "Balanced" },
+            financials: { totalBudget: 0, discretionaryBudget: 0, iceTimeCostPerGame: 350, equipmentCost: 5000 },
+            facilities: [],
+        };
+        const tempAllTeams = [...initialTeams.map(team => ({...team, organizationName: getOrganizationName(team.name)})), newTeamForCosts]; // Use initialTeams for context
+
         // Calculate fixed costs based on the new team's league division
-        const totalGames = getGamesPlayedForDivision(data.leagueDivision);
+        const totalGames = getGamesPlayedForDivision(data.leagueDivision); // Use the static function
         const numberOfHomeGames = Math.floor(totalGames / 2);
         const numberOfAwayGames = Math.ceil(totalGames / 2);
         const iceTimeCost = numberOfHomeGames * 350;
@@ -1554,6 +1456,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
 
+        const gameState: GameSaveData = {
+            teams, alumni, activeTeamName, managedOrganization, isManagingOrg, schedule,
+            nationalsData, seasonRecords, careerRecords, teamAchievements, transferPool,
+            seasonHistory, scoutingPool, recruitedPool, fairHosted, currentDate, developmentHistory
+        };
+
+        localStorage.setItem(`savegame_${saveName}`, JSON.stringify(gameState));
+
         const newSaveSlot: SaveGameSlot = {
             saveName,
             savedAt: new Date().toISOString(),
@@ -1571,72 +1481,35 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return [...prev, newSaveSlot];
         });
 
-        localStorage.setItem('teams', JSON.stringify(teams));
-        localStorage.setItem('alumni', JSON.stringify(alumni));
-        localStorage.setItem('activeTeamName', activeTeamName || '');
-        localStorage.setItem('managedOrganization', managedOrganization || '');
-        localStorage.setItem('isManagingOrg', String(isManagingOrg));
-        localStorage.setItem('schedule', JSON.stringify(schedule));
-        localStorage.setItem('nationalsData', JSON.stringify(nationalsData));
-        localStorage.setItem('seasonRecords', JSON.stringify(seasonRecords));
-        localStorage.setItem('careerRecords', JSON.stringify(careerRecords));
-        localStorage.setItem('teamAchievements', JSON.stringify(teamAchievements));
-        localStorage.setItem('transferPool', JSON.stringify(transferPool));
-        localStorage.setItem('seasonHistory', JSON.stringify(seasonHistory));
-        localStorage.setItem('scoutingPool', JSON.stringify(scoutingPool));
-        localStorage.setItem('recruitedPool', JSON.stringify(recruitedPool));
-        localStorage.setItem('fairHosted', JSON.stringify(fairHosted));
-        localStorage.setItem('currentDate', JSON.stringify(currentDate));
-        localStorage.setItem('developmentHistory', JSON.stringify(developmentHistory));
-        localStorage.setItem('savedGames', JSON.stringify(savedGames)); // This will save the updated list of save slots
-
         toast.success("Game Saved!", { description: `Game "${saveName}" has been saved.` });
     };
 
     const loadGame = (saveName: string) => {
-        const saveSlot = savedGames.find(s => s.saveName === saveName);
-        if (!saveSlot) {
-            toast.error("Load Failed", { description: `Save game "${saveName}" not found.` });
+        const saveDataJSON = localStorage.getItem(`savegame_${saveName}`);
+        if (!saveDataJSON) {
+            toast.error("Load Failed", { description: `Save data for "${saveName}" not found.` });
             return;
         }
 
         try {
-            const loadedTeams = JSON.parse(localStorage.getItem('teams') || '[]') as Team[];
-            const loadedAlumni = JSON.parse(localStorage.getItem('alumni') || '[]') as Player[];
-            const loadedActiveTeamName = localStorage.getItem('activeTeamName');
-            const loadedManagedOrganization = localStorage.getItem('managedOrganization');
-            const loadedIsManagingOrg = localStorage.getItem('isManagingOrg') === 'true';
-            const loadedSchedule = JSON.parse(localStorage.getItem('schedule') || '[]') as ScheduleEntry[];
-            const loadedNationalsData = JSON.parse(localStorage.getItem('nationalsData') || '{}') as { [year: number]: { [division: string]: NationalsTournament } };
-            const loadedSeasonRecords = JSON.parse(localStorage.getItem('seasonRecords') || '{}') as { [key in RecordCategory]?: TeamRecord };
-            const loadedCareerRecords = JSON.parse(localStorage.getItem('careerRecords') || '{}') as { [key in RecordCategory]?: TeamRecord };
-            const loadedTeamAchievements = JSON.parse(localStorage.getItem('teamAchievements') || '{}') as TeamAchievements;
-            const loadedTransferPool = JSON.parse(localStorage.getItem('transferPool') || '[]') as Player[];
-            const loadedSeasonHistory = JSON.parse(localStorage.getItem('seasonHistory') || '{}') as SeasonHistory;
-            const loadedScoutingPool = JSON.parse(localStorage.getItem('scoutingPool') || '[]') as Player[];
-            const loadedRecruitedPool = JSON.parse(localStorage.getItem('recruitedPool') || '[]') as Player[];
-            const loadedFairHosted = JSON.parse(localStorage.getItem('fairHosted') || 'false') as boolean;
-            const loadedCurrentDate = JSON.parse(localStorage.getItem('currentDate') || '{}') as GameDate;
-            const loadedDevelopmentHistory = JSON.parse(localStorage.getItem('developmentHistory') || '[]') as DevelopmentLog[];
-
-            setTeams(loadedTeams);
-            setAlumni(loadedAlumni);
-            setActiveTeamName(loadedActiveTeamName);
-            setManagedOrganization(loadedManagedOrganization);
-            setIsManagingOrg(loadedIsManagingOrg);
-            setSchedule(loadedSchedule);
-            setNationalsData(loadedNationalsData);
-            setSeasonRecords(loadedSeasonRecords);
-            setCareerRecords(loadedCareerRecords);
-            setTeamAchievements(loadedTeamAchievements);
-            setTransferPool(loadedTransferPool);
-            setSeasonHistory(loadedSeasonHistory);
-            setScoutingPool(loadedScoutingPool);
-            setRecruitedPool(loadedRecruitedPool);
-            setFairHosted(loadedFairHosted);
-            setCurrentDate(loadedCurrentDate);
-            setDevelopmentHistory(loadedDevelopmentHistory);
-            // savedGames state is already managed by its own useEffect
+            const loadedData: GameSaveData = JSON.parse(saveDataJSON);
+            setTeams(loadedData.teams);
+            setAlumni(loadedData.alumni);
+            setActiveTeamName(loadedData.activeTeamName);
+            setManagedOrganization(loadedData.managedOrganization);
+            setIsManagingOrg(loadedData.isManagingOrg);
+            setSchedule(loadedData.schedule);
+            setNationalsData(loadedData.nationalsData);
+            setSeasonRecords(loadedData.seasonRecords);
+            setCareerRecords(loadedData.careerRecords);
+            setTeamAchievements(loadedData.teamAchievements);
+            setTransferPool(loadedData.transferPool);
+            setSeasonHistory(loadedData.seasonHistory);
+            setScoutingPool(loadedData.scoutingPool);
+            setRecruitedPool(loadedData.recruitedPool);
+            setFairHosted(loadedData.fairHosted);
+            setCurrentDate(loadedData.currentDate);
+            setDevelopmentHistory(loadedData.developmentHistory);
 
             toast.success("Game Loaded!", { description: `Game "${saveName}" has been loaded.` });
         } catch (error) {
@@ -1646,31 +1519,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const deleteGame = (saveName: string) => {
+        localStorage.removeItem(`savegame_${saveName}`);
         setSavedGames(prev => prev.filter(s => s.saveName !== saveName));
         toast.success("Game Deleted!", { description: `Save game "${saveName}" has been deleted.` });
     };
 
     const exitToMainMenu = () => {
-        // Clear only game-specific data from localStorage, leaving savedGames list intact
-        localStorage.removeItem('teams');
-        localStorage.removeItem('alumni');
-        localStorage.removeItem('activeTeamName');
-        localStorage.removeItem('managedOrganization');
-        localStorage.removeItem('isManagingOrg');
-        localStorage.removeItem('schedule');
-        localStorage.removeItem('nationalsData');
-        localStorage.removeItem('seasonRecords');
-        localStorage.removeItem('careerRecords');
-        localStorage.removeItem('teamAchievements');
-        localStorage.removeItem('transferPool');
-        localStorage.removeItem('seasonHistory');
-        localStorage.removeItem('scoutingPool');
-        localStorage.removeItem('recruitedPool');
-        localStorage.removeItem('fairHosted');
-        localStorage.removeItem('currentDate');
-        localStorage.removeItem('developmentHistory');
-
-        // Reset states to initial values
+        // Reset all state to initial values without clearing localStorage
         setTeams(initialTeams.map(team => ({ ...team, organizationName: getOrganizationName(team.name) })));
         setAlumni([]);
         setActiveTeamName(null);
@@ -1683,13 +1538,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setTeamAchievements({});
         setTransferPool([]);
         setSeasonHistory({});
-        // Do NOT reset savedGames state here, as it's managed by its own useEffect and localStorage item
         setScoutingPool([]);
         setRecruitedPool([]);
         setFairHosted(false);
         setCurrentDate({ month: 'August', week: 1, year: new Date().getFullYear() });
         setDevelopmentHistory([]);
-        toast.info("Exited to Main Menu", { description: "Current game data has been cleared." });
+        toast.info("Exited to Main Menu");
     };
 
     const simulateFullNationalsTournament = (division: string) => {

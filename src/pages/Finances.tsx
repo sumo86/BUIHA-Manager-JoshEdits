@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTeam } from "@/context/TeamContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Plane, Box, Calendar as CalendarIcon, Building2 } from 'lucide-react';
-import { getGamesPlayedForDivision } from '@/lib/playerGenerator';
+import { getGamesPlayedForDivision } from '@/lib/leagueUtils'; // Corrected import path
 
 const Finances = () => {
   const { userTeam, managedOrganization, organizationFinancials, isManagingOrg, managedTeams } = useTeam();
