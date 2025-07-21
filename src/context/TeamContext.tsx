@@ -253,8 +253,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const completed = allVersions.find(p => p.status === 'Completed');
             const inProgress = allVersions.find(p => p.status === 'In Progress');
             
-            // Use nullish coalescing (??) to ensure the type remains within the union
-            const newStatus = completed?.status ?? inProgress?.status ?? 'Not Started';
+            const newStatus = (completed?.status || inProgress?.status || 'Not Started') as FacilityProject['status']; // Explicit cast
             return { ...project, status: newStatus };
         });
     }, [managedOrganization, managedTeams]);
@@ -392,7 +391,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         return g.round === tournament.currentRound;
                     }
                     if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
-                        const currentBracket = tournament.status === 'silver-rayoffs' ? 'Silver' : 'Gold';
+                        const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
                         return (g as NationalsPlayoffMatch).round === tournament.currentRound && (g as NationalsPlayoffMatch).bracket === currentBracket;
                     }
                     return false;
@@ -478,7 +477,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         let newDevelopmentLogs: DevelopmentLog[] = [];
         const managedTeamNames = managedTeams.map(t => t.name);
 
-        const currentYear = currentDate.year;
+        const currentYear = currentDate.year.valueOf(); // Use valueOf() to ensure it's a primitive number
 
         // Declare and initialize temporary variables for records and nationals data
         let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as { [year: number]: { [division: string]: NationalsTournament } };
@@ -711,7 +710,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 if (project.status === 'In Progress' && project.weeksToComplete) {
                     project.weeksToComplete -= 1;
                     if (project.weeksToComplete <= 0) {
-                        project.status = 'Completed';
+                        project.status = 'Completed' as FacilityProject['status']; // Explicit cast here
                         if (team.name === userTeam?.name) toast.info("Facility Project Completed", { description: `${project.name} is now complete.` });
                         if (project.id === 'locker_room_1') {
                             newRoster = newRoster.map(p => ({ ...p, morale: updateMorale(p.morale, 1) }));
@@ -765,8 +764,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const seasonThatEnded = `${prevDate.year}-${prevDate.year + 1}`;
                     
                     // Archive player stats for the season that just ended
-                    tempTeams = tempTeams.map(player => {
-                        const updatedRoster = player.roster.map(player => {
+                    tempTeams = tempTeams.map(team => {
+                        const updatedRoster = team.roster.map(player => {
                             // If player has stats for the season, archive them.
                             if (player.currentStats && player.currentStats.length > 0) {
                                 const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
@@ -776,8 +775,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             else if (!player.history.some(h => h.season === seasonThatEnded)) {
                                 const newHistoryEntry: PlayerSeasonStats = {
                                     season: seasonThatEnded,
-                                    team: player.name,
-                                    league: player.leagueDivision,
+                                    team: team.name,
+                                    league: team.leagueDivision,
                                     gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0,
                                     shotsAgainst: 0, saves: 0, shutouts: 0, goalsAgainst: 0,
                                     savePercentage: 0, goalsAgainstAverage: 0,
@@ -787,7 +786,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             }
                             return player;
                         });
-                        return { ...player, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
+                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
                     });
 
                     const finalStandings: TeamSeasonHistory[] = tempTeams.map(team => ({
@@ -1454,7 +1453,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const startNewCustomClub = (data: { organizationName: string; teamName: string; leagueDivision: string; nationalsDivision: string; logo: string; }) => {
-        const startingBudget = 10000; // Fixed budget as per request
+        const startingBudget = 15000; // Fixed budget as per request
 
         // Calculate fixed costs based on the new team's league division
         const totalGames = getGamesPlayedForDivision(data.leagueDivision);
