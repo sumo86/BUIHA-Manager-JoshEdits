@@ -950,8 +950,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                         // Distribute players more evenly among AI teams
                         for (const player of availableForSigning) {
-                            // Only attempt to sign if there are AI teams available
-                            if (shuffledAiTeams.length > 0) {
+                            // AI signs 80% of players, leaving 20% for the user's transfer pool
+                            if (Math.random() < 0.8) { 
                                 const signingTeam = shuffledAiTeams[teamAssignIndex % shuffledAiTeams.length];
                                 const teamIndexInTemp = tempTeams.findIndex(t => t.id === signingTeam.id);
                                 
