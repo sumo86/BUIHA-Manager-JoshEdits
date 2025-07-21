@@ -7,7 +7,8 @@ import { calculateCurrentAbility } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
 import { skaterFocuses, goalieFocuses } from '@/data/trainingFocuses';
 import { processGameResults as processGameResultsEngine } from '@/lib/statsEngine';
-import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
+import { generateSeasonSchedule }
+ from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament } from '@/lib/nationalsGenerator';
@@ -1020,25 +1021,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (newDate.month === 'August' && newDate.week === 2 && !(currentDate.month === 'August' && currentDate.week === 2)) {
             tempSchedule = generateSeasonSchedule(tempTeams, newDate);
             toast.success(`New season schedule generated for ${newDate.year}-${newDate.year + 1}!`);
-            // Reset scouting pool and fair hosted status for new season
-            setScoutingPool([]);
-            setFairHosted(false);
         }
 
-        if (newDate.month === 'May' && newDate.week === 1 && !(currentDate.month === 'May' && currentDate.week === 1)) {
-            toast.info("Nationals Draws Being Made", { description: "Groups for the BUIHA National Championships are being generated." });
-            const allNationalsDivisions = [...new Set(tempTeams.map(t => t.nationalsDivision))];
-            const newNationalsDataForYear: { [division: string]: NationalsTournament } = {};
-            allNationalsDivisions.forEach(division => {
-                const teamsInDivision = tempTeams.filter(t => t.nationalsDivision === division);
-                if (teamsInDivision.length >= 2) {
-                    const tournament = createNationalsTournament(division, teamsInDivision, newDate.year, newDate.week);
-                    newNationalsDataForYear[division] = tournament;
-                }
-            });
-            tempNationalsData[newDate.year] = newNationalsDataForYear;
-        }
-        
         setNationalsData(tempNationalsData);
         setTeams(tempTeams);
         setSchedule(tempSchedule);
@@ -1343,250 +1327,278 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             playerToAssign.jerseyNumber = newJerseyNumber;
         }
         
+        const isSkater = playerToAssign.positions[0] !== 'G';
+        playerToAssign.starRating = calculateStarRating(playerToAssign.currentAbility, isSkater, userTeam.leagueDivision);
+
         newRoster.push(playerToAssign);
-        updateTeam({ ...userTeam, roster: newRoster.sort((a, b) => a.jerseyNumber - b.jerseyNumber) });
+        updateTeam({ ...userTeam, roster: newRoster });
         setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
     };
 
     const discardRecruit = (playerId: string) => {
         setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+        toast.info("Recruit discarded.");
     };
 
     const startFacilityProject = (projectId: string) => {
         if (!userTeam) return;
-
         const project = userTeam.facilities.find(p => p.id === projectId);
         if (!project || project.status !== 'Not Started') return;
 
-        const budget = isManagingOrg ? organizationFinancials?.discretionaryBudget || 0 : userTeam.financials.discretionaryBudget;
+        const cost = project.cost;
+        const currentBudget = userTeam.financials.discretionaryBudget;
 
-        if (budget < project.cost) {
-            toast.error("Insufficient Funds", { description: `You cannot afford to start the ${project.name} project.` });
+        if (currentBudget < cost) {
+            toast.error("Insufficient Discretionary Budget", {
+                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+            });
             return;
         }
 
-        const teamsToUpdate = isManagingOrg ? managedTeams.map(t => t.name) : [userTeam.name];
-        
-        setTeams(currentTeams => {
-            const newTeams = [...currentTeams];
-            let costDeducted = false;
+        const newFinancials = {
+            ...userTeam.financials,
+            discretionaryBudget: Math.round(currentBudget - cost),
+        };
 
-            teamsToUpdate.forEach(teamName => {
-                const teamIndex = newTeams.findIndex(t => t.name === teamName);
-                if (teamIndex !== -1) {
-                    const team = newTeams[teamIndex];
-                    const newFacilities = team.facilities.map(p => 
-                        p.id === projectId ? { ...p, status: 'In Progress' as 'In Progress', weeksToComplete: 4 } : p
-                    );
-                    
-                    let newFinancials = team.financials;
-                    if (!costDeducted) {
-                        newFinancials = {
-                            ...team.financials,
-                            discretionaryBudget: team.financials.discretionaryBudget - project.cost,
-                        };
-                        costDeducted = true;
-                    }
-                    
-                    newTeams[teamIndex] = { ...team, facilities: newFacilities, financials: newFinancials };
-                }
-            });
-            return newTeams;
+        const updatedFacilities = userTeam.facilities.map(p =>
+            p.id === projectId ? { ...p, status: 'In Progress', weeksToComplete: project.weeksToComplete || 4 } : p
+        );
+
+        updateTeam({ ...userTeam, financials: newFinancials, facilities: updatedFacilities });
+        toast.success("Project Started", {
+            description: `${project.name} project has started. It will be completed in ${project.weeksToComplete || 4} weeks.`
         });
-
-        toast.success("Project Started!", { description: `${project.name} is now under construction.` });
     };
 
     const exitToMainMenu = () => {
-        selectTeam(null);
+        localStorage.clear();
+        window.location.reload(); // This will force a full reload and reset the app state
     };
 
     const saveGame = (saveName: string) => {
-        if (!userTeam) return;
-        const gameState = {
-            teams,
-            alumni,
-            activeTeamName,
-            managedOrganization,
-            isManagingOrg,
-            schedule,
-            nationalsData,
-            seasonRecords,
-            careerRecords,
-            teamAchievements,
-            transferPool,
-            seasonHistory,
-            scoutingPool,
-            recruitedPool,
-            fairHosted,
-            currentDate,
-            developmentHistory,
+        const saveSlot: SaveGameSlot = {
+            saveName,
+            teams: teams,
+            alumni: alumni,
+            activeTeamName: activeTeamName,
+            managedOrganization: managedOrganization,
+            isManagingOrg: isManagingOrg,
+            schedule: schedule,
+            nationalsData: nationalsData,
+            seasonRecords: seasonRecords,
+            careerRecords: careerRecords,
+            teamAchievements: teamAchievements,
+            transferPool: transferPool,
+            seasonHistory: seasonHistory,
+            scoutingPool: scoutingPool,
+            recruitedPool: recruitedPool,
+            fairHosted: fairHosted,
+            currentDate: currentDate,
+            developmentHistory: developmentHistory,
+            userTeamName: userTeam?.name || 'N/A',
+            savedAt: new Date().toISOString(),
         };
-
-        try {
-            localStorage.setItem(`savegame_${saveName}`, JSON.stringify(gameState));
-            
-            const newSaveSlot: SaveGameSlot = {
-                saveName,
-                savedAt: new Date().toISOString(),
-                userTeamName: userTeam.name,
-                currentDate,
-            };
-
-            setSavedGames(prev => {
-                const otherSaves = prev.filter(s => s.saveName !== saveName);
-                return [...otherSaves, newSaveSlot];
-            });
-
-            toast.success("Game Saved", { description: `Your progress has been saved as "${saveName}".` });
-        } catch (error) {
-            console.error("Failed to save game:", error);
-            toast.error("Save Failed", { description: "Could not save game state. The browser storage might be full." });
-        }
+        localStorage.setItem(`save_${saveName}`, JSON.stringify(saveSlot));
+        setSavedGames(prev => {
+            const existingIndex = prev.findIndex(s => s.saveName === saveName);
+            if (existingIndex !== -1) {
+                const updated = [...prev];
+                updated[existingIndex] = { saveName, userTeamName: userTeam?.name || 'N/A', currentDate, savedAt: new Date().toISOString() };
+                return updated;
+            }
+            return [...prev, { saveName, userTeamName: userTeam?.name || 'N/A', currentDate, savedAt: new Date().toISOString() }];
+        });
+        toast.success(`Game "${saveName}" saved successfully!`);
     };
 
     const loadGame = (saveName: string) => {
         try {
-            const savedStateJSON = localStorage.getItem(`savegame_${saveName}`);
-            if (savedStateJSON) {
-                const savedState = JSON.parse(savedStateJSON);
-                setTeams(savedState.teams);
-                setAlumni(savedState.alumni);
-                setActiveTeamName(savedState.activeTeamName);
-                setManagedOrganization(savedState.managedOrganization);
-                setIsManagingOrg(savedState.isManagingOrg);
-                setSchedule(savedState.schedule);
-                setNationalsData(savedState.nationalsData);
-                setSeasonRecords(savedState.seasonRecords);
-                setCareerRecords(savedState.careerRecords);
-                setTeamAchievements(savedState.teamAchievements);
-                setTransferPool(savedState.transferPool);
-                setSeasonHistory(savedState.seasonHistory);
-                setScoutingPool(savedState.scoutingPool);
-                setRecruitedPool(savedState.recruitedPool);
-                setFairHosted(savedState.fairHosted);
-                setCurrentDate(savedState.currentDate);
-                setDevelopmentHistory(savedState.developmentHistory);
-                toast.success("Game Loaded", { description: `Successfully loaded "${saveName}".` });
+            const savedData = localStorage.getItem(`save_${saveName}`);
+            if (savedData) {
+                const saveSlot: SaveGameSlot = JSON.parse(savedData);
+                setTeams(saveSlot.teams);
+                setAlumni(saveSlot.alumni);
+                setActiveTeamName(saveSlot.activeTeamName);
+                setManagedOrganization(saveSlot.managedOrganization);
+                setIsManagingOrg(saveSlot.isManagingOrg);
+                setSchedule(saveSlot.schedule);
+                setNationalsData(saveSlot.nationalsData);
+                setSeasonRecords(saveSlot.seasonRecords);
+                setCareerRecords(saveSlot.careerRecords);
+                setTeamAchievements(saveSlot.teamAchievements);
+                setTransferPool(saveSlot.transferPool);
+                setSeasonHistory(saveSlot.seasonHistory);
+                setScoutingPool(saveSlot.scoutingPool);
+                setRecruitedPool(saveSlot.recruitedPool);
+                setFairHosted(saveSlot.fairHosted);
+                setCurrentDate(saveSlot.currentDate);
+                setDevelopmentHistory(saveSlot.developmentHistory);
+                toast.success(`Game "${saveName}" loaded successfully!`);
             } else {
-                toast.error("Load Failed", { description: "Save file not found." });
+                toast.error(`Save game "${saveName}" not found.`);
             }
         } catch (error) {
             console.error("Failed to load game:", error);
-            toast.error("Load Failed", { description: "Could not load game state. The save file might be corrupted." });
+            toast.error(`Failed to load game "${saveName}".`);
         }
     };
 
     const deleteGame = (saveName: string) => {
-        try {
-            localStorage.removeItem(`savegame_${saveName}`);
-            setSavedGames(prev => prev.filter(s => s.saveName !== saveName));
-            toast.info("Save Deleted", { description: `"${saveName}" has been deleted.` });
-        } catch (error) {
-            console.error("Failed to delete game:", error);
-            toast.error("Deletion Failed", { description: "Could not delete the save file." });
-        }
+        localStorage.removeItem(`save_${saveName}`);
+        setSavedGames(prev => prev.filter(s => s.saveName !== saveName));
+        toast.info(`Game "${saveName}" deleted.`);
     };
 
     const simulateFullNationalsTournament = (division: string) => {
-        let tempTeams = JSON.parse(JSON.stringify(teams)) as Team[];
-        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as typeof nationalsData;
-        
-        let tournament = tempNationalsData[currentDate.year]?.[division];
-        if (!tournament || tournament.status === 'completed') return;
-
-        while (tournament.status !== 'completed') {
-            const { updatedTeams, updatedNationalsData } = processNationalsRound(division, tempTeams, tempNationalsData, currentDate.year);
-            tempTeams = updatedTeams;
-            tempNationalsData = updatedNationalsData;
-            tournament = tempNationalsData[currentDate.year]?.[division];
+        const { updatedTeams, updatedNationalsData, newAchievements } = processNationalsRound(division, teams, nationalsData, currentDate.year, undefined, true);
+        setTeams(updatedTeams);
+        setNationalsData(updatedNationalsData);
+        if (newAchievements.length > 0) {
+            setTeamAchievements(prev => {
+                const updated = JSON.parse(JSON.stringify(prev));
+                newAchievements.forEach(({ teamName, achievement }) => {
+                    if (!updated[teamName]) updated[teamName] = [];
+                    if (!updated[teamName].some((ach: Achievement) => ach.type === achievement.type && ach.season === achievement.season && ach.division === achievement.division)) {
+                        updated[teamName].push(achievement);
+                        toast.success(`${teamName} has won the ${achievement.division} ${achievement.type === 'Nationals Gold' ? 'Gold' : 'Silver'} Championship!`);
+                    }
+                });
+                return updated;
+            });
         }
-
-        setTeams(tempTeams);
-        setNationalsData(tempNationalsData);
-        toast.success(`${division} tournament simulated`, { description: `The winner is ${tournament.winner}.` });
-    };
-
-    const simulateAllNationalsTournaments = () => {
-        let tempTeams = JSON.parse(JSON.stringify(teams)) as Team[];
-        let tempNationalsData = JSON.parse(JSON.stringify(nationalsData)) as typeof nationalsData;
-        
-        const divisions = Object.keys(tempNationalsData[currentDate.year] || {});
-        divisions.forEach(division => {
-            let tournament = tempNationalsData[currentDate.year]?.[division];
-            if (!tournament || tournament.status === 'completed') return;
-
-            while (tournament.status !== 'completed') {
-                const { updatedTeams, updatedNationalsData } = processNationalsRound(division, tempTeams, tempNationalsData, currentDate.year);
-                tempTeams = updatedTeams;
-                tempNationalsData = updatedNationalsData;
-                tournament = tempNationalsData[currentDate.year]?.[division];
-            }
-        });
-
-        setTeams(tempTeams);
-        setNationalsData(tempNationalsData);
-        toast.success("All Nationals tournaments simulated.");
+        toast.success(`Full ${division} Nationals tournament simulated.`);
     };
 
     const simulateSingleNationalsGame = (division: string, gameId: string) => {
         const tournament = nationalsData[currentDate.year]?.[division];
         if (!tournament) return;
 
-        const game = [...tournament.groupStageSchedule, ...tournament.playoffSchedule].find(g => g.id === gameId);
-        if (!game || game.status !== 'scheduled') return;
+        const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
+        const game = allGames.find(g => g.id === gameId);
+        if (!game) return;
 
-        const homeTeamName = typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD';
-        const awayTeamName = typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD';
+        const homeTeamSim = teams.find(t => t.name === (typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD'));
+        const awayTeamSim = teams.find(t => t.name === (typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD'));
 
-        const homeTeam = teams.find(t => t.name === homeTeamName);
-        const awayTeam = teams.find(t => t.name === awayTeamName);
+        if (!homeTeamSim || !awayTeamSim) return;
 
-        if (!homeTeam || !awayTeam) return;
-
-        const finalGameState = simulateFullGame(homeTeam, awayTeam, true);
-
-        const dummyUserGameResult = {
-            homeTeamName: homeTeam.name,
-            awayTeamName: awayTeam.name,
+        const finalGameState = simulateFullGame(homeTeamSim, awayTeamSim, true);
+        const completedGame = {
+            gameId: gameId,
+            homeTeamName: homeTeamSim.name,
+            awayTeamName: awayTeamSim.name,
             homeScore: finalGameState.userScore,
             awayScore: finalGameState.opponentScore,
-            gameId: gameId,
         };
+        playNationalsRound(division, completedGame);
+        toast.info(`Nationals game ${homeTeamSim.name} vs ${awayTeamSim.name} simulated.`);
+    };
 
-        const { updatedTeams, updatedNationalsData } = processNationalsRound(division, teams, nationalsData, currentDate.year, dummyUserGameResult);
-        setTeams(updatedTeams);
-        setNationalsData(updatedNationalsData);
+    const simulateAllNationalsTournaments = () => {
+        const currentYearNationals = nationalsData[currentDate.year];
+        if (!currentYearNationals) {
+            toast.info("No Nationals tournaments to simulate for the current year.");
+            return;
+        }
+        Object.keys(currentYearNationals).forEach(division => {
+            simulateFullNationalsTournament(division);
+        });
+        toast.success("All Nationals tournaments simulated.");
     };
 
     const signPlayerFromTransferPool = (playerId: string, toTeamName: string) => {
         const playerToSign = transferPool.find(p => p.id === playerId);
-        if (!playerToSign) return;
+        if (!playerToSign) {
+            toast.error("Player not found in transfer pool.");
+            return;
+        }
 
-        const toTeam = teams.find(t => t.name === toTeamName);
-        if (!toTeam) return;
+        const targetTeam = teams.find(t => t.name === toTeamName);
+        if (!targetTeam) {
+            toast.error("Target team not found.");
+            return;
+        }
 
-        // Remove from transfer pool
+        setTeams(currentTeams => {
+            const updatedTeams = currentTeams.map(t => {
+                if (t.name === toTeamName) {
+                    const isSkater = playerToSign.positions[0] !== 'G';
+                    const updatedPlayer = {
+                        ...playerToSign,
+                        starRating: calculateStarRating(playerToSign.currentAbility, isSkater, t.leagueDivision),
+                        captaincy: null, // Reset captaincy when player moves teams
+                    };
+                    const usedJerseyNumbers = new Set(t.roster.map(p => p.jerseyNumber));
+                    if (usedJerseyNumbers.has(updatedPlayer.jerseyNumber)) {
+                        let newJerseyNumber = 1;
+                        while (usedJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
+                        updatedPlayer.jerseyNumber = newJerseyNumber;
+                    }
+                    return { ...t, roster: [...t.roster, updatedPlayer] };
+                }
+                return t;
+            });
+            return updatedTeams;
+        });
+
         setTransferPool(prev => prev.filter(p => p.id !== playerId));
-
-        // Add to new team, ensuring captaincy is reset
-        const playerWithNoCaptaincy = { ...playerToSign, captaincy: null };
-        const newRoster = [...toTeam.roster, playerWithNoCaptaincy];
-        const updatedTeam = { ...toTeam, roster: newRoster };
-        updateTeam(updatedTeam);
-
-        toast.success(`${playerToSign.name} signed from the transfer portal!`);
+        toast.success(`${playerToSign.name} signed to ${toTeamName} from the transfer portal!`);
     };
 
     return (
-        <TeamContext.Provider value={{
-            teams, updateTeam, userTeam, selectTeam, scoutingPool, recruitedPool, fairHosted, generateScoutingPool, recruitPlayer, assignPlayerToRoster, discardRecruit,
-            currentDate, advanceWeek, developmentHistory, updatePlayerTrainingFocus, autoAssignTrainingFocuses, processGameResults, movePlayer, requestPlayerTransfer,
-            managedOrganization, isManagingOrg, managedTeams, selectOrganization, setActiveTeam, schedule, gameForCurrentWeek, nationalsData, markGameAsCompleted,
-            seasonRecords, careerRecords, alumni, playNationalsRound, autoSimulateUserNationalsGame, teamAchievements, saveGame, exitToMainMenu, transferPool,
-            seasonHistory, savedGames, loadGame, deleteGame, simulateFullNationalsTournament, simulateSingleNationalsGame, simulateAllNationalsTournaments,
-            signPlayerFromTransferPool, startFacilityProject, organizationFinancials, organizationFacilities, runStudentLifeInitiative
-        }}>
+        <TeamContext.Provider
+            value={{
+                teams,
+                updateTeam,
+                userTeam,
+                organizationFinancials,
+                organizationFacilities,
+                selectTeam,
+                scoutingPool,
+                recruitedPool,
+                fairHosted,
+                generateScoutingPool,
+                recruitPlayer,
+                assignPlayerToRoster,
+                discardRecruit,
+                runStudentLifeInitiative,
+                startFacilityProject,
+                currentDate,
+                advanceWeek,
+                developmentHistory,
+                updatePlayerTrainingFocus,
+                autoAssignTrainingFocuses,
+                processGameResults,
+                movePlayer,
+                requestPlayerTransfer,
+                managedOrganization,
+                isManagingOrg,
+                managedTeams,
+                selectOrganization,
+                setActiveTeam,
+                schedule,
+                gameForCurrentWeek,
+                nationalsData,
+                markGameAsCompleted,
+                seasonRecords,
+                careerRecords,
+                alumni,
+                playNationalsRound,
+                autoSimulateUserNationalsGame,
+                teamAchievements,
+                saveGame,
+                exitToMainMenu,
+                transferPool,
+                seasonHistory,
+                savedGames,
+                loadGame,
+                deleteGame,
+                simulateFullNationalsTournament,
+                simulateSingleNationalsGame,
+                simulateAllNationalsTournaments,
+                signPlayerFromTransferPool,
+            }}
+        >
             {children}
         </TeamContext.Provider>
     );
