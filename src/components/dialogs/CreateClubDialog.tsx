@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -22,9 +21,8 @@ import { toast } from 'sonner';
 const formSchema = z.object({
   organizationName: z.string().min(3, { message: 'Organization name must be at least 3 characters.' }),
   teamName: z.string().min(3, { message: 'Team name must be at least 3 characters.' }),
-  leagueDivision: z.string({ required_error: 'Please select a league division.' }),
-  nationalsDivision: z.string({ required_error: 'Please select a nationals division.' }),
-  logo: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  region: z.string({ required_error: 'Please select a region.' }),
+  logo: z.instanceof(FileList).optional(),
 });
 
 type CreateClubDialogProps = {
@@ -33,39 +31,52 @@ type CreateClubDialogProps = {
 };
 
 export const CreateClubDialog = ({ isOpen, onOpenChange }: CreateClubDialogProps) => {
-  const { teams, startNewCustomClub } = useTeam();
-
-  const divisions = useMemo(() => {
-    if (!teams) return { leagueDivs: [], nationalsDivs: [] };
-    const leagueDivs = [...new Set(teams.map(t => t.leagueDivision))].sort();
-    const nationalsDivs = [...new Set(teams.map(t => t.nationalsDivision))].sort();
-    return { leagueDivs, nationalsDivs };
-  }, [teams]);
+  const { startNewCustomClub } = useTeam();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       organizationName: '',
       teamName: '',
-      logo: '',
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const { register } = form;
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!startNewCustomClub) {
         toast.error("Initialization error", { description: "The function to create a club is not available."});
         return;
     }
-    // Ensure all required fields are strings, even if Zod/RHF makes them optional in inference
-    const clubData = {
-      organizationName: values.organizationName || '',
-      teamName: values.teamName || '',
-      leagueDivision: values.leagueDivision || '',
-      nationalsDivision: values.nationalsDivision || '',
-      logo: values.logo || '', // Already handled
-    };
-    startNewCustomClub(clubData);
+
+    let logoUrl = '';
+    if (values.logo && values.logo.length > 0) {
+        const file = values.logo[0];
+        try {
+            logoUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = (error) => reject(error);
+                reader.readAsDataURL(file);
+            });
+        } catch (error) {
+            toast.error("Logo Upload Failed", { description: "Could not read the selected logo file." });
+            return;
+        }
+    }
+
+    const leagueDivision = `Non Checking 3 - ${values.region}`;
+    const nationalsDivision = 'Non-Checking 3';
+
+    startNewCustomClub({
+      organizationName: values.organizationName,
+      teamName: values.teamName,
+      leagueDivision,
+      nationalsDivision,
+      logo: logoUrl,
+    });
     onOpenChange(false);
+    form.reset();
   };
 
   return (
@@ -107,61 +118,32 @@ export const CreateClubDialog = ({ isOpen, onOpenChange }: CreateClubDialogProps
             />
             <FormField
               control={form.control}
-              name="leagueDivision"
+              name="region"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>League Division</FormLabel>
+                  <FormLabel>Region</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a league" />
+                        <SelectValue placeholder="Select a region" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {divisions.leagueDivs.map(div => (
-                        <SelectItem key={div} value={div}>{div}</SelectItem>
-                      ))}
+                      <SelectItem value="North">North</SelectItem>
+                      <SelectItem value="South">South</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="nationalsDivision"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nationals Division</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a nationals tier" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {divisions.nationalsDivs.map(div => (
-                        <SelectItem key={div} value={div}>{div}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="logo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Logo URL (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://example.com/logo.png" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FormItem>
+              <FormLabel>Logo (Optional, PNG only)</FormLabel>
+              <FormControl>
+                <Input type="file" accept="image/png" {...register("logo")} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
             <DialogFooter>
               <Button type="submit">Create Club</Button>
             </DialogFooter>

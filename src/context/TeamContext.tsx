@@ -1,7 +1,7 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
-import { initialFacilityProjects } from '@/data/facilities'; // Corrected import
+import { initialFacilityProjects } from '@/data/facilities';
 import { generateRecruits, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator'; 
 import { toast } from 'sonner';
 import { calculateCurrentAbility } from '@/lib/playerGenerator';
@@ -974,8 +974,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const lowestTierTeamInOrg = signingOrg.teams[signingOrg.teams.length - 1];
                             const teamIndexInTemp = tempTeams.findIndex(t => t.name === lowestTierTeamInOrg.name);
 
-                            if (lowestTierTeamIndex !== -1) {
-                                tempTeams[lowestTierTeamIndex].roster.push(player);
+                            if (teamIndexInTemp !== -1) {
+                                tempTeams[teamIndexInTemp].roster.push(player);
                             }
                             orgAssignIndex++;
                         });
@@ -1293,7 +1293,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         if (currentBudget < cost) {
             toast.error("Insufficient Discretionary Budget", {
-                description: `You need £${cost.toLocaleString()} but only have £${currentBudget.toLocaleString()} available.`,
+                description: `You need £${cost} but only have £${currentBudget} available.`,
             });
             return;
         }
@@ -1311,12 +1311,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
             updateTeam({ ...userTeam, roster: newRoster, financials: newFinancials });
             toast.success("Student Life Initiative Successful!", {
-                description: `Team morale has improved. Cost: £${cost.toLocaleString()}.`,
+                description: `Team morale has improved. Cost: £${cost}.`,
             });
         } else {
             updateTeam({ ...userTeam, financials: newFinancials });
             toast.error("Student Life Initiative Failed", {
-                description: `The event didn't have the desired effect on morale. Cost: £${cost.toLocaleString()}.`,
+                description: `The event didn't have the desired effect on morale. Cost: £${cost}.`,
             });
         }
     };
@@ -1453,8 +1453,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const startNewCustomClub = (data: { organizationName: string; teamName: string; leagueDivision: string; nationalsDivision: string; logo: string; }) => {
-        const tier = getTierStats(data.leagueDivision);
-        const startingBudget = tier.baseBudget + 2000; // Give a small boost for starting from scratch
+        const startingBudget = 10000;
 
         const newTeam: Team = {
             id: uuidv4(),
@@ -1478,7 +1477,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 iceTimeCostPerGame: 350,
                 equipmentCost: 5000,
             },
-            facilities: initialFacilityProjects.map(f => ({ ...f, status: 'Not Started' })), // Corrected usage
+            facilities: initialFacilityProjects.map(f => ({ ...f, status: 'Not Started' })),
         };
 
         const patchedInitialTeams = initialTeams.map(team => ({
