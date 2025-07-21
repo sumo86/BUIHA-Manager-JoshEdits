@@ -195,6 +195,7 @@ export type Team = {
   id: string;
   name: string;
   logo: string;
+  organizationName: string;
   leagueDivision: string;
   nationalsDivision: string;
   roster: Player[];
