@@ -45,6 +45,10 @@ const getGoalFactor = (leagueDivision: string, isBigGame: boolean): number => {
     return getRandomValueInRange(15, 20); // Default
 };
 
+const getPenaltyFactor = (): number => {
+    return getRandomValueInRange(2, 4); // Target 2-4 penalties per game
+};
+
 const infractions = ["Holding", "Boarding", "Tripping", "Hooking", "Slashing", "Interference", "Roughing"];
 
 const getInstructionModifiers = (player: Player) => {
@@ -260,7 +264,8 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
     actualSavedShotProbPerTick = Math.max(0, actualSavedShotProbPerTick); // Ensure non-negative
 
     // Other event probabilities (fixed per tick)
-    const penaltyProbPerTick = 4.5 / totalGameTicks; // ~4.5 penalties per game
+    const baseTargetPenalties = getPenaltyFactor();
+    const penaltyProbPerTick = baseTargetPenalties / totalGameTicks; // Target 2-4 penalties per game
     const hitProbPerTick = 25.0 / totalGameTicks; // ~25 hits per game
     const puckMovementProbPerTick = 100.0 / totalGameTicks; // ~100 puck movements/turnovers per game
 
