@@ -358,34 +358,46 @@ const generateGameEvent = (gameState: GameState, userTeam: Team, opponentTeam: T
         possessionChange = true; // Stoppage of play
         const penaltyTeam = Math.random() > 0.5 ? userTeam : opponentTeam;
         
-        if (penaltyTeam.roster.length === 0) {
+        const eligiblePlayers = penaltyTeam.roster.filter(p => !p.positions.includes('G'));
+        if (eligiblePlayers.length === 0) {
             return { event: null, possessionChange: false, shotOnGoal: false }; 
         }
-        const player = penaltyTeam.roster[Math.floor(Math.random() * penaltyTeam.roster.length)];
+
+        // Select player weighted by their tendency to take penalties
+        const player = selectPlayerWeighted(eligiblePlayers, p => {
+            const instructionMods = getInstructionModifiers(p);
+            const roleMods = getRoleModifiers(p);
+            const aggression = (p.attributes as SkaterAttributes).aggression || 10;
+            const sportsmanship = (p.attributes as SkaterAttributes).sportsmanship || 10;
+            
+            // Scale aggression and sportsmanship to influence penalty weight
+            // Aggression: 1 -> 0.5, 10 -> 1, 20 -> 1.5
+            // Sportsmanship: 1 -> 1.5, 10 -> 1, 20 -> 0.5 (lower sportsmanship means higher weight)
+            const aggressionFactor = 0.5 + (aggression - 1) / 19 * 1; 
+            const sportsmanshipFactor = 1.5 - (sportsmanship - 1) / 19 * 1; 
+
+            const penaltyWeight = aggressionFactor * sportsmanshipFactor * instructionMods.penaltyChance * roleMods.penaltyTendency;
+            return Math.max(0.01, penaltyWeight); // Ensure a minimum weight to allow all players a chance
+        });
         
         if (!player) {
+            // Fallback if no suitable player is found (e.g., all goalies, or weights are zero)
+            // This should be rare with the filter above, but good for robustness.
             return { event: null, possessionChange: false, shotOnGoal: false };
         }
 
-        const instructionMods = getInstructionModifiers(player);
-        const roleMods = getRoleModifiers(player);
-        const aggression = (player.attributes as SkaterAttributes).aggression || 10;
-        const sportsmanship = (player.attributes as SkaterAttributes).sportsmanship || 10;
-        const basePenaltyChance = 0.1; // This is a base chance for a player to get a penalty if a penalty event is rolled
-        const personalityModifier = (1 + (aggression - 10) / 20) * (1 - (sportsmanship - 10) / 30);
-        if (Math.random() < basePenaltyChance * personalityModifier * instructionMods.penaltyChance * roleMods.penaltyTendency) {
-            const infraction = getRandomItem(infractions);
-            
-            // Record penalty
-            let playerStat = gameState.skaterStats.find(s => s.playerId === player.id);
-            if (playerStat) {
-                playerStat.penaltyMinutes += 2;
-            } else {
-                gameState.skaterStats.push({ playerId: player.id, goals: 0, assists: 0, points: 0, penaltyMinutes: 2 });
-            }
-
-            return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange, shotOnGoal: false };
+        // If a player is selected, a penalty occurs
+        const infraction = getRandomItem(infractions);
+        
+        // Record penalty
+        let playerStat = gameState.skaterStats.find(s => s.playerId === player.id);
+        if (playerStat) {
+            playerStat.penaltyMinutes += 2;
+        } else {
+            gameState.skaterStats.push({ playerId: player.id, goals: 0, assists: 0, points: 0, penaltyMinutes: 2 });
         }
+
+        return { event: { time: eventTime, period: gameState.period, team: penaltyTeam.name, description: `PENALTY! ${player.name} gets 2 minutes for ${infraction}.` }, possessionChange, shotOnGoal: false };
     } else if (roll < (cumulativeProb += hitProbPerTick)) { // Hit event
         const attacker = selectPlayerWeighted(attackingSkaters, p => ((p.attributes as SkaterAttributes).hitting + (p.attributes as SkaterAttributes).strength) * getRoleModifiers(p).hitTendency);
         const defender = selectPlayerWeighted(defendingSkaters, p => (p.attributes as SkaterAttributes).balance + (p.attributes as SkaterAttributes).strength);
