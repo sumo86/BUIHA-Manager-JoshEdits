@@ -253,7 +253,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const completed = allVersions.find(p => p.status === 'Completed');
             const inProgress = allVersions.find(p => p.status === 'In Progress');
             
-            const newStatus = (completed?.status || inProgress?.status || 'Not Started') as FacilityProject['status']; // Explicit cast
+            // Use nullish coalescing (??) to ensure the type remains within the union
+            const newStatus = completed?.status ?? inProgress?.status ?? 'Not Started';
             return { ...project, status: newStatus };
         });
     }, [managedOrganization, managedTeams]);
@@ -391,7 +392,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         return g.round === tournament.currentRound;
                     }
                     if (tournament.status === 'silver-playoffs' || tournament.status === 'gold-playoffs') {
-                        const currentBracket = tournament.status === 'silver-playoffs' ? 'Silver' : 'Gold';
+                        const currentBracket = tournament.status === 'silver-rayoffs' ? 'Silver' : 'Gold';
                         return (g as NationalsPlayoffMatch).round === tournament.currentRound && (g as NationalsPlayoffMatch).bracket === currentBracket;
                     }
                     return false;
@@ -764,8 +765,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const seasonThatEnded = `${prevDate.year}-${prevDate.year + 1}`;
                     
                     // Archive player stats for the season that just ended
-                    tempTeams = tempTeams.map(team => {
-                        const updatedRoster = team.roster.map(player => {
+                    tempTeams = tempTeams.map(player => {
+                        const updatedRoster = player.roster.map(player => {
                             // If player has stats for the season, archive them.
                             if (player.currentStats && player.currentStats.length > 0) {
                                 const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
@@ -775,8 +776,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             else if (!player.history.some(h => h.season === seasonThatEnded)) {
                                 const newHistoryEntry: PlayerSeasonStats = {
                                     season: seasonThatEnded,
-                                    team: team.name,
-                                    league: team.leagueDivision,
+                                    team: player.name,
+                                    league: player.leagueDivision,
                                     gamesPlayed: 0, goals: 0, assists: 0, points: 0, penaltyMinutes: 0,
                                     shotsAgainst: 0, saves: 0, shutouts: 0, goalsAgainst: 0,
                                     savePercentage: 0, goalsAgainstAverage: 0,
@@ -786,7 +787,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             }
                             return player;
                         });
-                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
+                        return { ...player, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
                     });
 
                     const finalStandings: TeamSeasonHistory[] = tempTeams.map(team => ({
@@ -837,11 +838,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     });
 
                     const seasonString = `${prevDate.year}-${prevDate.year + 1}`;
-                    const leagueDivisions = [...new Set(tempTeams.map(t => t.leagueDivision))];
+                    const leagueDivisions = [...new Set(tempTeams.map(team => team.leagueDivision))];
                     const newAchievements: { teamName: string, achievement: Achievement }[] = [];
 
                     leagueDivisions.forEach(division => {
-                        const teamsInDivision = tempTeams.filter(t => t.leagueDivision === division);
+                        const teamsInDivision = tempTeams.filter(team => team.leagueDivision === division);
                         if (teamsInDivision.length > 0) {
                             const winner = teamsInDivision.sort((a, b) => {
                                 if (b.points !== a.points) return b.points - a.points;
@@ -972,7 +973,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             
                             // Assign to the lowest-tier team in the org. Teams are sorted A, B, C... so the last one is the lowest tier.
                             const lowestTierTeamInOrg = signingOrg.teams[signingOrg.teams.length - 1];
-                            const teamIndexInTemp = tempTeams.findIndex(t => t.name === lowestTierTeamInOrg.name);
+                            const teamIndexInTemp = tempTeams.findIndex(team => team.name === lowestTierTeamInOrg.name);
 
                             if (teamIndexInTemp !== -1) {
                                 tempTeams[teamIndexInTemp].roster.push(player);
@@ -981,8 +982,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         });
                         
                         // Filter out players signed by AI from the availableForSigning pool
-                        const signedPlayerIds = new Set(playersForAISigning.map(p => p.id));
-                        availableForSigning = availableForSigning.filter(p => !signedPlayerIds.has(p.id));
+                        const signedPlayerIds = new Set(playersForAISigning.map(player => player.id));
+                        availableForSigning = availableForSigning.filter(player => !signedPlayerIds.has(player.id));
                     }
 
                     if (availableForSigning.length > 0) {
@@ -993,16 +994,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     // AI Recruitment Logic (for new recruits, not transfers)
                     const allOrgsList = getTeamOrganizations();
                     const aiOrgsList = allOrgsList.filter(org => org.name !== managedOrganization);
-                    const allTeamNames = tempTeams.map(t => t.name);
+                    const allTeamNames = tempTeams.map(team => team.name);
                     let recruitmentOccurred = false;
 
                     aiOrgsList.forEach(org => {
-                        const orgTeamNames = org.teams.map(t => t.name);
-                        const orgTeams = tempTeams.filter(t => orgTeamNames.includes(t.name));
+                        const orgTeamNames = org.teams.map(team => team.name);
+                        const orgTeams = tempTeams.filter(team => orgTeamNames.includes(team.name));
                         if (orgTeams.length === 0) return;
 
                         const targetRosterSize = orgTeams.length * 21; // Standard roster size
-                        const currentRosterSize = orgTeams.reduce((sum, t) => sum + t.roster.length, 0);
+                        const currentRosterSize = orgTeams.reduce((sum, team) => sum + team.roster.length, 0);
                         const playersToRecruitCount = Math.max(0, targetRosterSize - currentRosterSize);
 
                         if (playersToRecruitCount > 0) {
@@ -1014,11 +1015,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const newRecruits = prospects.slice(0, playersToRecruitCount);
 
                             const lowestTierTeamName = orgTeams.sort((a, b) => b.name.localeCompare(a.name))[0].name;
-                            const lowestTierTeamIndex = tempTeams.findIndex(t => t.name === lowestTierTeamName);
+                            const lowestTierTeamIndex = tempTeams.findIndex(team => team.name === lowestTierTeamName);
 
                             if (lowestTierTeamIndex !== -1) {
                                 const teamToUpdate = tempTeams[lowestTierTeamIndex];
-                                const usedJerseyNumbers = new Set(teamToUpdate.roster.map(p => p.jerseyNumber));
+                                const usedJerseyNumbers = new Set(teamToUpdate.roster.map(player => player.jerseyNumber));
                                 
                                 newRecruits.forEach(recruit => {
                                     let newJerseyNumber = 1;
@@ -1120,18 +1121,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const movePlayer = (playerId: string, fromTeamName: string, toTeamName: string) => {
         setTeams(currentTeams => {
-            const fromTeam = currentTeams.find(t => t.name === fromTeamName);
-            const toTeam = currentTeams.find(t => t.name === toTeamName);
-            const player = fromTeam?.roster.find(p => p.id === playerId);
+            const fromTeam = currentTeams.find(team => team.name === fromTeamName);
+            const toTeam = currentTeams.find(team => team.name === toTeamName);
+            const player = fromTeam?.roster.find(player => player.id === playerId);
 
             if (!fromTeam || !toTeam || !player) {
                 toast.error("Could not move player. Team or player not found.");
                 return currentTeams;
             }
 
-            const newFromRoster = fromTeam.roster.filter(p => p.id !== playerId);
+            const newFromRoster = fromTeam.roster.filter(player => player.id !== playerId);
 
-            const toTeamJerseyNumbers = new Set(toTeam.roster.map(p => p.jerseyNumber));
+            const toTeamJerseyNumbers = new Set(toTeam.roster.map(player => player.jerseyNumber));
             if (toTeamJerseyNumbers.has(player.jerseyNumber)) {
                 let newJerseyNumber = 1;
                 while (toTeamJerseyNumbers.has(newJerseyNumber)) { newJerseyNumber++; }
@@ -1153,18 +1154,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
             const updatedToTeam = { ...toTeam, roster: newToRoster };
 
-            return currentTeams.map(t => {
-                if (t.name === fromTeamName) return updatedFromTeam;
-                if (t.name === toTeamName) return updatedToTeam;
-                return t;
+            return currentTeams.map(team => {
+                if (team.name === fromTeamName) return updatedFromTeam;
+                if (team.name === toTeamName) return updatedToTeam;
+                return team;
             });
         });
     };
 
     const requestPlayerTransfer = (playerId: string, fromTeamName: string, toTeamName: string) => {
-        const fromTeam = teams.find(t => t.name === fromTeamName);
-        const toTeam = teams.find(t => t.name === toTeamName);
-        const player = fromTeam?.roster.find(p => p.id === playerId);
+        const fromTeam = teams.find(team => team.name === fromTeamName);
+        const toTeam = teams.find(team => team.name === toTeamName);
+        const player = fromTeam?.roster.find(player => player.id === playerId);
 
             if (!fromTeam || !toTeam || !player) {
                 toast.error("Could not request player. Team or player not found.");
@@ -1172,8 +1173,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             }
 
         const isInternalTransfer = managedOrganization &&
-            managedTeams.some(t => t.name === fromTeamName) &&
-            managedTeams.some(t => t.name === toTeamName);
+            managedTeams.some(team => team.name === fromTeamName) &&
+            managedTeams.some(team => team.name === toTeamName);
 
         if (isInternalTransfer) {
             movePlayer(playerId, fromTeamName, toTeamName);
@@ -1193,18 +1194,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             });
             
             setTeams(currentTeams => {
-                const fromTeam = currentTeams.find(t => t.name === fromTeamName);
+                const fromTeam = currentTeams.find(team => team.name === fromTeamName);
                 if (!fromTeam) return currentTeams;
                 
-                const playerToRemove = fromTeam.roster.find(p => p.id === playerId);
+                const playerToRemove = fromTeam.roster.find(player => player.id === playerId);
                 if (!playerToRemove) return currentTeams;
 
                 setTransferPool(prev => [...prev, playerToRemove]);
 
-                const newFromRoster = fromTeam.roster.filter(p => p.id !== playerId);
+                const newFromRoster = fromTeam.roster.filter(player => player.id !== playerId);
                 const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
                 
-                return currentTeams.map(t => t.name === fromTeamName ? updatedFromTeam : t);
+                return currentTeams.map(team => team.name === fromTeamName ? updatedFromTeam : team);
             });
         } else {
             const reasonRoll = Math.random();
@@ -1221,10 +1222,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const { updatedUserTeam: updatedHomeTeam, updatedOpponentTeam: updatedAwayTeam } = processGameResultsEngine(userTeam, opponentTeam, gameState, currentSeasonString, isNationalsGame);
         
         setTeams(currentTeams =>
-            currentTeams.map(t => {
-                if (t.name === updatedHomeTeam.name) return updatedHomeTeam;
-                if (t.name === updatedAwayTeam.name) return updatedAwayTeam;
-                return t;
+            currentTeams.map(team => {
+                if (team.name === updatedHomeTeam.name) return updatedHomeTeam;
+                if (team.name === updatedAwayTeam.name) return updatedAwayTeam;
+                return team;
             })
         );
 
@@ -1266,11 +1267,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (!tournament || !userTeam) return;
 
         const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
-        const game = allGames.find(g => g.id === gameId);
+        const game = allGames.find(game => game.id === gameId);
         if (!game) return;
 
-        const homeTeamSim = teams.find(t => t.name === (typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD'));
-        const awayTeamSim = teams.find(t => t.name === (typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD'));
+        const homeTeamSim = teams.find(team => team.name === (typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD'));
+        const awayTeamSim = teams.find(team => team.name === (typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD'));
 
         if (!homeTeamSim || !awayTeamSim) return;
 
@@ -1323,9 +1324,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const updatePlayerTrainingFocus = (playerId: string, focus: TrainingFocus) => {
         if (!userTeam) return;
-        const newRoster = userTeam.roster.map(p => p.id === playerId
-            ? { ...p, trainingFocus: focus }
-            : p
+        const newRoster = userTeam.roster.map(player => player.id === playerId
+            ? { ...player, trainingFocus: focus }
+            : player
         );
         updateTeam({ ...userTeam, roster: newRoster });
         toast.success("Training Focus Updated", { description: `Player's training focus set to ${focus || 'None'}.` });
@@ -1374,7 +1375,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             toast.info("Recruitment Fair Already Hosted", { description: "You can only host the fair once per season." });
             return;
         }
-        const newRecruits = generateRecruits(userTeam.leagueDivision, teams.map(t => t.name), undefined, userTeam.facilities);
+        const newRecruits = generateRecruits(userTeam.leagueDivision, teams.map(team => team.name), undefined, userTeam.facilities);
         setScoutingPool(newRecruits);
         setFairHosted(true);
         toast.success("Recruitment Fair Hosted!", { description: `${newRecruits.length} prospects are now available for scouting.` });
@@ -1382,7 +1383,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const recruitPlayer = (playerId: string) => {
         if (!userTeam) return;
-        const playerToRecruit = scoutingPool.find(p => p.id === playerId);
+        const playerToRecruit = scoutingPool.find(player => player.id === playerId);
         if (!playerToRecruit) {
             toast.error("Player not found in scouting pool.");
             return;
@@ -1402,14 +1403,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         };
 
         setRecruitedPool(prev => [...prev, playerToRecruit]);
-        setScoutingPool(prev => prev.filter(p => p.id !== playerId));
+        setScoutingPool(prev => prev.filter(player => player.id !== playerId));
         updateTeam({ ...userTeam, financials: updatedFinancials });
         toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been recruited and is now in your recruited pool. Cost: £${cost.toLocaleString()}.` });
     };
 
     const assignPlayerToRoster = (playerId: string) => {
         if (!userTeam) return;
-        const playerToAssign = recruitedPool.find(p => p.id === playerId);
+        const playerToAssign = recruitedPool.find(player => player.id === playerId);
         if (!playerToAssign) {
             toast.error("Player not found in recruited pool.");
             return;
@@ -1420,7 +1421,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
 
-        const usedJerseyNumbers = new Set(userTeam.roster.map(p => p.jerseyNumber));
+        const usedJerseyNumbers = new Set(userTeam.roster.map(player => player.jerseyNumber));
         let newJerseyNumber = 1;
         while (usedJerseyNumbers.has(newJerseyNumber)) {
             newJerseyNumber++;
@@ -1444,16 +1445,27 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         const newRoster = [...userTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
         updateTeam({ ...userTeam, roster: newRoster });
-        setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+        setRecruitedPool(prev => prev.filter(player => player.id !== playerId));
         toast.success("Player Assigned!", { description: `${playerToAssign.name} has been assigned to your roster.` });
     };
 
     const discardRecruit = (playerId: string) => {
-        setRecruitedPool(prev => prev.filter(p => p.id !== playerId));
+        setRecruitedPool(prev => prev.filter(player => player.id !== playerId));
     };
 
     const startNewCustomClub = (data: { organizationName: string; teamName: string; leagueDivision: string; nationalsDivision: string; logo: string; }) => {
-        const startingBudget = 10000;
+        const startingBudget = 10000; // Fixed budget as per request
+
+        // Calculate fixed costs based on the new team's league division
+        const totalGames = getGamesPlayedForDivision(data.leagueDivision);
+        const numberOfHomeGames = Math.floor(totalGames / 2);
+        const numberOfAwayGames = Math.ceil(totalGames / 2);
+        const iceTimeCost = numberOfHomeGames * 350;
+        const travelCost = numberOfAwayGames * 500;
+        const equipmentCost = 5000; // Fixed equipment cost
+        const fixedCosts = iceTimeCost + travelCost + equipmentCost;
+        
+        const discretionaryBudget = startingBudget - fixedCosts;
 
         const newTeam: Team = {
             id: uuidv4(),
@@ -1473,7 +1485,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             tactics: { "Offensive Style": "Standard", "Defensive Style": "Standard", "Powerplay": "Standard", "Penalty Kill": "Standard", "Pace": "Normal", "Mentality": "Balanced" },
             financials: {
                 totalBudget: startingBudget,
-                discretionaryBudget: startingBudget,
+                discretionaryBudget: discretionaryBudget, // Corrected calculation
                 iceTimeCostPerGame: 350,
                 equipmentCost: 5000,
             },
@@ -1492,7 +1504,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setCurrentDate(newDate);
         setSchedule(generateSeasonSchedule(newTeams, newDate));
         setFairHosted(true); // Host fair immediately
-        setScoutingPool(generateRecruits(newTeam.leagueDivision, newTeams.map(t => t.name), undefined, newTeam.facilities));
+        setScoutingPool(generateRecruits(newTeam.leagueDivision, newTeams.map(team => team.name), undefined, newTeam.facilities));
         setRecruitedPool([]);
         setDevelopmentHistory([]);
         setSeasonRecords({});
@@ -1640,7 +1652,26 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const exitToMainMenu = () => {
-        localStorage.clear(); // Clear all game data
+        // Clear only game-specific data from localStorage, leaving savedGames list intact
+        localStorage.removeItem('teams');
+        localStorage.removeItem('alumni');
+        localStorage.removeItem('activeTeamName');
+        localStorage.removeItem('managedOrganization');
+        localStorage.removeItem('isManagingOrg');
+        localStorage.removeItem('schedule');
+        localStorage.removeItem('nationalsData');
+        localStorage.removeItem('seasonRecords');
+        localStorage.removeItem('careerRecords');
+        localStorage.removeItem('teamAchievements');
+        localStorage.removeItem('transferPool');
+        localStorage.removeItem('seasonHistory');
+        localStorage.removeItem('scoutingPool');
+        localStorage.removeItem('recruitedPool');
+        localStorage.removeItem('fairHosted');
+        localStorage.removeItem('currentDate');
+        localStorage.removeItem('developmentHistory');
+
+        // Reset states to initial values
         setTeams(initialTeams.map(team => ({ ...team, organizationName: getOrganizationName(team.name) })));
         setAlumni([]);
         setActiveTeamName(null);
@@ -1653,13 +1684,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setTeamAchievements({});
         setTransferPool([]);
         setSeasonHistory({});
-        setSavedGames([]); // Clear saved games list
+        // Do NOT reset savedGames state here, as it's managed by its own useEffect and localStorage item
         setScoutingPool([]);
         setRecruitedPool([]);
         setFairHosted(false);
         setCurrentDate({ month: 'August', week: 1, year: new Date().getFullYear() });
         setDevelopmentHistory([]);
-        toast.info("Exited to Main Menu", { description: "All current game data has been cleared." });
+        toast.info("Exited to Main Menu", { description: "Current game data has been cleared." });
     };
 
     const simulateFullNationalsTournament = (division: string) => {
@@ -1699,11 +1730,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (!tournament || !userTeam) return;
 
         const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
-        const game = allGames.find(g => g.id === gameId);
+        const game = allGames.find(game => game.id === gameId);
         if (!game) return;
 
-        const homeTeamSim = teams.find(t => t.name === (typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD'));
-        const awayTeamSim = teams.find(t => t.name === (typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD'));
+        const homeTeamSim = teams.find(team => team.name === (typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD'));
+        const awayTeamSim = teams.find(team => team.name === (typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD'));
 
         if (!homeTeamSim || !awayTeamSim) return;
 
@@ -1744,8 +1775,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     };
 
     const signPlayerFromTransferPool = (playerId: string, toTeamName: string) => {
-        const playerToSign = transferPool.find(p => p.id === playerId);
-        const targetTeam = teams.find(t => t.name === toTeamName);
+        const playerToSign = transferPool.find(player => player.id === playerId);
+        const targetTeam = teams.find(team => team.name === toTeamName);
 
         if (!playerToSign || !targetTeam) {
             toast.error("Player or team not found.");
@@ -1757,7 +1788,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return;
         }
 
-        const usedJerseyNumbers = new Set(targetTeam.roster.map(p => p.jerseyNumber));
+        const usedJerseyNumbers = new Set(targetTeam.roster.map(player => player.jerseyNumber));
         let newJerseyNumber = 1;
         while (usedJerseyNumbers.has(newJerseyNumber)) {
             newJerseyNumber++;
@@ -1783,7 +1814,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setTeams(prevTeams => prevTeams.map(team =>
             team.name === toTeamName ? { ...team, roster: [...team.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber) } : team
         ));
-        setTransferPool(prev => prev.filter(p => p.id !== playerId));
+        setTransferPool(prev => prev.filter(player => player.id !== playerId));
         toast.success("Player Signed!", { description: `${playerToSign.name} has been signed by ${toTeamName}.` });
     };
 
