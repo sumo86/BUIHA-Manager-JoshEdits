@@ -21,6 +21,14 @@ const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
+const shuffleArray = <T,>(array: T[]): T[] => {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+};
+
 const updateMorale = (currentMorale: Player['morale'], change: 1 | -1): Player['morale'] => {
     const currentIndex = moraleLevels.indexOf(currentMorale);
     const newIndex = Math.max(0, Math.min(moraleLevels.length - 1, currentIndex + change));
@@ -932,24 +940,27 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     // AI teams sign players from the transfer pool
                     let availableForSigning = [...newTransferPoolPlayers];
-                    const managedTeamNamesSet = new Set(managedTeamNames); // Convert to Set for efficient lookup
+                    const managedTeamNamesSet = new Set(managedTeamNames);
                     const aiTeams = tempTeams.filter(t => !managedTeamNamesSet.has(t.name));
-                    
+
                     if (aiTeams.length > 0) {
-                        console.log("AI Teams available for signing:", aiTeams.map(t => t.name)); // Log available AI teams
+                        const shuffledAiTeams = shuffleArray(aiTeams);
+                        let teamAssignIndex = 0;
                         const playersSignedByAI: Player[] = [];
+
                         availableForSigning.forEach(player => {
-                            // 80% chance an AI team signs the player, leaving a few for the user
                             if (Math.random() < 0.8) {
-                                const signingTeam = getRandomItem(aiTeams);
-                                console.log(`Player ${player.name} (ID: ${player.id}) signed by: ${signingTeam.name}`); // Log which team signed
-                                const teamIndex = tempTeams.findIndex(t => t.id === signingTeam.id);
-                                if (teamIndex !== -1) {
-                                    tempTeams[teamIndex].roster.push(player);
+                                const signingTeam = shuffledAiTeams[teamAssignIndex % shuffledAiTeams.length];
+                                const teamIndexInTemp = tempTeams.findIndex(t => t.id === signingTeam.id);
+                                
+                                if (teamIndexInTemp !== -1) {
+                                    tempTeams[teamIndexInTemp].roster.push(player);
                                     playersSignedByAI.push(player);
                                 }
+                                teamAssignIndex++;
                             }
                         });
+                        
                         const signedPlayerIds = new Set(playersSignedByAI.map(p => p.id));
                         availableForSigning = availableForSigning.filter(p => !signedPlayerIds.has(p.id));
                     }
@@ -1017,6 +1028,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             return player;
                         });
                         return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
+                    });
+
+                    setFairHosted(false);
+                    toast.info("New Season Started", {
+                        description: "The recruitment fair is now available for the upcoming season."
                     });
                 }
                 month = months[nextMonthIndex];
@@ -1319,7 +1335,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const allTeamNames = teams.map(t => t.name).filter(name => name !== userTeam.name);
         const newRecruits = generateRecruits(userTeam.leagueDivision, allTeamNames, undefined, userTeam.facilities);
         setScoutingPool(newRecruits);
-        setFairHosted(true); // This line was incomplete
+        setFairHosted(true);
     };
 
     const recruitPlayer = (playerId: string) => {
