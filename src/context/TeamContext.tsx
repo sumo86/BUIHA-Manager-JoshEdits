@@ -10,7 +10,7 @@ import { processGameResults as processGameResultsEngine } from '@/lib/statsEngin
 import { generateSeasonSchedule } from '@/lib/scheduleGenerator';
 import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
-import { createNationalsTournament } from '@/lib/nationalsGenerator';
+import { createNationalsTournament } => '@/lib/nationalsGenerator';
 import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { processNationalsRound } from '@/lib/nationalsSimulator';
@@ -945,25 +945,29 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     if (aiTeams.length > 0) {
                         const shuffledAiTeams = shuffleArray(aiTeams);
-                        let teamAssignIndex = 0;
-                        const playersSignedByAI: Player[] = [];
-
-                        // Distribute players more evenly among AI teams
-                        for (const player of availableForSigning) {
-                            // AI signs 80% of players, leaving 20% for the user's transfer pool
-                            if (Math.random() < 0.8) { 
-                                const signingTeam = shuffledAiTeams[teamAssignIndex % shuffledAiTeams.length];
-                                const teamIndexInTemp = tempTeams.findIndex(t => t.id === signingTeam.id);
-                                
-                                if (teamIndexInTemp !== -1) {
-                                    tempTeams[teamIndexInTemp].roster.push(player);
-                                    playersSignedByAI.push(player);
-                                }
-                                teamAssignIndex++;
-                            }
-                        }
+                        const playersForAISigning: Player[] = [];
                         
-                        const signedPlayerIds = new Set(playersSignedByAI.map(p => p.id));
+                        // Determine which players AI will sign (80%)
+                        availableForSigning.forEach(player => {
+                            if (Math.random() < 0.8) { 
+                                playersForAISigning.push(player);
+                            }
+                        });
+
+                        // Assign players to AI teams in a round-robin fashion
+                        let teamAssignIndex = 0;
+                        playersForAISigning.forEach(player => {
+                            const signingTeam = shuffledAiTeams[teamAssignIndex % shuffledAiTeams.length];
+                            const teamIndexInTemp = tempTeams.findIndex(t => t.id === signingTeam.id);
+                            
+                            if (teamIndexInTemp !== -1) {
+                                tempTeams[teamIndexInTemp].roster.push(player);
+                            }
+                            teamAssignIndex++;
+                        });
+                        
+                        // Filter out players signed by AI from the availableForSigning pool
+                        const signedPlayerIds = new Set(playersForAISigning.map(p => p.id));
                         availableForSigning = availableForSigning.filter(p => !signedPlayerIds.has(p.id));
                     }
 
@@ -1037,14 +1041,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return { month, week, year };
         })(currentDate);
 
-        // This block was moved outside the tempTeams.map loop
-        if (currentDate.month === 'July' && currentDate.week === 4) { // Check for end of July, before August 1
-            if (userTeam) {
-                setFairHosted(false);
-                toast.info("New Season Started", {
-                    description: "The recruitment fair is now available for the upcoming season."
-                });
-            }
+        // This block ensures fairHosted is reset when the new date is August, Week 1
+        if (newDate.month === 'August' && newDate.week === 1 && userTeam) {
+            setFairHosted(false);
+            toast.info("New Season Started", {
+                description: "The recruitment fair is now available for the upcoming season."
+            });
         }
 
         if (newDate.month === 'April' && newDate.week === 1 && !(currentDate.month === 'April' && currentDate.week === 1)) {
