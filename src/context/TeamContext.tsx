@@ -848,44 +848,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         });
                     }
 
-                    // --- LEAGUE EXPANSION LOGIC ---
-                    ['North', 'South'].forEach(region => {
-                        const nc3Division = `Non Checking 3 - ${region}`;
-                        const teamsInNc3 = tempTeams.filter(t => t.leagueDivision === nc3Division);
-
-                        if (teamsInNc3.length >= 10) {
-                            const nc4Division = `Non Checking 4 - ${region}`;
-                            toast.info(`League Expansion: ${nc3Division} has reached ${teamsInNc3.length} teams and will be split. The bottom 5 teams will form the new ${nc4Division}.`);
-
-                            const sortedTeams = teamsInNc3.sort((a, b) => {
-                                if (a.points !== b.points) return a.points - b.points;
-                                const goalDiffA = a.goalsFor - a.goalsAgainst;
-                                const goalDiffB = b.goalsFor - b.goalsAgainst;
-                                if (goalDiffA !== goalDiffB) return goalDiffA - goalDiffB;
-                                if (a.goalsFor !== b.goalsFor) return a.goalsFor - b.goalsFor;
-                                return getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name);
-                            });
-
-                            const teamsToRelegate = sortedTeams.slice(0, 5);
-                            const teamsToRelegateNames = new Set(teamsToRelegate.map(t => t.name));
-
-                            tempTeams = tempTeams.map(team => {
-                                if (teamsToRelegateNames.has(team.name)) {
-                                    team.leagueDivision = nc4Division;
-                                    team.nationalsDivision = getTierName(nc4Division);
-                                    team.roster = team.roster.map(player => {
-                                        const isSkater = !player.positions.includes('G');
-                                        return {
-                                            ...player,
-                                            starRating: calculateStarRating(player.currentAbility, isSkater, nc4Division),
-                                        };
-                                    });
-                                }
-                                return team;
-                            });
-                        }
-                    });
-
                     // Archive player stats for the season that just ended
                     tempTeams = tempTeams.map(team => {
                         const updatedRoster = team.roster.map(player => {

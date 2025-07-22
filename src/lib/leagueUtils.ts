@@ -7,7 +7,6 @@ export const divisionTierStats: { [key: number]: { name: string, skater: number,
     3: { name: "Non-Checking 1", skater: 300, goalie: 135, step: { skater: 20, goalie: 10 } },
     4: { name: "Non-Checking 2", skater: 270, goalie: 120, step: { skater: 20, goalie: 10 } },
     5: { name: "Non-Checking 3", skater: 240, goalie: 110, step: { skater: 20, goalie: 10 } },
-    6: { name: "Non-Checking 4", skater: 210, goalie: 100, step: { skater: 15, goalie: 8 } },
 };
 
 /**
@@ -22,7 +21,6 @@ export const getTierName = (leagueDivision: string): string => {
     if (leagueDivision.startsWith("Non Checking 1")) return "Non-Checking 1";
     if (leagueDivision.startsWith("Non Checking 2")) return "Non-Checking 2";
     if (leagueDivision.startsWith("Non Checking 3")) return "Non-Checking 3";
-    if (leagueDivision.startsWith("Non Checking 4")) return "Non-Checking 4";
     return "Unknown";
 };
 
@@ -35,7 +33,7 @@ export const getTierStats = (leagueDivision: string) => {
     const tierName = getTierName(leagueDivision);
     const tier = Object.values(divisionTierStats).find(t => t.name === tierName);
     // Fallback to the lowest tier if no match is found, to prevent errors.
-    return tier || divisionTierStats[6];
+    return tier || divisionTierStats[5];
 };
 
 // --- Promotion & Relegation System ---
@@ -47,7 +45,6 @@ export const tierRanks: { [key: string]: number } = {
     "Non-Checking 1": 3,
     "Non-Checking 2": 4,
     "Non-Checking 3": 5,
-    "Non-Checking 4": 6,
 };
 
 /**
@@ -75,11 +72,8 @@ const leagueHierarchy: { [key: string]: { promotionTarget: string | null, relega
     "Non Checking 2 - North": { promotionTarget: "Non Checking 1 - North", relegationTarget: "Non Checking 3 - North" },
     "Non Checking 2 - South": { promotionTarget: "Non Checking 1 - South", relegationTarget: "Non Checking 3 - South" },
     // Non Checking 3
-    "Non Checking 3 - North": { promotionTarget: "Non Checking 2 - North", relegationTarget: "Non Checking 4 - North" },
-    "Non Checking 3 - South": { promotionTarget: "Non Checking 2 - South", relegationTarget: "Non Checking 4 - South" },
-    // Non Checking 4
-    "Non Checking 4 - North": { promotionTarget: "Non Checking 3 - North", relegationTarget: null },
-    "Non Checking 4 - South": { promotionTarget: "Non Checking 3 - South", relegationTarget: null },
+    "Non Checking 3 - North": { promotionTarget: "Non Checking 2 - North", relegationTarget: null },
+    "Non Checking 3 - South": { promotionTarget: "Non Checking 2 - South", relegationTarget: null },
 };
 
 /**
