@@ -15,11 +15,12 @@ const TeamHistoryPage = () => {
 
   const filterOptions = useMemo(() => {
     const options = [{ value: 'organization', label: 'Organization' }];
-    if (userTeam) {
-      options.push({ value: userTeam.name, label: userTeam.name });
-    }
+    // Add all managed teams to the filter options
+    managedTeams.forEach(team => {
+      options.push({ value: team.name, label: team.name });
+    });
     return options;
-  }, [userTeam]);
+  }, [managedTeams]); // Dependency changed to managedTeams
 
   const allPlayersInOrg = useMemo(() => {
     const currentPlayers = managedTeams.flatMap(t => t.roster);
@@ -80,7 +81,12 @@ const TeamHistoryPage = () => {
     return Array.from(seasonsSet);
   }, [allPlayersInOrg]);
 
-  const managedTeamNames = useMemo(() => managedTeams.map(t => t.name), [managedTeams]);
+  // managedTeamNames is now derived from filterScope for SeasonalStatsTable
+  const seasonalStatsTableManagedTeamNames = useMemo(() => {
+    return filterScope === 'organization'
+      ? managedTeams.map(t => t.name)
+      : [filterScope];
+  }, [filterScope, managedTeams]);
 
   if (!userTeam) {
     return <div>Select a team to see its history.</div>;
@@ -122,7 +128,7 @@ const TeamHistoryPage = () => {
           <CareerStatsTable players={playersToDisplay} />
         </TabsContent>
         <TabsContent value="seasonal-stats" className="mt-4">
-          <SeasonalStatsTable players={allPlayersInOrg} seasons={allPlayerSeasons} managedTeamNames={managedTeamNames} />
+          <SeasonalStatsTable players={playersToDisplay} seasons={allPlayerSeasons} managedTeamNames={seasonalStatsTableManagedTeamNames} />
         </TabsContent>
       </Tabs>
     </div>
