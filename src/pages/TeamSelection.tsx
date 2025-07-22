@@ -1,5 +1,5 @@
 import { useTeam } from '@/context/TeamContext';
-import { getTeamOrganizations } from '@/data/teams';
+import { getTeamOrganizations } from '@/lib/leagueUtils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -7,8 +7,8 @@ import { format } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 
 const TeamSelection = () => {
-    const { selectTeam, selectOrganization, savedGames, loadGame, deleteGame } = useTeam();
-    const organizations = getTeamOrganizations();
+    const { selectTeam, selectOrganization, savedGames, loadGame, deleteGame, teams } = useTeam();
+    const organizations = getTeamOrganizations(teams);
 
     const handleSelectTeam = (teamName: string) => {
         selectTeam(teamName);

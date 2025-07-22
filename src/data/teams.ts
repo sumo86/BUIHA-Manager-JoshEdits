@@ -2,7 +2,7 @@ import { Team, Lineup, TacticsSelection, Player } from "@/types";
 import { generateRoster, getGamesPlayedForDivision } from "@/lib/playerGenerator";
 import { initialFacilityProjects } from './facilities';
 import { teamLogos } from './logos';
-import { getTierName as getNationalsDivision } from '@/lib/leagueUtils';
+import { getTierName as getNationalsDivision, getOrganizationName } from '@/lib/leagueUtils';
 import { populateLineup } from '@/lib/lineupUtils';
 
 const teamData = [
@@ -83,19 +83,6 @@ const defaultTactics: TacticsSelection = {
     "Defensive Zone Coverage": "Strict Zonal",
 };
 
-const orgMap: { [key: string]: string } = {
-    'Oxford University Blues': 'Oxford University',
-    'Oxford Vikings': 'Oxford University',
-    'Cambridge Blues': 'Cambridge University',
-    'Cambridge Huskies': 'Cambridge University',
-};
-
-export const getOrganizationName = (teamName: string): string => {
-    const mappedOrg = Object.keys(orgMap).find(key => teamName.startsWith(key));
-    if (mappedOrg) return orgMap[mappedOrg];
-    return teamName.replace(/ (B|C|D|E)$/, '').trim();
-};
-
 const organizations: { [key: string]: { name: string, teamsData: any[] } } = {};
 teamData.forEach(team => {
     const orgName = getOrganizationName(team.name);
@@ -130,6 +117,7 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
             lineup: lineup,
             tactics: defaultTactics,
             wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0,
+            points: 0,
             logo: teamLogos[org.name],
             financials: {
                 totalBudget: teamBudget,
@@ -141,21 +129,3 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
         };
     });
 });
-
-export const getTeamOrganizations = () => {
-    const organizations: { [key: string]: { name: string, teams: Team[] } } = {};
-
-    teams.forEach(team => {
-        const orgName = getOrganizationName(team.name);
-        if (!organizations[orgName]) {
-            organizations[orgName] = { name: orgName, teams: [] };
-        }
-        organizations[orgName].teams.push(team);
-    });
-
-    Object.values(organizations).forEach(org => {
-        org.teams.sort((a, b) => a.name.localeCompare(b.name));
-    });
-
-    return Object.values(organizations).sort((a, b) => a.name.localeCompare(b.name));
-};

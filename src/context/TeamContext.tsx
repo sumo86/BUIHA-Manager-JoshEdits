@@ -1,6 +1,6 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament } from '@/types';
-import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
+import { teams as initialTeams } from '@/data/teams';
 import { generateRecruits, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator'; 
 import { toast } from 'sonner';
 import { calculateCurrentAbility } from '@/lib/playerGenerator';
@@ -15,6 +15,7 @@ import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { processNationalsRound } from '@/lib/nationalsSimulator';
 import { getAggregatedCurrentStats } from '@/lib/statsUtils';
+import { getTeamOrganizations, getOrganizationName, getAdjacentDivision, divisionHierarchy, getTierName as getNationalsDivision, getTierName } from '@/lib/leagueUtils';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -198,7 +199,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const managedTeams = useMemo(() => {
         if (!managedOrganization) return [];
-        const organizations = getTeamOrganizations();
+        const organizations = getTeamOrganizations(teams);
         const org = organizations.find(o => o.name === managedOrganization);
         if (!org) return [];
         const orgTeamNames = org.teams.map(t => t.name);
@@ -270,7 +271,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const selectOrganization = (orgName: string | null) => {
         if (orgName) {
-            const organizations = getTeamOrganizations();
+            const organizations = getTeamOrganizations(teams);
             const org = organizations.find(o => o.name === orgName);
             if (org && org.teams.length > 0) {
                 const mainTeam = org.teams[0];
@@ -446,7 +447,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         });
 
         // AI Organization Roster Rebalancing
-        const allOrgs = getTeamOrganizations();
+        const allOrgs = getTeamOrganizations(tempTeams);
         const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
 
         aiOrgs.forEach(org => {
@@ -776,7 +777,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             }
                             return player;
                         });
-                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
+                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
                     });
 
                     const finalStandings: TeamSeasonHistory[] = tempTeams.map(team => ({
@@ -795,6 +796,99 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         ...prev,
                         [seasonThatEnded]: finalStandings,
                     }));
+
+                    // --- PROMOTION/RELEGATION LOGIC ---
+                    const leagueDivisionsForPAndR = [...new Set(tempTeams.map(t => t.leagueDivision))];
+                    const promotionRelegationChanges: { teamName: string, newDivision: string, type: 'promotion' | 'relegation' }[] = [];
+
+                    leagueDivisionsForPAndR.forEach(division => {
+                        const teamsInDivision = tempTeams
+                            .filter(t => t.leagueDivision === division)
+                            .sort((a, b) => {
+                                if (b.points !== a.points) return b.points - a.points;
+                                const goalDiffA = a.goalsFor - a.goalsAgainst;
+                                const goalDiffB = b.goalsFor - b.goalsAgainst;
+                                if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+                                return b.goalsFor - a.goalsFor;
+                            });
+
+                        if (teamsInDivision.length > 1) {
+                            const winner = teamsInDivision[0];
+                            const divisionUp = getAdjacentDivision(division, 'up');
+                            if (divisionUp) {
+                                promotionRelegationChanges.push({ teamName: winner.name, newDivision: divisionUp, type: 'promotion' });
+                            }
+
+                            const loser = teamsInDivision[teamsInDivision.length - 1];
+                            const divisionDown = getAdjacentDivision(division, 'down');
+                            if (divisionDown) {
+                                promotionRelegationChanges.push({ teamName: loser.name, newDivision: divisionDown, type: 'relegation' });
+                            }
+                        }
+                    });
+
+                    const proposedDivisions = new Map<string, string>();
+                    promotionRelegationChanges.forEach(change => {
+                        proposedDivisions.set(change.teamName, change.newDivision);
+                    });
+
+                    const validChanges = promotionRelegationChanges.filter(change => {
+                        const teamToChange = tempTeams.find(t => t.name === change.teamName);
+                        if (!teamToChange) return false;
+
+                        const orgName = getOrganizationName(teamToChange.name);
+                        const organizations = getTeamOrganizations(tempTeams);
+                        const org = organizations.find(o => o.name === orgName);
+                        if (!org || org.teams.length <= 1) return true;
+
+                        const orgTeams = org.teams.sort((a, b) => a.name.localeCompare(b.name));
+                        const teamIndex = orgTeams.findIndex(t => t.name === teamToChange.name);
+
+                        if (change.type === 'promotion') {
+                            if (teamIndex > 0) {
+                                const teamAbove = orgTeams[teamIndex - 1];
+                                const teamAboveDivision = proposedDivisions.get(teamAbove.name) || tempTeams.find(t => t.name === teamAbove.name)!.leagueDivision;
+                                const teamAboveTierIndex = divisionHierarchy.indexOf(getTierName(teamAboveDivision));
+                                const proposedTierIndex = divisionHierarchy.indexOf(getTierName(change.newDivision));
+
+                                if (proposedTierIndex < teamAboveTierIndex) {
+                                    if (managedTeamNames.includes(teamToChange.name)) {
+                                        toast.warning("Promotion Blocked", { description: `${teamToChange.name} cannot be promoted into a higher division than ${teamAbove.name}.` });
+                                    }
+                                    return false;
+                                }
+                            }
+                        } else { // Relegation
+                            if (teamIndex < orgTeams.length - 1) {
+                                const teamBelow = orgTeams[teamIndex + 1];
+                                const teamBelowDivision = proposedDivisions.get(teamBelow.name) || tempTeams.find(t => t.name === teamBelow.name)!.leagueDivision;
+                                const teamBelowTierIndex = divisionHierarchy.indexOf(getTierName(teamBelowDivision));
+                                const proposedTierIndex = divisionHierarchy.indexOf(getTierName(change.newDivision));
+
+                                if (proposedTierIndex > teamBelowTierIndex) {
+                                     if (managedTeamNames.includes(teamToChange.name)) {
+                                        toast.warning("Relegation Blocked", { description: `${teamToChange.name} cannot be relegated into a lower division than ${teamBelow.name}.` });
+                                    }
+                                    return false;
+                                }
+                            }
+                        }
+                        return true;
+                    });
+
+                    validChanges.forEach(change => {
+                        const teamToUpdate = tempTeams.find(t => t.name === change.teamName);
+                        if (teamToUpdate) {
+                            const oldDivision = teamToUpdate.leagueDivision;
+                            teamToUpdate.leagueDivision = change.newDivision;
+                            teamToUpdate.nationalsDivision = getNationalsDivision(change.newDivision);
+                            
+                            if (managedTeamNames.includes(teamToUpdate.name)) {
+                                toast.success(change.type === 'promotion' ? "Promoted!" : "Relegated!", { description: `${teamToUpdate.name} moved from ${oldDivision} to ${change.newDivision}.` });
+                            }
+                        }
+                    });
+                    // --- END P/R LOGIC ---
 
                     // New season budget calculations
                     tempTeams = tempTeams.map(team => {
@@ -941,11 +1035,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     // AI teams sign players from the transfer pool
                     let availableForSigning = [...newTransferPoolPlayers];
                     
-                    const allOrgs = getTeamOrganizations();
-                    const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
+                    const allOrgsListForSigning = getTeamOrganizations(tempTeams);
+                    const aiOrgsForSigning = allOrgsListForSigning.filter(org => org.name !== managedOrganization);
 
-                    if (aiOrgs.length > 0) {
-                        const shuffledAiOrgs = shuffleArray(aiOrgs);
+                    if (aiOrgsForSigning.length > 0) {
+                        const shuffledAiOrgs = shuffleArray(aiOrgsForSigning);
                         const playersForAISigning: Player[] = [];
                         
                         // Determine which players AI will sign (80%)
@@ -981,8 +1075,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }
 
                     // AI Recruitment Logic (for new recruits, not transfers)
-                    const allOrgsList = getTeamOrganizations();
-                    const aiOrgsList = allOrgsList.filter(org => org.name !== managedOrganization);
+                    const allOrgsListForRecruitment = getTeamOrganizations(tempTeams);
+                    const aiOrgsList = allOrgsListForRecruitment.filter(org => org.name !== managedOrganization);
                     const allTeamNames = tempTeams.map(t => t.name);
                     let recruitmentOccurred = false;
 
@@ -1037,7 +1131,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             }
                             return player;
                         });
-                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
+                        return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
                     });
                 }
                 month = months[nextMonthIndex];

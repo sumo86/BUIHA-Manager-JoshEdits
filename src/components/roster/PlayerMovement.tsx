@@ -1,5 +1,5 @@
 import { useTeam } from "@/context/TeamContext";
-import { getOrganizationName } from "@/data/teams";
+import { getOrganizationName } from "@/lib/leagueUtils";
 import { Team, Player } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

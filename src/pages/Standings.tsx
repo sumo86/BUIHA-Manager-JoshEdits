@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PlayerStatsTable } from '@/components/standings/PlayerStatsTable';
 import { Player } from '@/types';
+import { cn } from '@/lib/utils';
 
 const StandingsPage = () => {
   const { teams } = useTeam();
@@ -92,8 +93,16 @@ const StandingsPage = () => {
             const points = team.wins * 3 + team.draws;
             const goalDifference = team.goalsFor - team.goalsAgainst;
             const gamesPlayed = team.wins + team.losses + team.draws;
+            const isFirst = index === 0;
+            const isLast = index === displayedTeams.length - 1 && displayedTeams.length > 1;
             return (
-              <TableRow key={team.id}>
+              <TableRow 
+                key={team.id}
+                className={cn({
+                    "bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-900": isFirst,
+                    "bg-red-100 dark:bg-red-900/50 hover:bg-red-200 dark:hover:bg-red-900": isLast,
+                })}
+              >
                 <TableCell>{index + 1}</TableCell>
                 <TableCell className="font-medium">{team.name}</TableCell>
                 <TableCell className="text-center">{gamesPlayed}</TableCell>
