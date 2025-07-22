@@ -9,6 +9,46 @@ export const divisionTierStats: { [key: number]: { name: string, skater: number,
     5: { name: "Non-Checking 3", skater: 240, goalie: 110, step: { skater: 20, goalie: 10 } },
 };
 
+const TIER_HIERARCHY = [
+    "Checking 1",
+    "Checking 2",
+    "Non-Checking 1",
+    "Non-Checking 2",
+    "Non-Checking 3",
+];
+
+export const getPromotionDivision = (currentDivision: string): string | null => {
+    const baseTier = getTierName(currentDivision);
+    const currentIndex = TIER_HIERARCHY.indexOf(baseTier);
+
+    if (currentIndex === -1 || currentIndex === 0) {
+        // Already at the top or unknown tier
+        return null;
+    }
+
+    const newTier = TIER_HIERARCHY[currentIndex - 1];
+    // Extract region by removing both possible formats of the tier name
+    const region = currentDivision.replace(baseTier.replace('-', ' '), '').replace(baseTier, '').trim();
+    
+    return `${newTier} ${region}`.trim();
+};
+
+export const getRelegationDivision = (currentDivision: string): string | null => {
+    const baseTier = getTierName(currentDivision);
+    const currentIndex = TIER_HIERARCHY.indexOf(baseTier);
+
+    if (currentIndex === -1 || currentIndex === TIER_HIERARCHY.length - 1) {
+        // Already at the bottom or unknown tier
+        return null;
+    }
+
+    const newTier = TIER_HIERARCHY[currentIndex + 1];
+    // Extract region by removing both possible formats of the tier name
+    const region = currentDivision.replace(baseTier.replace('-', ' '), '').replace(baseTier, '').trim();
+
+    return `${newTier} ${region}`.trim();
+};
+
 /**
  * Gets the base tier name (e.g., "Checking 1") from a full league division name (e.g., "Checking 1 - North").
  * This is the centralized function to ensure consistent tier identification.
@@ -18,9 +58,9 @@ export const divisionTierStats: { [key: number]: { name: string, skater: number,
 export const getTierName = (leagueDivision: string): string => {
     if (leagueDivision.startsWith("Checking 1")) return "Checking 1";
     if (leagueDivision.startsWith("Checking 2")) return "Checking 2";
-    if (leagueDivision.startsWith("Non Checking 1")) return "Non-Checking 1";
-    if (leagueDivision.startsWith("Non Checking 2")) return "Non-Checking 2";
-    if (leagueDivision.startsWith("Non Checking 3")) return "Non-Checking 3";
+    if (leagueDivision.startsWith("Non Checking 1") || leagueDivision.startsWith("Non-Checking 1")) return "Non-Checking 1";
+    if (leagueDivision.startsWith("Non Checking 2") || leagueDivision.startsWith("Non-Checking 2")) return "Non-Checking 2";
+    if (leagueDivision.startsWith("Non Checking 3") || leagueDivision.startsWith("Non-Checking 3")) return "Non-Checking 3";
     return "Unknown";
 };
 
