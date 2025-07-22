@@ -797,129 +797,122 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         [seasonThatEnded]: finalStandings,
                     }));
 
-                    // --- PROMOTION/RELEGATION LOGIC ---
-                    const leagueDivisionsForPAndR = [...new Set(tempTeams.map(t => t.leagueDivision))];
-                    const promotionRelegationChanges: { teamName: string, newDivision: string, type: 'promotion' | 'relegation' }[] = [];
-
+                    // --- PROMOTION/RELEGATION LOGIC (SWAP-BASED) ---
                     console.log(`--- Promotion/Relegation for ${currentYear} Season ---`);
-
-                    leagueDivisionsForPAndR.forEach(division => {
-                        const teamsInDivision = tempTeams
-                            .filter(t => t.leagueDivision === division)
-                            .sort((a, b) => {
-                                if (b.points !== a.points) return b.points - a.points;
-                                const goalDiffA = a.goalsFor - a.goalsAgainst;
-                                const goalDiffB = b.goalsFor - b.goalsAgainst;
-                                if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
-                                return b.goalsFor - a.goalsFor;
-                            });
-
-                        console.log(`Division: ${division}`);
-                        teamsInDivision.forEach((t, i) => {
-                            console.log(`  ${i + 1}. ${t.name} - Pts: ${t.points}, GD: ${t.goalsFor - t.goalsAgainst}, GF: ${t.goalsFor}`);
-                        });
-
-                        if (teamsInDivision.length > 1) {
-                            const winner = teamsInDivision[0];
-                            const loser = teamsInDivision[teamsInDivision.length - 1];
-
-                            console.log(`  Winner: ${winner.name}`);
-                            console.log(`  Loser: ${loser.name}`);
-
-                            const divisionUp = getAdjacentDivision(division, 'up');
-                            if (divisionUp) {
-                                promotionRelegationChanges.push({ teamName: winner.name, newDivision: divisionUp, type: 'promotion' });
-                                console.log(`  Proposed Promotion: ${winner.name} to ${divisionUp}`);
-                            } else {
-                                console.log(`  No Promotion for ${winner.name} (already in highest tier or invalid division).`);
-                            }
-
-                            const divisionDown = getAdjacentDivision(division, 'down');
-                            if (divisionDown) {
-                                promotionRelegationChanges.push({ teamName: loser.name, newDivision: divisionDown, type: 'relegation' });
-                                console.log(`  Proposed Relegation: ${loser.name} to ${divisionDown}`);
-                            } else {
-                                console.log(`  No Relegation for ${loser.name} (already in lowest tier or invalid division).`);
-                            }
-                        } else {
-                            console.log(`  Not enough teams in division for P/R.`);
-                        }
-                    });
-
                     const proposedDivisions = new Map<string, string>();
-                    promotionRelegationChanges.forEach(change => {
-                        proposedDivisions.set(change.teamName, change.newDivision);
-                    });
+                    const allRegions = [...new Set(tempTeams.map(t => t.leagueDivision.split(' - ')[1]).filter(Boolean))];
 
-                    const validChanges = promotionRelegationChanges.filter(change => {
-                        const teamToChange = tempTeams.find(t => t.name === change.teamName);
-                        if (!teamToChange) {
-                            console.log(`  Change for ${change.teamName} invalid: team not found.`);
-                            return false;
-                        }
+                    allRegions.forEach(region => {
+                        console.log(`Processing region: ${region}`);
+                        for (let i = 0; i < divisionHierarchy.length - 1; i++) {
+                            const upperDivisionBase = divisionHierarchy[i];
+                            const lowerDivisionBase = divisionHierarchy[i + 1];
+                            const upperDivision = `${upperDivisionBase} - ${region}`;
+                            const lowerDivision = `${lowerDivisionBase} - ${region}`;
 
-                        const orgName = getOrganizationName(teamToChange.name);
-                        const organizations = getTeamOrganizations(tempTeams);
-                        const org = organizations.find(o => o.name === orgName);
-                        
-                        if (!org || org.teams.length <= 1) {
-                            console.log(`  Change for ${teamToChange.name} (${change.type}) is valid (single-team org or org not found).`);
-                            return true; // Single-team orgs or orgs not found are always valid
-                        }
+                            console.log(`  Checking swap between ${upperDivision} and ${lowerDivision}`);
 
-                        const orgTeams = org.teams.sort((a, b) => a.name.localeCompare(b.name));
-                        const teamIndex = orgTeams.findIndex(t => t.name === teamToChange.name);
+                            const teamsInUpper = tempTeams
+                                .filter(t => t.leagueDivision === upperDivision)
+                                .sort((a, b) => {
+                                    if (b.points !== a.points) return b.points - a.points;
+                                    const goalDiffA = a.goalsFor - a.goalsAgainst;
+                                    const goalDiffB = b.goalsFor - b.goalsAgainst;
+                                    if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+                                    return b.goalsFor - a.goalsFor;
+                                });
 
-                        let isBlocked = false;
-                        let blockReason = "";
+                            const teamsInLower = tempTeams
+                                .filter(t => t.leagueDivision === lowerDivision)
+                                .sort((a, b) => {
+                                    if (b.points !== a.points) return b.points - a.points;
+                                    const goalDiffA = a.goalsFor - a.goalsAgainst;
+                                    const goalDiffB = b.goalsFor - b.goalsAgainst;
+                                    if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+                                    return b.goalsFor - a.goalsFor;
+                                });
 
-                        if (change.type === 'promotion') {
-                            if (teamIndex > 0) {
-                                const teamAbove = orgTeams[teamIndex - 1];
-                                const teamAboveDivision = proposedDivisions.get(teamAbove.name) || tempTeams.find(t => t.name === teamAbove.name)!.leagueDivision;
-                                const teamAboveTierIndex = divisionHierarchy.indexOf(getTierName(teamAboveDivision));
-                                const proposedTierIndex = divisionHierarchy.indexOf(getTierName(change.newDivision));
+                            if (teamsInUpper.length === 0 || teamsInLower.length === 0) {
+                                console.log(`  Skipping swap: one or both divisions are empty.`);
+                                continue;
+                            }
 
-                                if (proposedTierIndex < teamAboveTierIndex) {
-                                    isBlocked = true;
-                                    blockReason = `${teamToChange.name} cannot be promoted into a higher division than ${teamAbove.name} (${teamAboveDivision}).`;
+                            const teamToRelegate = teamsInUpper[teamsInUpper.length - 1];
+                            const teamToPromote = teamsInLower[0];
+
+                            console.log(`    Team to Relegate: ${teamToRelegate.name} from ${upperDivision}`);
+                            console.log(`    Team to Promote: ${teamToPromote.name} from ${lowerDivision}`);
+
+                            // --- VALIDATION LOGIC ---
+                            let isPromotionValid = true;
+                            let promotionBlockReason = "";
+                            const promoterOrgName = getOrganizationName(teamToPromote.name);
+                            const promoterOrg = getTeamOrganizations(tempTeams).find(o => o.name === promoterOrgName);
+                            if (promoterOrg && promoterOrg.teams.length > 1) {
+                                const orgTeams = promoterOrg.teams.sort((a, b) => a.name.localeCompare(b.name));
+                                const promoterIndex = orgTeams.findIndex(t => t.name === teamToPromote.name);
+                                if (promoterIndex > 0) {
+                                    const teamAbove = orgTeams[promoterIndex - 1];
+                                    const teamAboveCurrentDivision = proposedDivisions.get(teamAbove.name) || teamAbove.leagueDivision;
+                                    const teamAboveTierIndex = divisionHierarchy.indexOf(getTierName(teamAboveCurrentDivision));
+                                    const proposedTierIndex = divisionHierarchy.indexOf(getTierName(upperDivision));
+                                    if (proposedTierIndex < teamAboveTierIndex) {
+                                        isPromotionValid = false;
+                                        promotionBlockReason = `${teamToPromote.name} cannot be promoted into a higher division than ${teamAbove.name}.`;
+                                    }
                                 }
                             }
-                        } else { // Relegation
-                            if (teamIndex < orgTeams.length - 1) {
-                                const teamBelow = orgTeams[teamIndex + 1];
-                                const teamBelowDivision = proposedDivisions.get(teamBelow.name) || tempTeams.find(t => t.name === teamBelow.name)!.leagueDivision;
-                                const teamBelowTierIndex = divisionHierarchy.indexOf(getTierName(teamBelowDivision));
-                                const proposedTierIndex = divisionHierarchy.indexOf(getTierName(change.newDivision));
 
-                                if (proposedTierIndex > teamBelowTierIndex) {
-                                    isBlocked = true;
-                                    blockReason = `${teamToChange.name} cannot be relegated into a lower division than ${teamBelow.name} (${teamBelowDivision}).`;
+                            let isRelegationValid = true;
+                            let relegationBlockReason = "";
+                            const relegateeOrgName = getOrganizationName(teamToRelegate.name);
+                            const relegateeOrg = getTeamOrganizations(tempTeams).find(o => o.name === relegateeOrgName);
+                            if (relegateeOrg && relegateeOrg.teams.length > 1) {
+                                const orgTeams = relegateeOrg.teams.sort((a, b) => a.name.localeCompare(b.name));
+                                const relegateeIndex = orgTeams.findIndex(t => t.name === teamToRelegate.name);
+                                if (relegateeIndex < orgTeams.length - 1) {
+                                    const teamBelow = orgTeams[relegateeIndex + 1];
+                                    const teamBelowCurrentDivision = proposedDivisions.get(teamBelow.name) || teamBelow.leagueDivision;
+                                    const teamBelowTierIndex = divisionHierarchy.indexOf(getTierName(teamBelowCurrentDivision));
+                                    const proposedTierIndex = divisionHierarchy.indexOf(getTierName(lowerDivision));
+                                    if (proposedTierIndex > teamBelowTierIndex) {
+                                        isRelegationValid = false;
+                                        relegationBlockReason = `${teamToRelegate.name} cannot be relegated into a lower division than ${teamBelow.name}.`;
+                                    }
+                                }
+                            }
+
+                            if (isPromotionValid && isRelegationValid) {
+                                console.log(`    SWAP VALID: ${teamToPromote.name} <-> ${teamToRelegate.name}`);
+                                proposedDivisions.set(teamToPromote.name, upperDivision);
+                                proposedDivisions.set(teamToRelegate.name, lowerDivision);
+                            } else {
+                                console.log(`    SWAP BLOCKED:`);
+                                if (!isPromotionValid) console.log(`      - Promotion Blocked: ${promotionBlockReason}`);
+                                if (!isRelegationValid) console.log(`      - Relegation Blocked: ${relegationBlockReason}`);
+                                if (managedTeamNames.includes(teamToPromote.name) && !isPromotionValid) {
+                                    toast.warning("Promotion Blocked", { description: promotionBlockReason });
+                                }
+                                if (managedTeamNames.includes(teamToRelegate.name) && !isRelegationValid) {
+                                    toast.warning("Relegation Blocked", { description: relegationBlockReason });
                                 }
                             }
                         }
-
-                        if (isBlocked) {
-                            console.log(`  Change for ${teamToChange.name} (${change.type}) BLOCKED: ${blockReason}`);
-                            if (managedTeamNames.includes(teamToChange.name)) {
-                                toast.warning(change.type === 'promotion' ? "Promotion Blocked" : "Relegation Blocked", { description: blockReason });
-                            }
-                            return false;
-                        }
-                        console.log(`  Change for ${teamToChange.name} (${change.type}) is valid.`);
-                        return true;
                     });
 
-                    validChanges.forEach(change => {
-                        const teamToUpdate = tempTeams.find(t => t.name === change.teamName);
+                    // Apply all valid swaps
+                    proposedDivisions.forEach((newDivision, teamName) => {
+                        const teamToUpdate = tempTeams.find(t => t.name === teamName);
                         if (teamToUpdate) {
                             const oldDivision = teamToUpdate.leagueDivision;
-                            teamToUpdate.leagueDivision = change.newDivision;
-                            teamToUpdate.nationalsDivision = getNationalsDivision(change.newDivision);
+                            const type = divisionHierarchy.indexOf(getTierName(newDivision)) < divisionHierarchy.indexOf(getTierName(oldDivision)) ? 'promotion' : 'relegation';
                             
-                            console.log(`  APPLYING CHANGE: ${teamToUpdate.name} moved from ${oldDivision} to ${change.newDivision}.`);
+                            teamToUpdate.leagueDivision = newDivision;
+                            teamToUpdate.nationalsDivision = getNationalsDivision(newDivision);
+                            
+                            console.log(`  APPLYING CHANGE: ${teamToUpdate.name} moved from ${oldDivision} to ${newDivision}.`);
                             if (managedTeamNames.includes(teamToUpdate.name)) {
-                                toast.success(change.type === 'promotion' ? "Promoted!" : "Relegated!", { description: `${teamToUpdate.name} moved from ${oldDivision} to ${change.newDivision}.` });
+                                toast.success(type === 'promotion' ? "Promoted!" : "Relegated!", { description: `${teamToUpdate.name} moved from ${oldDivision} to ${newDivision}.` });
                             }
                         }
                     });
