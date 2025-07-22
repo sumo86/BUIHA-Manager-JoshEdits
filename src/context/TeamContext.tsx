@@ -664,7 +664,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                     (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                     playerChanged = true;
-                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: -improvement, newRating: newAttrValue, date: currentDate });
+                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
                                 }
                             }
                         }
@@ -1056,7 +1056,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const signingOrg = shuffledAiOrgs[orgAssignIndex % shuffledAiOrgs.length];
                             
                             // Assign to the lowest-tier team in the org. Teams are sorted A, B, C... so the last one is the lowest tier.
-                            const lowestTierTeamInOrg = signingOrg.teams.sort((a, b) => getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name))[0];
+                            const lowestTierTeamInOrg = orgTeams.sort((a, b) => getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name))[0];
                             const teamIndexInTemp = tempTeams.findIndex(t => t.name === lowestTierTeamInOrg.name);
                             
                             if (teamIndexInTemp !== -1) {
@@ -1764,16 +1764,20 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const userTeamRegion = userTeam.leagueDivision.includes('North') ? 'North' : 'South';
         const newLeagueDivision = `Non Checking 3 - ${userTeamRegion}`; 
 
-        const roster = generateRoster(newLeagueDivision, newTeamName);
-        const lineup = populateLineup(roster);
+        // New squads start with an empty roster
+        const roster: Player[] = [];
+        const lineup = populateLineup(roster); // populateLineup will return an empty lineup for an empty roster
+
         const equipmentCost = Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500;
         const totalGames = getGamesPlayedForDivision(newLeagueDivision);
         const numberOfHomeGames = Math.floor(totalGames / 2);
         const numberOfAwayGames = Math.ceil(totalGames / 2);
         const iceTimeCost = numberOfHomeGames * 350;
         const travelCost = numberOfAwayGames * 500;
-        const initialFixedCosts = iceTimeCost + travelCost + equipmentCost;
-        const teamBudget = 7500;
+        
+        // Initial fixed costs for the first season, excluding equipment (covered by the £1000 formation cost)
+        const initialFixedCosts = iceTimeCost + travelCost; 
+        const teamBudget = 7500; // Base budget for a new squad
 
         const newTeam: Team = {
             id: crypto.randomUUID(),
@@ -1788,9 +1792,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             logo: teamLogos[orgName],
             financials: {
                 totalBudget: teamBudget,
-                discretionaryBudget: teamBudget - initialFixedCosts,
+                discretionaryBudget: teamBudget - initialFixedCosts, // Deduct only ice time and travel for first season
                 iceTimeCostPerGame: 350,
-                equipmentCost: equipmentCost,
+                equipmentCost: equipmentCost, // Equipment cost will apply from next season
             },
             facilities: initialFacilityProjects.map(p => ({ ...p })),
         };
