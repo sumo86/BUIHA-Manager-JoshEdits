@@ -1,7 +1,7 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName, getTeamOrganizationalTier } from '@/data/teams';
-import { generateRecruits, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator'; 
+import { generateRecruits, calculateStarRating, getGamesPlayedForDivision, generateRoster } from '@/lib/playerGenerator'; 
 import { toast } from 'sonner';
 import { calculateCurrentAbility } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
@@ -16,6 +16,9 @@ import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { processNationalsRound } from '@/lib/nationalsSimulator';
 import { getAggregatedCurrentStats } from '@/lib/statsUtils';
 import { getPromotionTarget, getRelegationTarget, getDivisionRank, getTierName } from '@/lib/leagueUtils';
+import { populateLineup } from '@/lib/lineupUtils';
+import { initialFacilityProjects } from '@/data/facilities';
+import { teamLogos } from '@/data/logos';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -86,6 +89,7 @@ interface TeamContextType {
     simulateSingleNationalsGame: (division: string, gameId: string) => void;
     simulateAllNationalsTournaments: () => void;
     signPlayerFromTransferPool: (playerId: string, toTeamName: string) => void;
+    formNewSquad: () => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -1719,6 +1723,100 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         toast.success(`${playerToSign.name} has been signed to ${toTeamName}.`);
     };
 
+    const formNewSquad = () => {
+        if (!userTeam || !managedTeams) return;
+
+        const cost = 1000;
+        const isEligible = isManagingOrg || managedTeams.length === 1;
+
+        if (currentDate.month !== 'July') {
+            toast.error("Wrong Time of Year", { description: "You can only form new squads in July." });
+            return;
+        }
+
+        if (!isEligible) {
+            toast.error("Ineligible Action", { description: "You must manage the entire organization or a single-squad team to form a new squad." });
+            return;
+        }
+
+        if (userTeam.financials.discretionaryBudget < cost) {
+            toast.error("Insufficient Funds", { description: `You need £${cost.toLocaleString()} to form a new squad.` });
+            return;
+        }
+
+        const orgName = getOrganizationName(userTeam.name);
+        const orgTeams = teams.filter(t => getOrganizationName(t.name) === orgName);
+        const existingTiers = orgTeams.map(t => getTeamOrganizationalTier(t.name));
+        const nextTier = Math.max(...existingTiers) + 1;
+
+        const suffixMap: { [key: number]: string } = { 1: 'B', 2: 'C', 3: 'D', 4: 'E' };
+        const newSuffix = suffixMap[nextTier];
+
+        if (!newSuffix) {
+            toast.error("Maximum Teams Reached", { description: "You cannot create more teams for this organization." });
+            return;
+        }
+
+        const baseName = orgTeams.find(t => getTeamOrganizationalTier(t.name) === 0)?.name || orgName;
+        const newTeamName = `${baseName} ${newSuffix}`;
+
+        const newLeagueDivision = "Non Checking 3 - South"; 
+
+        const roster = generateRoster(newLeagueDivision, newTeamName);
+        const lineup = populateLineup(roster);
+        const equipmentCost = Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500;
+        const totalGames = getGamesPlayedForDivision(newLeagueDivision);
+        const numberOfHomeGames = Math.floor(totalGames / 2);
+        const numberOfAwayGames = Math.ceil(totalGames / 2);
+        const iceTimeCost = numberOfHomeGames * 350;
+        const travelCost = numberOfAwayGames * 500;
+        const initialFixedCosts = iceTimeCost + travelCost + equipmentCost;
+        const teamBudget = 7500;
+
+        const newTeam: Team = {
+            id: crypto.randomUUID(),
+            name: newTeamName,
+            leagueDivision: newLeagueDivision,
+            nationalsDivision: getTierName(newLeagueDivision),
+            roster,
+            lineup,
+            tactics: userTeam.tactics,
+            wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0,
+            points: 0,
+            logo: teamLogos[orgName],
+            financials: {
+                totalBudget: teamBudget,
+                discretionaryBudget: teamBudget - initialFixedCosts,
+                iceTimeCostPerGame: 350,
+                equipmentCost: equipmentCost,
+            },
+            facilities: initialFacilityProjects.map(p => ({ ...p })),
+        };
+
+        setTeams(prevTeams => {
+            const userTeamIndex = prevTeams.findIndex(t => t.name === userTeam.name);
+            if (userTeamIndex === -1) return prevTeams;
+
+            const updatedUserTeam = {
+                ...prevTeams[userTeamIndex],
+                financials: {
+                    ...prevTeams[userTeamIndex].financials,
+                    discretionaryBudget: prevTeams[userTeamIndex].financials.discretionaryBudget - cost,
+                }
+            };
+
+            const newTeamsList = [...prevTeams];
+            newTeamsList[userTeamIndex] = updatedUserTeam;
+            newTeamsList.push(newTeam);
+            
+            return newTeamsList;
+        });
+
+        toast.success("New Squad Formed!", {
+            description: `${newTeamName} has been formed and will compete in the ${newLeagueDivision} next season.`
+        });
+    };
+
     return (
         <TeamContext.Provider value={{
             teams, updateTeam, userTeam, organizationFinancials, organizationFacilities, selectTeam,
@@ -1731,7 +1829,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             playNationalsRound, autoSimulateUserNationalsGame, teamAchievements, saveGame,
             exitToMainMenu, transferPool, seasonHistory, savedGames, loadGame, deleteGame,
             simulateFullNationalsTournament, simulateSingleNationalsGame, simulateAllNationalsTournaments,
-            signPlayerFromTransferPool
+            signPlayerFromTransferPool,
+            formNewSquad
         }}>
             {children}
         </TeamContext.Provider>
