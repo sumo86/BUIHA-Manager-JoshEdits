@@ -758,61 +758,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     
                     const seasonThatEnded = `${prevDate.year}-${prevDate.year + 1}`;
                     
-                    // --- DYNAMIC DIVISION SPLITTING & PROMOTION/RELEGATION LOGIC ---
-                    let promotionRelegationChanges: { teamName: string, newDivision: string }[] = [];
-
-                    // --- New Dynamic Division Splitting Logic ---
-                    const lowestRank = Math.max(...tempTeams.map(t => getDivisionRank(t.leagueDivision)));
-                    const lowestDivisions = [...new Set(tempTeams.filter(t => getDivisionRank(t.leagueDivision) === lowestRank).map(t => t.leagueDivision))];
-
-                    lowestDivisions.forEach(division => {
-                        const teamsInDivision = tempTeams.filter(t => t.leagueDivision === division);
-                        if (teamsInDivision.length >= 10) {
-                            const newDivisionName = getRelegationTarget(division);
-                            if (!newDivisionName) return; // Should not happen with new logic, but a good safeguard
-
-                            toast.info(`League Restructuring!`, {
-                                description: `${division} has grown too large and is being split. The bottom 5 teams will form the new ${newDivisionName}.`
-                            });
-
-                            // Sort by performance to establish a base rank
-                            const sortedByPerf = teamsInDivision.sort((a, b) => {
-                                if (b.points !== a.points) return b.points - a.points;
-                                const goalDiffA = a.goalsFor - a.goalsAgainst;
-                                const goalDiffB = b.goalsFor - b.goalsAgainst;
-                                if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
-                                return b.goalsFor - a.goalsFor;
-                            });
-
-                            // Calculate a relegation score to handle organizational hierarchy
-                            const teamsWithScore = sortedByPerf.map((team, index) => ({
-                                team,
-                                // Higher rank (worse performance) = higher score. Higher org tier (e.g. C team) = higher score.
-                                score: ((index + 1) * 10) + getTeamOrganizationalTier(team.name)
-                            }));
-
-                            // Sort by the relegation score to find the candidates
-                            teamsWithScore.sort((a, b) => b.score - a.score);
-
-                            const teamsToRelegate = teamsWithScore.slice(0, 5).map(item => item.team);
-
-                            teamsToRelegate.forEach(team => {
-                                promotionRelegationChanges.push({
-                                    teamName: team.name,
-                                    newDivision: newDivisionName,
-                                });
-                            });
-                        }
-                    });
-
-                    // --- Standard Promotion & Relegation Logic ---
+                    // --- PROMOTION AND RELEGATION LOGIC ---
+                    const promotionRelegationChanges: { teamName: string, newDivision: string }[] = [];
                     const leagueDivisions = [...new Set(tempTeams.map(t => t.leagueDivision))];
 
                     leagueDivisions.forEach(division => {
-                        // Exclude teams that are already being moved down from a split
-                        const teamsAlreadyMoving = new Set(promotionRelegationChanges.map(c => c.teamName));
                         const teamsInDivision = tempTeams
-                            .filter(t => t.leagueDivision === division && !teamsAlreadyMoving.has(t.name))
+                            .filter(t => t.leagueDivision === division)
                             .sort((a, b) => {
                                 if (b.points !== a.points) return b.points - a.points;
                                 const goalDiffA = a.goalsFor - a.goalsAgainst;
@@ -821,53 +773,48 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 return b.goalsFor - a.goalsFor;
                             });
 
-                        if (teamsInDivision.length < 1) return;
+                        if (teamsInDivision.length < 2) return;
 
                         // --- Promotion Logic ---
-                        const promotionTarget = getPromotionTarget(division);
-                        if (promotionTarget) {
-                            for (const promotionCandidate of teamsInDivision) {
-                                // Ensure this team isn't already slated for a move
-                                if (promotionRelegationChanges.some(c => c.teamName === promotionCandidate.name)) continue;
+                        for (const promotionCandidate of teamsInDivision) {
+                            const promotionTarget = getPromotionTarget(promotionCandidate.leagueDivision);
+                            if (!promotionTarget) break;
 
-                                let isEligible = true;
-                                const candidateOrg = getOrganizationName(promotionCandidate.name);
-                                const promotionTargetRank = getDivisionRank(promotionTarget);
-                                
-                                const seniorTeams = tempTeams.filter(t => 
-                                    getOrganizationName(t.name) === candidateOrg &&
-                                    getTeamOrganizationalTier(t.name) < getTeamOrganizationalTier(promotionCandidate.name)
-                                );
+                            let isEligible = true;
+                            const candidateOrg = getOrganizationName(promotionCandidate.name);
+                            const promotionTargetRank = getDivisionRank(promotionTarget);
+                            
+                            // Check for senior teams from the same organization
+                            const seniorTeams = tempTeams.filter(t => 
+                                getOrganizationName(t.name) === candidateOrg &&
+                                getTeamOrganizationalTier(t.name) < getTeamOrganizationalTier(promotionCandidate.name)
+                            );
 
-                                for (const seniorTeam of seniorTeams) {
-                                    const seniorTeamRank = getDivisionRank(seniorTeam.leagueDivision);
-                                    if (seniorTeamRank > promotionTargetRank) {
-                                        isEligible = false;
-                                        break;
-                                    }
+                            for (const seniorTeam of seniorTeams) {
+                                const seniorTeamRank = getDivisionRank(seniorTeam.leagueDivision);
+                                if (seniorTeamRank > promotionTargetRank) { // If senior team is in a lower (higher rank number) division than the promotion target
+                                    isEligible = false;
+                                    break;
                                 }
+                            }
 
-                                if (isEligible) {
-                                    promotionRelegationChanges.push({
-                                        teamName: promotionCandidate.name,
-                                        newDivision: promotionTarget,
-                                    });
-                                    break; // Only one team can be promoted from a division
-                                }
+                            if (isEligible) {
+                                promotionRelegationChanges.push({
+                                    teamName: promotionCandidate.name,
+                                    newDivision: promotionTarget,
+                                });
+                                break; // Only one team can be promoted from a division
                             }
                         }
 
                         // --- Relegation Logic ---
-                        const relegationTarget = getRelegationTarget(division);
-                        if (relegationTarget && teamsInDivision.length > 0) {
-                            const relegationCandidate = teamsInDivision[teamsInDivision.length - 1];
-                            // Ensure this team isn't already slated for a move
-                            if (relegationCandidate && !promotionRelegationChanges.some(c => c.teamName === relegationCandidate.name)) {
-                                promotionRelegationChanges.push({
-                                    teamName: relegationCandidate.name,
-                                    newDivision: relegationTarget,
-                                });
-                            }
+                        const relegationCandidate = teamsInDivision[teamsInDivision.length - 1];
+                        const relegationTarget = getRelegationTarget(relegationCandidate.leagueDivision);
+                        if (relegationTarget && !promotionRelegationChanges.some(c => c.teamName === relegationCandidate.name)) {
+                            promotionRelegationChanges.push({
+                                teamName: relegationCandidate.name,
+                                newDivision: relegationTarget,
+                            });
                         }
                     });
 
@@ -1217,38 +1164,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     teamsByNationalsDivision[team.nationalsDivision].push(team);
                 }
             });
-
-            // --- New Nationals Merging Logic ---
-            const sortedTiers = Object.keys(teamsByNationalsDivision).sort((a, b) => {
-                const rankA = getDivisionRank(a + " - North"); // Add region for rank calculation
-                const rankB = getDivisionRank(b + " - North");
-                return rankB - rankA; // Sort descending by rank (lowest tier first)
-            });
-
-            sortedTiers.forEach(tierName => {
-                const teamsInTier = teamsByNationalsDivision[tierName];
-                if (!teamsInTier || teamsInTier.length === 0) return;
-
-                const regions = new Set(teamsInTier.map(t => t.leagueDivision.includes('North') ? 'North' : 'South'));
-
-                // If a tier only has teams from one region, merge them up.
-                if (regions.size === 1) {
-                    const sampleLeagueDiv = teamsInTier[0].leagueDivision;
-                    const promotionTargetDiv = getPromotionTarget(sampleLeagueDiv);
-                    if (promotionTargetDiv) {
-                        const promotionTierName = getTierName(promotionTargetDiv);
-                        if (teamsByNationalsDivision[promotionTierName]) {
-                            teamsByNationalsDivision[promotionTierName].push(...teamsInTier);
-                            toast.info(`Nationals Qualification Update`, { description: `${tierName} teams will compete in the ${promotionTierName} Nationals tournament as their tier is not national.`});
-                        } else {
-                            // This case is unlikely but handles if the tier above has no teams. Merge them with the current tier.
-                            teamsByNationalsDivision[promotionTierName] = teamsInTier;
-                        }
-                        delete teamsByNationalsDivision[tierName];
-                    }
-                }
-            });
-            // --- End of Nationals Merging Logic ---
 
             Object.entries(teamsByNationalsDivision).forEach(([division, teamsInDivision]) => {
                 if (teamsInDivision.length >= 4) { // Minimum teams for a tournament
