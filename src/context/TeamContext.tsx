@@ -20,11 +20,6 @@ import { populateLineup } from '@/lib/lineupUtils';
 import { initialFacilityProjects } from '@/data/facilities';
 import { teamLogos } from '@/data/logos';
 
-export interface TierInfo {
-  id: string;
-  name: string;
-}
-
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
 
@@ -97,9 +92,6 @@ interface TeamContextType {
     formNewSquad: () => void;
     updateTeamDivision: (teamName: string, newDivision: string) => void;
     updateTeamNationalsDivision: (teamName: string, newNationalsDivision: string) => void;
-    tierHierarchy: TierInfo[];
-    updateTierHierarchy: (newHierarchy: TierInfo[]) => void;
-    resetGame: () => void; // Added resetGame to interface
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -126,32 +118,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         return initialTeams;
     });
 
-    const [tierHierarchy, setTierHierarchy] = useState<TierInfo[]>(() => {
-        try {
-            const saved = localStorage.getItem('tierHierarchy');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) { // Explicitly check if it's an array
-                    return parsed;
-                }
-            }
-        } catch (error) { console.error("Failed to load tier hierarchy:", error); }
-        return [
-            { id: 'c1', name: 'Checking 1' },
-            { id: 'c2', name: 'Checking 2' },
-            { id: 'nc1', name: 'Non-Checking 1' },
-            { id: 'nc2', name: 'Non-Checking 2' },
-            { id: 'nc3', name: 'Non-Checking 3' },
-        ];
-    });
-
     useEffect(() => {
         localStorage.setItem('teams', JSON.stringify(teams));
     }, [teams]);
-
-    useEffect(() => {
-        localStorage.setItem('tierHierarchy', JSON.stringify(tierHierarchy));
-    }, [tierHierarchy]);
 
     const [alumni, setAlumni] = useState<Player[]>(() => {
         try {
@@ -726,7 +695,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 if (playerChanged) {
                     const newCurrentAbility = calculateCurrentAbility(player.attributes, isSkater);
-                    const newStarRating = calculateStarRating(newCurrentAbility, isSkater, team.leagueDivision, tierHierarchy);
+                    const newStarRating = calculateStarRating(newCurrentAbility, isSkater, team.leagueDivision);
                     player.currentAbility = newCurrentAbility;
                     player.starRating = newStarRating;
                 }
@@ -811,14 +780,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         if (teamsInDivision.length < 1) return;
 
                         // --- Promotion Logic ---
-                        const promotionTarget = getPromotionTarget(division, tierHierarchy);
+                        const promotionTarget = getPromotionTarget(division);
                         if (promotionTarget) {
                             for (const promotionCandidate of teamsInDivision) {
                                 if (promotionRelegationChanges.some(c => c.teamName === promotionCandidate.name)) continue;
 
                                 let isEligible = true;
                                 const candidateOrg = getOrganizationName(promotionCandidate.name);
-                                const promotionTargetRank = getDivisionRank(promotionTarget, tierHierarchy);
+                                const promotionTargetRank = getDivisionRank(promotionTarget);
                                 
                                 const seniorTeams = tempTeams.filter(t => 
                                     getOrganizationName(t.name) === candidateOrg &&
@@ -826,7 +795,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 );
 
                                 for (const seniorTeam of seniorTeams) {
-                                    const seniorTeamRank = getDivisionRank(seniorTeam.leagueDivision, tierHierarchy);
+                                    const seniorTeamRank = getDivisionRank(seniorTeam.leagueDivision);
                                     if (seniorTeamRank > promotionTargetRank) {
                                         isEligible = false;
                                         break;
@@ -844,7 +813,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         }
 
                         // --- Relegation Logic ---
-                        const relegationTarget = getRelegationTarget(division, tierHierarchy);
+                        const relegationTarget = getRelegationTarget(division);
                         if (relegationTarget && teamsInDivision.length > 0) {
                             const relegationCandidate = teamsInDivision[teamsInDivision.length - 1];
                             if (relegationCandidate && !promotionRelegationChanges.some(c => c.teamName === relegationCandidate.name)) {
@@ -863,7 +832,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const teamIndex = tempTeams.findIndex(t => t.name === teamName);
                             if (teamIndex !== -1) {
                                 const originalDivision = tempTeams[teamIndex].leagueDivision;
-                                const isPromotion = getDivisionRank(newDivision, tierHierarchy) < getDivisionRank(originalDivision, tierHierarchy);
+                                const isPromotion = getDivisionRank(newDivision) < getDivisionRank(originalDivision);
 
                                 tempTeams[teamIndex].leagueDivision = newDivision;
                                 tempTeams[teamIndex].nationalsDivision = getTierName(newDivision);
@@ -872,7 +841,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     const isSkater = !player.positions.includes('G');
                                     return {
                                         ...player,
-                                        starRating: calculateStarRating(player.currentAbility, isSkater, newDivision, tierHierarchy),
+                                        starRating: calculateStarRating(player.currentAbility, isSkater, newDivision),
                                     };
                                 });
 
@@ -1121,7 +1090,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         if (playersToRecruitCount > 0) {
                             recruitmentOccurred = true;
                             const lowestTierTeam = orgTeams.sort((a, b) => getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name))[0];
-                            const prospects = generateRecruits(lowestTierTeam.leagueDivision, allTeamNames, playersToRecruitCount * 2, lowestTierTeam.facilities, tierHierarchy);
+                            const prospects = generateRecruits(lowestTierTeam.leagueDivision, allTeamNames, playersToRecruitCount * 2, lowestTierTeam.facilities);
                             
                             prospects.sort((a, b) => b.potentialAbility - a.potentialAbility);
                             const newRecruits = prospects.slice(0, playersToRecruitCount);
@@ -1138,7 +1107,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     recruit.jerseyNumber = newJerseyNumber;
                                     usedJerseyNumbers.add(newJerseyNumber);
                                     const isSkater = recruit.positions[0] !== 'G';
-                                    recruit.starRating = calculateStarRating(recruit.currentAbility, isSkater, teamToUpdate.leagueDivision, tierHierarchy);
+                                    recruit.starRating = calculateStarRating(recruit.currentAbility, isSkater, teamToUpdate.leagueDivision);
                                 });
 
                                 teamToUpdate.roster.push(...newRecruits);
@@ -1192,8 +1161,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             });
 
             const sortedTiers = Object.keys(teamsByNationalsDivision).sort((a, b) => {
-                const rankA = getDivisionRank(a + " - North", tierHierarchy);
-                const rankB = getDivisionRank(b + " - North", tierHierarchy);
+                const rankA = getDivisionRank(a + " - North");
+                const rankB = getDivisionRank(b + " - North");
                 return rankB - rankA;
             });
 
@@ -1205,7 +1174,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                 if (regions.size === 1) {
                     const sampleLeagueDiv = teamsInTier[0].leagueDivision;
-                    const promotionTargetDiv = getPromotionTarget(sampleLeagueDiv, tierHierarchy);
+                    const promotionTargetDiv = getPromotionTarget(sampleLeagueDiv);
                     if (promotionTargetDiv) {
                         const promotionTierName = getTierName(promotionTargetDiv);
                         if (teamsByNationalsDivision[promotionTierName]) {
@@ -1280,10 +1249,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 player.jerseyNumber = newJerseyNumber;
             }
             
-            const isSkater = !player.positions.includes('G');
+            const isSkater = player.positions[0] !== 'G';
             const updatedPlayer = {
                 ...player,
-                starRating: calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision, tierHierarchy),
+                starRating: calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision),
                 captaincy: null,
             };
 
@@ -1497,7 +1466,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const generateScoutingPool = () => {
         if (!userTeam) return;
         const allTeamNames = teams.map(t => t.name).filter(name => name !== userTeam.name);
-        const newRecruits = generateRecruits(userTeam.leagueDivision, allTeamNames, undefined, userTeam.facilities, tierHierarchy);
+        const newRecruits = generateRecruits(userTeam.leagueDivision, allTeamNames, undefined, userTeam.facilities);
         setScoutingPool(newRecruits);
         setFairHosted(true);
     };
@@ -1594,7 +1563,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             teams, alumni, activeTeamName, managedOrganization, isManagingOrg, schedule,
             nationalsData, seasonRecords, careerRecords, teamAchievements, transferPool,
             seasonHistory, scoutingPool, recruitedPool, fairHosted, currentDate, developmentHistory,
-            tierHierarchy,
         };
 
         try {
@@ -1645,13 +1613,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             setFairHosted(savedState.fairHosted || false);
             setCurrentDate(savedState.currentDate || { month: 'August', week: 1, year: new Date().getFullYear() });
             setDevelopmentHistory(savedState.developmentHistory || []);
-            setTierHierarchy(Array.isArray(savedState.tierHierarchy) ? savedState.tierHierarchy : [
-                { id: 'c1', name: 'Checking 1' },
-                { id: 'c2', name: 'Checking 2' },
-                { id: 'nc1', name: 'Non-Checking 1' },
-                { id: 'nc2', name: 'Non-Checking 2' },
-                { id: 'nc3', name: 'Non-Checking 3' },
-            ]);
 
             toast.success("Game Loaded", { description: `Successfully loaded "${saveName}".` });
         } catch (error) {
@@ -1901,7 +1862,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 const isSkater = !player.positions.includes('G');
                 return {
                     ...player,
-                    starRating: calculateStarRating(player.currentAbility, isSkater, newDivision, tierHierarchy),
+                    starRating: calculateStarRating(player.currentAbility, isSkater, newDivision),
                 };
             });
 
@@ -1925,107 +1886,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         });
     };
 
-    const updateTierHierarchy = (newHierarchy: TierInfo[]) => {
-        const oldHierarchy = tierHierarchy;
-        setTierHierarchy(newHierarchy);
-
-        // Update teams based on tier name changes
-        const nameChanges = newHierarchy
-            .map(newTier => {
-                const oldTier = oldHierarchy.find(t => t.id === newTier.id);
-                return { oldName: oldTier?.name, newName: newTier.name };
-            })
-            .filter(change => change.oldName && change.oldName !== change.newName);
-
-        if (nameChanges.length > 0) {
-            let updatedTeams = teams;
-            nameChanges.forEach(({ oldName, newName }) => {
-                updatedTeams = updatedTeams.map(team => {
-                    let updated = false;
-                    if (getTierName(team.leagueDivision) === oldName) {
-                        const regionMatch = team.leagueDivision.match(/ - (North|South)$/);
-                        const region = regionMatch ? ` - ${regionMatch[1]}` : '';
-                        team.leagueDivision = `${newName}${region}`;
-                        updated = true;
-                    }
-                    if (team.nationalsDivision === oldName) {
-                        team.nationalsDivision = newName;
-                        updated = true;
-                    }
-                    return team;
-                });
-            });
-            setTeams(updatedTeams);
-        }
-
-        // Recalculate all player star ratings based on new hierarchy
-        setTeams(currentTeams => currentTeams.map(team => ({
-            ...team,
-            roster: team.roster.map(player => ({
-                ...player,
-                starRating: calculateStarRating(player.currentAbility, !player.positions.includes('G'), team.leagueDivision, newHierarchy)
-            }))
-        })));
-    };
-
-    const resetGame = () => {
-        // Clear all relevant local storage items
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('savegame_')) {
-                localStorage.removeItem(key);
-            }
-        });
-        localStorage.removeItem('teams');
-        localStorage.removeItem('tierHierarchy');
-        localStorage.removeItem('alumni');
-        localStorage.removeItem('activeTeamName');
-        localStorage.removeItem('managedOrganization');
-        localStorage.removeItem('isManagingOrg');
-        localStorage.removeItem('schedule');
-        localStorage.removeItem('nationalsData');
-        localStorage.removeItem('seasonRecords');
-        localStorage.removeItem('careerRecords');
-        localStorage.removeItem('teamAchievements');
-        localStorage.removeItem('transferPool');
-        localStorage.removeItem('seasonHistory');
-        localStorage.removeItem('scoutingPool');
-        localStorage.removeItem('recruitedPool');
-        localStorage.removeItem('fairHosted');
-        localStorage.removeItem('currentDate');
-        localStorage.removeItem('developmentHistory');
-        localStorage.removeItem('savedGames');
-
-        // Reset all state variables to their initial values
-        setTeams(initialTeams);
-        setTierHierarchy([
-            { id: 'c1', name: 'Checking 1' },
-            { id: 'c2', name: 'Checking 2' },
-            { id: 'nc1', name: 'Non-Checking 1' },
-            { id: 'nc2', name: 'Non-Checking 2' },
-            { id: 'nc3', name: 'Non-Checking 3' },
-        ]);
-        setAlumni([]);
-        setActiveTeamName(null);
-        setManagedOrganization(null);
-        setIsManagingOrg(false);
-        setSchedule([]);
-        setNationalsData({});
-        setSeasonRecords({});
-        setCareerRecords({});
-        setTeamAchievements({});
-        setTransferPool([]);
-        setSeasonHistory({});
-        setScoutingPool([]);
-        setRecruitedPool([]);
-        setFairHosted(false);
-        setCurrentDate({ month: 'August', week: 1, year: new Date().getFullYear() });
-        setDevelopmentHistory([]);
-        setSavedGames([]);
-
-        toast.success("Game Reset", { description: "All game data has been cleared. You can now start a new game." });
-        selectTeam(null); // Go back to team selection
-    };
-
     return (
         <TeamContext.Provider value={{
             teams, updateTeam, userTeam, organizationFinancials, organizationFacilities, selectTeam,
@@ -2041,10 +1901,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             signPlayerFromTransferPool,
             formNewSquad,
             updateTeamDivision,
-            updateTeamNationalsDivision,
-            tierHierarchy,
-            updateTierHierarchy,
-            resetGame // Added to context value
+            updateTeamNationalsDivision
         }}>
             {children}
         </TeamContext.Provider>
