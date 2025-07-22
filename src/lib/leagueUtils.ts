@@ -51,9 +51,9 @@ export const getTeamOrganizations = (teams: Team[]) => {
 export const getTierName = (leagueDivision: string): string => {
     if (leagueDivision.startsWith("Checking 1")) return "Checking 1";
     if (leagueDivision.startsWith("Checking 2")) return "Checking 2";
-    if (leagueDivision.startsWith("Non Checking 1")) return "Non-Checking 1";
-    if (leagueDivision.startsWith("Non Checking 2")) return "Non-Checking 2";
-    if (leagueDivision.startsWith("Non Checking 3")) return "Non-Checking 3";
+    if (leagueDivision.startsWith("Non-Checking 1")) return "Non-Checking 1";
+    if (leagueDivision.startsWith("Non-Checking 2")) return "Non-Checking 2";
+    if (leagueDivision.startsWith("Non-Checking 3")) return "Non-Checking 3";
     return "Unknown";
 };
 
