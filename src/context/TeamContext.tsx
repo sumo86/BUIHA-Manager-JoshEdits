@@ -1331,7 +1331,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 player.jerseyNumber = newJerseyNumber;
             }
             
-            const isSkater = player.positions[0] !== 'G';
+            const isSkater = !player.positions.includes('G');
             const updatedPlayer = {
                 ...player,
                 starRating: calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision),
@@ -1539,9 +1539,33 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const recruitPlayer = (playerId: string) => {
         const playerToRecruit = scoutingPool.find(p => p.id === playerId);
         if (playerToRecruit) {
+            if (!userTeam) {
+                toast.error("No active team selected.");
+                return;
+            }
+            if (userTeam.financials.discretionaryBudget < (playerToRecruit.recruitmentCost || 0)) {
+                toast.error("Insufficient Funds", { description: `You need £${playerToRecruit.recruitmentCost} to recruit this player.` });
+                return;
+            }
+
             setScoutingPool(prev => prev.filter(p => p.id !== playerId));
             setRecruitedPool(prev => [...prev, playerToRecruit]);
-            toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been recruited to your pool.` });
+            
+            // Deduct recruitment cost
+            setTeams(currentTeams => currentTeams.map(t => {
+                if (t.name === userTeam.name) {
+                    return {
+                        ...t,
+                        financials: {
+                            ...t.financials,
+                            discretionaryBudget: t.financials.discretionaryBudget - (playerToRecruit.recruitmentCost || 0)
+                        }
+                    };
+                }
+                return t;
+            }));
+
+            toast.success("Player Recruited!", { description: `${playerToRecruit.name} has been recruited to your pool for £${playerToRecruit.recruitmentCost}.` });
         }
     };
 
@@ -1856,7 +1880,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const saveSlot: SaveGameSlot = {
                 saveName,
                 savedAt: new Date().toISOString(),
-                teams: teams,
+                teams: teams, // Now correctly included
                 activeTeamName: activeTeamName,
                 managedOrganization: managedOrganization,
                 isManagingOrg: isManagingOrg,
@@ -1898,7 +1922,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const savedData = localStorage.getItem(`save_${saveName}`);
             if (savedData) {
                 const saveSlot: SaveGameSlot = JSON.parse(savedData);
-                setTeams(saveSlot.teams);
+                setTeams(saveSlot.teams); // Now correctly loaded
                 setActiveTeamName(saveSlot.activeTeamName);
                 setManagedOrganization(saveSlot.managedOrganization);
                 setIsManagingOrg(saveSlot.isManagingOrg);
