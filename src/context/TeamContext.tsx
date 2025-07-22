@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament, TacticsSelection, SimSpeed } from '@/types';
+import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament, TacticsSelection } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName, getTeamOrganizationalTier } from '@/data/teams';
 import { generateRecruits, calculateStarRating, getGamesPlayedForDivision, generateRoster } from '@/lib/playerGenerator'; 
 import { toast } from 'sonner';
@@ -103,8 +103,6 @@ interface TeamContextType {
     updateTeamNationalsDivision: (teamName: string, newNationalsDivision: string) => void;
     renameDivision: (oldName: string, newName: string) => void;
     createCustomTeam: (name: string, region: 'North' | 'South', logo: string) => void;
-    simSpeed: SimSpeed;
-    updateSimSpeed: (speed: SimSpeed) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -215,24 +213,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => {
         localStorage.setItem('savedGames', JSON.stringify(savedGames));
     }, [savedGames]);
-
-    const [simSpeed, setSimSpeed] = useState<SimSpeed>(() => {
-        try {
-            const saved = localStorage.getItem('simSpeed');
-            return (saved as SimSpeed) || 'Normal';
-        } catch (error) {
-            return 'Normal';
-        }
-    });
-
-    useEffect(() => {
-        localStorage.setItem('simSpeed', simSpeed);
-    }, [simSpeed]);
-
-    const updateSimSpeed = (speed: SimSpeed) => {
-        setSimSpeed(speed);
-        toast.info(`Simulation speed set to ${speed}.`);
-    };
 
     const managedTeams = useMemo(() => {
         if (!managedOrganization) return [];
@@ -1634,8 +1614,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         jerseyNumber: newJerseyNumber,
                         starRating: calculateStarRating(playerToAssign.currentAbility, isSkater, t.leagueDivision),
                     };
-                    const newRoster = [...t.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
-                    return { ...t, roster: newRoster, lineup: populateLineup(newRoster) };
+                    return { ...t, roster: [...t.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber) };
                 }
                 return t;
             }));
@@ -2146,9 +2125,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             updateTeamDivision,
             updateTeamNationalsDivision,
             renameDivision,
-            createCustomTeam,
-            simSpeed,
-            updateSimSpeed,
+            createCustomTeam
         }}>
             {children}
         </TeamContext.Provider>

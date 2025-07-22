@@ -1,3 +1,5 @@
+import { trainingFocusesMap } from '@/data/trainingFocuses';
+
 export type Position = "C" | "LW" | "RW" | "LD" | "RD" | "G";
 
 export type Instruction = "Encourage" | "Discipline" | "Praise" | "Push Harder" | "Calm Down";
@@ -108,9 +110,9 @@ export type PlayerSeasonStats = {
   goalsAgainst?: number;
   shotsAgainst?: number;
   saves?: number;
-  goalsAgainstAverage?: number;
-  savePercentage?: number;
   shutouts?: number;
+  savePercentage?: number;
+  goalsAgainstAverage?: number;
 };
 
 export type TrainingFocus = keyof typeof trainingFocusesMap;
