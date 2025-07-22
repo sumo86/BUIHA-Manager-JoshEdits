@@ -11,41 +11,51 @@ export const populateLineup = (roster: Player[]): Lineup => {
         goalies: { starter: null, backup: null },
     };
 
-    // Create a mutable copy of the roster to draw players from
-    const playerPool = [...roster];
+    // Create mutable, sorted pools for each position group
+    const goalies = [...roster].filter(p => p.positions.includes('G')).sort((a, b) => b.currentAbility - a.currentAbility);
+    const forwards = [...roster].filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.currentAbility - a.currentAbility);
+    const defence = [...roster].filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position))).sort((a, b) => b.currentAbility - a.currentAbility);
 
-    const assignPlayer = (position: Position): string | null => {
-        // Prioritize players whose primary position matches
-        let bestPlayerIndex = playerPool.findIndex(p => p.positions[0] === position);
-        
-        // If none, find a player who can play the position as a secondary role
-        if (bestPlayerIndex === -1) {
-            bestPlayerIndex = playerPool.findIndex(p => p.positions.includes(position));
+    const assignedIds = new Set<string>();
+
+    const assignPlayer = (pool: Player[], position?: Position): string | null => {
+        let playerIndex = -1;
+
+        // 1. Try to find a natural fit who is not yet assigned
+        if (position) {
+            playerIndex = pool.findIndex(p => !assignedIds.has(p.id) && p.positions.includes(position));
         }
 
-        // If a player is found, remove them from the pool and return their ID
-        if (bestPlayerIndex !== -1) {
-            return playerPool.splice(bestPlayerIndex, 1)[0].id;
+        // 2. If no natural fit, find any player in the pool not yet assigned
+        if (playerIndex === -1) {
+            playerIndex = pool.findIndex(p => !assignedIds.has(p.id));
         }
 
-        // If no suitable player is found in the entire pool
+        if (playerIndex !== -1) {
+            const player = pool[playerIndex];
+            assignedIds.add(player.id);
+            return player.id;
+        }
+
         return null;
     };
 
-    // Populate forward lines
-    for (let i = 0; i < 3; i++) {
-        lineup.forwards.lw[i] = assignPlayer('LW');
-        lineup.forwards.c[i] = assignPlayer('C');
-        lineup.forwards.rw[i] = assignPlayer('RW');
-    }
-    // Populate defence pairings
-    for (let i = 0; i < 3; i++) {
-        lineup.defence.ld[i] = assignPlayer('LD');
-        lineup.defence.rd[i] = assignPlayer('RD');
-    }
     // Populate goalies
-    lineup.goalies.starter = assignPlayer('G');
-    lineup.goalies.backup = assignPlayer('G');
+    lineup.goalies.starter = assignPlayer(goalies, 'G');
+    lineup.goalies.backup = assignPlayer(goalies, 'G');
+
+    // Populate defence pairings (3 pairs)
+    for (let i = 0; i < 3; i++) {
+        lineup.defence.ld[i] = assignPlayer(defence, 'LD');
+        lineup.defence.rd[i] = assignPlayer(defence, 'RD');
+    }
+
+    // Populate forward lines (3 lines)
+    for (let i = 0; i < 3; i++) {
+        lineup.forwards.lw[i] = assignPlayer(forwards, 'LW');
+        lineup.forwards.c[i] = assignPlayer(forwards, 'C');
+        lineup.forwards.rw[i] = assignPlayer(forwards, 'RW');
+    }
 
     return lineup;
 };
