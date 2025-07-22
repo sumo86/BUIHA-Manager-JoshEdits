@@ -1727,7 +1727,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (!userTeam || !managedTeams) return;
 
         const cost = 1000;
-        const isEligible = isManagingOrg || managedTeams.length === 1;
+        const isEligible = isManagingOrg || (managedTeams && managedTeams.length === 1);
 
         if (currentDate.month !== 'July') {
             toast.error("Wrong Time of Year", { description: "You can only form new squads in July." });
@@ -1760,7 +1760,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const baseName = orgTeams.find(t => getTeamOrganizationalTier(t.name) === 0)?.name || orgName;
         const newTeamName = `${baseName} ${newSuffix}`;
 
-        const newLeagueDivision = "Non Checking 3 - South"; 
+        // Determine the region (North/South) from the user's current team's league division
+        const userTeamRegion = userTeam.leagueDivision.includes('North') ? 'North' : 'South';
+        const newLeagueDivision = `Non Checking 3 - ${userTeamRegion}`; 
 
         const roster = generateRoster(newLeagueDivision, newTeamName);
         const lineup = populateLineup(roster);
@@ -1811,6 +1813,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             
             return newTeamsList;
         });
+
+        // If the user was managing a single team, now they are managing an organization
+        if (!isManagingOrg && managedTeams.length === 1) {
+            setIsManagingOrg(true);
+            setManagedOrganization(orgName); // Ensure managedOrganization is correctly set to the base organization name
+        }
 
         toast.success("New Squad Formed!", {
             description: `${newTeamName} has been formed and will compete in the ${newLeagueDivision} next season.`
