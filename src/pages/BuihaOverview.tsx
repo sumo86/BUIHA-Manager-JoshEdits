@@ -138,7 +138,8 @@ const PlayerOverview = () => {
 
   // Prepare data for NationalsHistoryView
   const nationalsHistoryForCurrentYear = useMemo(() => {
-    return nationalsData[currentDate.year] ? Object.values(nationalsData[currentDate.year]) : [];
+    // Pass the object directly, as NationalsHistoryView expects { [division: string]: NationalsTournament }
+    return nationalsData[currentDate.year] || {}; 
   }, [nationalsData, currentDate.year]);
 
 
@@ -212,7 +213,7 @@ const PlayerOverview = () => {
                       <SortableHeader sortKey="age">Age</SortableHeader>
                       <SortableHeader sortKey="positions">Positions</SortableHeader>
                       <SortableHeader sortKey="starRating">Rating</SortableHeader>
-                      <SortableHeader sortKey="eligibility">Eligibility</TableHead>
+                      <SortableHeader sortKey="eligibility">Eligibility</SortableHeader> {/* Corrected closing tag */}
                       <TableHead>Morale</TableHead>
                       <TableHead>Health</TableHead>
                     </TableRow>
@@ -244,7 +245,7 @@ const PlayerOverview = () => {
           </Card>
         </TabsContent>
         <TabsContent value="division-winners">
-          <DivisionWinnersHistory logs={divisionWinnersLogs} />
+          <DivisionWinnersHistory standings={divisionWinnersLogs} /> {/* Changed prop name to 'standings' */}
         </TabsContent>
         <TabsContent value="nationals-history">
           <NationalsHistoryView nationalsDataForYear={nationalsHistoryForCurrentYear} />

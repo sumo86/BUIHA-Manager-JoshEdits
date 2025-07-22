@@ -34,8 +34,8 @@ const PlayerFocusTable = ({ players }: { players: PlayerWithTeamInfo[] }) => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="All">All Focuses</SelectItem>
-            {Object.keys(trainingFocusesMap).map((focus) => (
-              <SelectItem key={focus as string} value={focus as string}>
+            {Object.keys(trainingFocusesMap).map((focus: string) => (
+              <SelectItem key={focus} value={focus}>
                 {focus}
               </SelectItem>
             ))}
@@ -65,8 +65,8 @@ const PlayerFocusTable = ({ players }: { players: PlayerWithTeamInfo[] }) => {
                         <SelectValue placeholder="Select Focus" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.keys(trainingFocusesMap).map((focus) => (
-                          <SelectItem key={focus as string} value={focus as string}> {/* Explicitly cast to string */}
+                        {Object.keys(trainingFocusesMap).map((focus: string) => (
+                          <SelectItem key={focus} value={focus}>
                             {focus}
                           </SelectItem>
                         ))}

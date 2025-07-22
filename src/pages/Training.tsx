@@ -3,8 +3,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTeam } from "@/context/TeamContext";
 import { TrendingUp } from "lucide-react";
 import { DevelopmentLogTable } from "@/components/training/DevelopmentLogTable";
-import PlayerFocusTable from "@/components/training/PlayerFocusTable"; // Corrected import
+import PlayerFocusTable from "@/components/training/PlayerFocusTable"; 
 import { Button } from "@/components/ui/button";
+import { useMemo } from "react"; // Import useMemo
 
 const Training = () => {
   const { userTeam, currentDate, developmentHistory, updatePlayerTrainingFocus, autoAssignTrainingFocuses } = useTeam();
@@ -12,6 +13,15 @@ const Training = () => {
   const handleAutoAssign = () => {
     autoAssignTrainingFocuses();
   };
+
+  // Map userTeam.roster to PlayerWithTeamInfo[]
+  const playersWithTeamInfo = useMemo(() => {
+    if (!userTeam) return [];
+    return userTeam.roster.map(player => ({
+      ...player,
+      teamName: userTeam.name, // Add the teamName property
+    }));
+  }, [userTeam]);
 
   return (
     <div className="space-y-6">
@@ -59,7 +69,7 @@ const Training = () => {
                     <Button onClick={handleAutoAssign}>Auto-Assign All</Button>
                 </CardHeader>
                 <CardContent>
-                    {userTeam && <PlayerFocusTable players={userTeam.roster} />}
+                    {userTeam && <PlayerFocusTable players={playersWithTeamInfo} />} {/* Use the mapped players */}
                 </CardContent>
             </Card>
         </TabsContent>

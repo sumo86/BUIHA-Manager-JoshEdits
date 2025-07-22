@@ -1,9 +1,15 @@
-import { TeamSeasonHistory } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';
 
+// Define the type for the logs received from BuihaOverview
+interface DivisionWinnerLog {
+  teamName: string;
+  season: string;
+  division: string;
+}
+
 interface DivisionWinnersHistoryProps {
-  standings: TeamSeasonHistory[];
+  standings: DivisionWinnerLog[]; // Changed type here
 }
 
 const DivisionWinnersHistory = ({ standings }: DivisionWinnersHistoryProps) => {
@@ -11,40 +17,24 @@ const DivisionWinnersHistory = ({ standings }: DivisionWinnersHistoryProps) => {
     return null; // Don't render anything if there's no data
   }
 
-  const standingsByDivision: { [division: string]: TeamSeasonHistory[] } = standings.reduce((acc, team) => {
-    const division = team.leagueDivision;
-    if (!acc[division]) {
-      acc[division] = [];
-    }
-    acc[division].push(team);
-    return acc;
-  }, {} as { [division: string]: TeamSeasonHistory[] });
-
-  const winners = Object.entries(standingsByDivision).map(([division, divisionStandings]) => {
-    const sortedStandings = [...divisionStandings].sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      const goalDiffA = a.goalsFor - a.goalsAgainst;
-      const goalDiffB = b.goalsFor - b.goalsAgainst;
-      if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
-      return b.goalsFor - a.goalsFor;
-    });
-    return { division, winner: sortedStandings[0] };
-  });
+  // The 'standings' prop already contains the winners, no need to re-calculate
+  // The previous logic was trying to sort by points/goals which are not in this log type.
+  // We just display the provided logs.
 
   return (
     <div className="space-y-6">
-        <h3 className="text-2xl font-bold text-center">League Champions</h3>
+        <h3 className="text-2xl font-bold text-center">Division Champions</h3> {/* Changed title for clarity */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {winners.map(({ division, winner }) => (
-            <Card key={division}>
+        {standings.map((winnerLog, index) => ( // Iterate directly over standings
+            <Card key={`${winnerLog.teamName}-${winnerLog.season}-${winnerLog.division}-${index}`}>
             <CardHeader>
-                <CardTitle className="text-lg">{division}</CardTitle>
+                <CardTitle className="text-lg">{winnerLog.division} - {winnerLog.season}</CardTitle> {/* Display season and division */}
             </CardHeader>
             <CardContent className="flex items-center space-x-4">
                 <Trophy className="h-8 w-8 text-yellow-500" />
                 <div>
-                    <p className="font-semibold text-base">{winner.teamName}</p>
-                    <p className="text-sm text-muted-foreground">{winner.wins}W - {winner.losses}L - {winner.draws}D ({winner.points} pts)</p>
+                    <p className="font-semibold text-base">{winnerLog.teamName}</p>
+                    {/* Removed points/wins/losses as they are not in this log type */}
                 </div>
             </CardContent>
             </Card>
