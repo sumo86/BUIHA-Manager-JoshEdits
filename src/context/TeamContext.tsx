@@ -763,7 +763,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 return player;
             });
 
-            return { ...team, roster: newRoster, facilities: newFacilities };
+            return { ...team, roster: newRoster, facilities: newFacilities, lineup: populateLineup(newRoster) };
         });
 
         const newDate = ((prevDate) => {
@@ -1360,8 +1360,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
             const newToRoster = [...toTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 
-            const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
-            const updatedToTeam = { ...toTeam, roster: newToRoster };
+            const updatedFromTeam = { ...fromTeam, roster: newFromRoster, lineup: populateLineup(newFromRoster) };
+            const updatedToTeam = { ...toTeam, roster: newToRoster, lineup: populateLineup(newToRoster) };
 
             return currentTeams.map(t => {
                 if (t.name === fromTeamName) return updatedFromTeam;
@@ -1390,7 +1390,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
             // Remove player from current team
             const newFromRoster = fromTeam.roster.filter(p => p.id !== playerId);
-            const updatedFromTeam = { ...fromTeam, roster: newFromRoster };
+            const updatedFromTeam = { ...fromTeam, roster: newFromRoster, lineup: populateLineup(newFromRoster) };
 
             // Add player to transfer pool
             const playerForTransferPool = { ...player, alumniStatus: 'Transfer Listed' as 'Transfer Listed' };
@@ -1435,7 +1435,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             };
 
             const newToRoster = [...toTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
-            const updatedToTeam = { ...toTeam, roster: newToRoster };
+            const updatedToTeam = { ...toTeam, roster: newToRoster, lineup: populateLineup(newToRoster) };
 
             toast.success("Player Signed!", { description: `${player.name} has signed with ${toTeam.name}.` });
 
@@ -1452,14 +1452,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         setTeams(prevTeams => prevTeams.map(team => {
             if (team.name === teamName) {
                 const isSkater = team.roster[0]?.positions[0] !== 'G'; // Assuming at least one player to determine type
+                const updatedRoster = team.roster.map(player => ({
+                    ...player,
+                    starRating: calculateStarRating(player.currentAbility, isSkater, newDivision),
+                }));
                 return {
                     ...team,
                     leagueDivision: newDivision,
                     nationalsDivision: getTierName(newDivision),
-                    roster: team.roster.map(player => ({
-                        ...player,
-                        starRating: calculateStarRating(player.currentAbility, isSkater, newDivision),
-                    })),
+                    roster: updatedRoster,
+                    lineup: populateLineup(updatedRoster), // Regenerate lineup after division change
                 };
             }
             return team;
@@ -1761,7 +1763,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const { updatedNationalsData: newNationalsData, updatedTeams, newAchievements: roundAchievements } = processNationalsRoundEngine(
                 tournament, 
                 teams, 
-                newData, // Pass the full prevData for nationalsData
+                newData, // Pass the full newData object
                 currentDate.year, 
                 userGameResult
             );
