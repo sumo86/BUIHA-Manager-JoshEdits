@@ -25,6 +25,13 @@ const PlayerFocusTable = ({ players }: { players: PlayerWithTeamInfo[] }) => {
     return players.filter(player => player.trainingFocus === selectedFocus);
   }, [players, selectedFocus]);
 
+  // Get valid training focuses from the map
+  const validTrainingFocuses = useMemo(() => {
+    return (Object.keys(trainingFocusesMap) as Array<TrainingFocus>).filter(
+      (key): key is TrainingFocus => typeof key === 'string' // Ensure keys are strings
+    );
+  }, []);
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -34,7 +41,7 @@ const PlayerFocusTable = ({ players }: { players: PlayerWithTeamInfo[] }) => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="All">All Focuses</SelectItem>
-            {(Object.keys(trainingFocusesMap) as string[]).map((focus: string) => ( // Explicitly type 'focus' here
+            {validTrainingFocuses.map((focus) => (
               <SelectItem key={focus} value={focus}>
                 {focus}
               </SelectItem>
@@ -65,7 +72,7 @@ const PlayerFocusTable = ({ players }: { players: PlayerWithTeamInfo[] }) => {
                         <SelectValue placeholder="Select Focus" />
                       </SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(trainingFocusesMap) as string[]).map((focus: string) => ( // Explicitly type 'focus' here
+                        {validTrainingFocuses.map((focus) => (
                           <SelectItem key={focus} value={focus}>
                             {focus}
                           </SelectItem>
