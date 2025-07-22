@@ -821,7 +821,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 return b.goalsFor - a.goalsFor;
                             });
 
-                        if (teamsInDivision.length < 1) return; // Changed to 1 to handle relegation for single-team divisions
+                        if (teamsInDivision.length < 1) return;
 
                         // --- Promotion Logic ---
                         const promotionTarget = getPromotionTarget(division);
@@ -1217,6 +1217,38 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     teamsByNationalsDivision[team.nationalsDivision].push(team);
                 }
             });
+
+            // --- New Nationals Merging Logic ---
+            const sortedTiers = Object.keys(teamsByNationalsDivision).sort((a, b) => {
+                const rankA = getDivisionRank(a + " - North"); // Add region for rank calculation
+                const rankB = getDivisionRank(b + " - North");
+                return rankB - rankA; // Sort descending by rank (lowest tier first)
+            });
+
+            sortedTiers.forEach(tierName => {
+                const teamsInTier = teamsByNationalsDivision[tierName];
+                if (!teamsInTier || teamsInTier.length === 0) return;
+
+                const regions = new Set(teamsInTier.map(t => t.leagueDivision.includes('North') ? 'North' : 'South'));
+
+                // If a tier only has teams from one region, merge them up.
+                if (regions.size === 1) {
+                    const sampleLeagueDiv = teamsInTier[0].leagueDivision;
+                    const promotionTargetDiv = getPromotionTarget(sampleLeagueDiv);
+                    if (promotionTargetDiv) {
+                        const promotionTierName = getTierName(promotionTargetDiv);
+                        if (teamsByNationalsDivision[promotionTierName]) {
+                            teamsByNationalsDivision[promotionTierName].push(...teamsInTier);
+                            toast.info(`Nationals Qualification Update`, { description: `${tierName} teams will compete in the ${promotionTierName} Nationals tournament as their tier is not national.`});
+                        } else {
+                            // This case is unlikely but handles if the tier above has no teams. Merge them with the current tier.
+                            teamsByNationalsDivision[promotionTierName] = teamsInTier;
+                        }
+                        delete teamsByNationalsDivision[tierName];
+                    }
+                }
+            });
+            // --- End of Nationals Merging Logic ---
 
             Object.entries(teamsByNationalsDivision).forEach(([division, teamsInDivision]) => {
                 if (teamsInDivision.length >= 4) { // Minimum teams for a tournament
