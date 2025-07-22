@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTeam } from "@/context/TeamContext";
 import { TrendingUp } from "lucide-react";
 import { DevelopmentLogTable } from "@/components/training/DevelopmentLogTable";
-import { PlayerFocusTable } from "@/components/training/PlayerFocusTable";
+import PlayerFocusTable from "@/components/training/PlayerFocusTable"; // Corrected import
 import { Button } from "@/components/ui/button";
 
 const Training = () => {
@@ -59,7 +59,7 @@ const Training = () => {
                     <Button onClick={handleAutoAssign}>Auto-Assign All</Button>
                 </CardHeader>
                 <CardContent>
-                    <PlayerFocusTable players={userTeam.roster} onFocusChange={updatePlayerTrainingFocus} />
+                    {userTeam && <PlayerFocusTable players={userTeam.roster} />}
                 </CardContent>
             </Card>
         </TabsContent>

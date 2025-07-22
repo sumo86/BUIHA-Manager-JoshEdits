@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament, TacticsSelection } from '@/types';
+import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament, TacticsSelection, SimSpeed } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName, getTeamOrganizationalTier } from '@/data/teams';
 import { generateRecruits, calculateStarRating, getGamesPlayedForDivision, generateRoster } from '@/lib/playerGenerator'; 
 import { toast } from 'sonner';
@@ -103,6 +103,8 @@ interface TeamContextType {
     updateTeamNationalsDivision: (teamName: string, newNationalsDivision: string) => void;
     renameDivision: (oldName: string, newName: string) => void;
     createCustomTeam: (name: string, region: 'North' | 'South', logo: string) => void;
+    simSpeed: SimSpeed; // Added
+    updateSimSpeed: (speed: SimSpeed) => void; // Added
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -213,6 +215,25 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     useEffect(() => {
         localStorage.setItem('savedGames', JSON.stringify(savedGames));
     }, [savedGames]);
+
+    const [simSpeed, setSimSpeed] = useState<SimSpeed>(() => {
+        try {
+            const saved = localStorage.getItem('simSpeed');
+            return saved ? JSON.parse(saved) : 'Normal'; // Default to Normal
+        } catch (error) {
+            console.error("Failed to load simSpeed from localStorage:", error);
+            return 'Normal';
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('simSpeed', JSON.stringify(simSpeed));
+    }, [simSpeed]);
+
+    const updateSimSpeed = (speed: SimSpeed) => {
+        setSimSpeed(speed);
+        toast.info(`Simulation speed set to ${speed}.`);
+    };
 
     const managedTeams = useMemo(() => {
         if (!managedOrganization) return [];
@@ -628,11 +649,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         const currentAttrValue = player.attributes[attrToRegress as keyof typeof player.attributes] as number;
                         
                         if (currentAttrValue > 1) {
-                            const newAttrValue = Math.max(1, currentAttrValue - regression);
-                            (player.attributes[attrToRegress as keyof typeof player.attributes] as number) = newAttrValue;
+                            (player.attributes[attrToRegress as string] as number) = Math.max(1, currentAttrValue - regression);
                             playerChanged = true;
                             if (isUserManagedTeam) {
-                                newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToRegress.toString(), change: -regression, newRating: newAttrValue, date: currentDate });
+                                newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToRegress.toString(), change: -regression, newRating: Math.max(1, currentAttrValue - regression), date: currentDate });
                             }
                         }
                     }
@@ -686,7 +706,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     if (hasShootingPads && shootingAttrs.includes(attrToImprove as any)) improvement *= 1.1;
 
                                     const newAttrValue = Math.min(20, currentAttrValue + improvement);
-                                    (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
+                                    (player.attributes[attrToImprove as string] as number) = newAttrValue;
                                     playerChanged = true;
                                     if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
                                 }
@@ -707,7 +727,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             if (currentAttrValue > 1) {
                                 const decline = (Math.random() * 0.15) + 0.05;
                                 const newAttrValue = Math.max(1, currentAttrValue - decline);
-                                (player.attributes[attrToDecline as keyof typeof player.attributes] as number) = newAttrValue;
+                                (player.attributes[attrToDecline as string] as number) = newAttrValue;
                                 playerChanged = true;
                                 if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToDecline.toString(), change: -decline, newRating: newAttrValue, date: currentDate });
                             }
@@ -1614,7 +1634,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         jerseyNumber: newJerseyNumber,
                         starRating: calculateStarRating(playerToAssign.currentAbility, isSkater, t.leagueDivision),
                     };
-                    return { ...t, roster: [...t.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber) };
+                    const newRoster = [...t.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+                    return { ...t, roster: newRoster, lineup: populateLineup(newRoster) };
                 }
                 return t;
             }));
@@ -2125,7 +2146,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             updateTeamDivision,
             updateTeamNationalsDivision,
             renameDivision,
-            createCustomTeam
+            createCustomTeam,
+            simSpeed, // Added
+            updateSimSpeed // Added
         }}>
             {children}
         </TeamContext.Provider>
