@@ -17,12 +17,12 @@ export const processNationalsRound = (
     teams: Team[],
     nationalsData: { [year: number]: { [division: string]: NationalsTournament } },
     currentYear: number,
-    userGameResult?: { homeTeamName: string, awayTeamName: string, homeScore: number, awayScore: number, gameId: string }
-): { updatedTeams: Team[], updatedNationalsData: any, newAchievements: { teamName: string, achievement: any }[] } => {
+    userGameResult?: { homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number, gameId: string }
+): { updatedTeams: Team[], updatedNationalsData: { [year: number]: { [division: string]: NationalsTournament } }, newAchievements: { teamName: string, achievement: any }[], updatedTournament: NationalsTournament } => {
     const tempNationalsData = JSON.parse(JSON.stringify(nationalsData));
     const tournament = tempNationalsData[currentYear]?.[division];
     if (!tournament || tournament.status === 'completed') {
-        return { updatedTeams: teams, updatedNationalsData: nationalsData, newAchievements: [] };
+        return { updatedTeams: teams, updatedNationalsData: nationalsData, newAchievements: [], updatedTournament: tournament };
     }
 
     let tempTeams = JSON.parse(JSON.stringify(teams));
@@ -36,11 +36,18 @@ export const processNationalsRound = (
             if (userGame) {
                 userGame.status = 'completed';
                 userGame.result = { homeScore: userGameResult.homeScore, awayScore: userGameResult.awayScore };
+                // Use the actual Team objects from userGameResult for processing
+                const { updatedUserTeam, updatedOpponentTeam } = processGameResultsEngine(userGameResult.homeTeam, userGameResult.awayTeam, { userScore: userGameResult.homeScore, opponentScore: userGameResult.awayScore } as any, `${currentYear}-${currentYear + 1}`, true);
+                tempTeams = tempTeams.map((t: Team) => {
+                    if (t.name === updatedUserTeam.name) return updatedUserTeam;
+                    if (t.name === updatedOpponentTeam.name) return updatedOpponentTeam;
+                    return t;
+                });
             }
         }
 
         gamesToSim.forEach((game: ScheduleEntry) => {
-            if (game.status === 'completed') return;
+            if (game.status === 'completed') return; // Skip if already completed by userGameResult
             const homeTeam = tempTeams.find((t: Team) => t.name === game.homeTeam);
             const awayTeam = tempTeams.find((t: Team) => t.name === game.awayTeam);
 
@@ -184,5 +191,5 @@ export const processNationalsRound = (
         }
     }
 
-    return { updatedTeams: tempTeams, updatedNationalsData: tempNationalsData, newAchievements };
+    return { updatedTeams: tempTeams, updatedNationalsData: tempNationalsData, newAchievements, updatedTournament: tournament };
 };
