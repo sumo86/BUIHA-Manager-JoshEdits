@@ -5,13 +5,17 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateDivisionDialog } from '@/components/dialogs/CreateDivisionDialog';
+import { RenameDivisionDialog } from '@/components/dialogs/RenameDivisionDialog';
 import { toast } from 'sonner';
 import { Separator } from '../ui/separator';
+import { Pencil } from 'lucide-react';
 
 const DivisionManager = () => {
-  const { teams, updateTeamDivision, updateTeamNationalsDivision } = useTeam();
+  const { teams, updateTeamDivision, updateTeamNationalsDivision, renameDivision } = useTeam();
   const [isDivisionDialogOpen, setIsDivisionDialogOpen] = useState(false);
   const [isNationalsDialogOpen, setIsNationalsDialogOpen] = useState(false);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [divisionToRename, setDivisionToRename] = useState<string | null>(null);
 
   const [availableDivisions, setAvailableDivisions] = useState<string[]>(() => [...new Set(teams.map(t => t.leagueDivision))].sort());
   const [availableNationalsTiers, setAvailableNationalsTiers] = useState<string[]>(() => [...new Set(teams.map(t => t.nationalsDivision))].sort());
@@ -68,6 +72,21 @@ const DivisionManager = () => {
     }
   };
 
+  const openRenameDialog = (divisionName: string) => {
+    setDivisionToRename(divisionName);
+    setIsRenameDialogOpen(true);
+  };
+
+  const handleRenameDivision = (oldName: string, newName: string) => {
+    if (availableDivisions.includes(newName)) {
+        toast.error("A division with that name already exists.");
+        return;
+    }
+    renameDivision(oldName, newName);
+    setAvailableDivisions(prev => [...prev.filter(d => d !== oldName), newName].sort());
+    toast.success(`Division "${oldName}" has been renamed to "${newName}".`);
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -80,7 +99,14 @@ const DivisionManager = () => {
       <Accordion type="multiple" className="w-full">
         {sortedDivisions.map(division => (
           <AccordionItem value={division} key={division}>
-            <AccordionTrigger className="text-lg font-semibold">{division} ({teamsByDivision[division].length} teams)</AccordionTrigger>
+            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                <div className="flex items-center justify-between w-full pr-2">
+                    <span>{division} ({teamsByDivision[division].length} teams)</span>
+                    <Button variant="ghost" size="icon" className="hover:bg-muted-foreground/20" onClick={(e) => { e.stopPropagation(); openRenameDialog(division); }}>
+                        <Pencil className="h-4 w-4" />
+                    </Button>
+                </div>
+            </AccordionTrigger>
             <AccordionContent>
               <div className="p-2">
                 <div className="flex justify-end text-xs text-muted-foreground pr-4">
@@ -147,6 +173,12 @@ const DivisionManager = () => {
         description='Enter the name for the new nationals tier. e.g., "Non Checking 4".'
         label="Tier Name"
         placeholder="e.g., Non Checking 4"
+      />
+      <RenameDivisionDialog 
+        isOpen={isRenameDialogOpen}
+        onClose={() => setIsRenameDialogOpen(false)}
+        onRename={handleRenameDivision}
+        divisionName={divisionToRename}
       />
     </div>
   );
