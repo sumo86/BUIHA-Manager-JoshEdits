@@ -151,10 +151,10 @@ export const teams: Team[] = Object.values(organizations).flatMap(org => {
     });
 });
 
-export const getTeamOrganizations = () => {
+export const getTeamOrganizations = (allTeams: Team[]) => { // Now accepts allTeams as argument
     const organizations: { [key: string]: { name: string, teams: Team[] } } = {};
 
-    teams.forEach(team => {
+    allTeams.forEach(team => { // Use allTeams here
         const orgName = getOrganizationName(team.name);
         if (!organizations[orgName]) {
             organizations[orgName] = { name: orgName, teams: [] };

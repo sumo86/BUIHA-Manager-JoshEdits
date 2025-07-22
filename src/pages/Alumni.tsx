@@ -13,7 +13,7 @@ const AlumniPage = () => {
   const [filterScope, setFilterScope] = useState<string>('all');
   const [selectedSeason, setSelectedSeason] = useState<string>('all');
 
-  const organizations = useMemo(() => getTeamOrganizations(), []);
+  const organizations = useMemo(() => getTeamOrganizations(teams), [teams]); // Pass teams here
 
   const seasons = useMemo(() => {
     return ["all", ...Object.keys(seasonHistory).sort((a, b) => b.localeCompare(a))];

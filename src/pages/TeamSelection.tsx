@@ -7,8 +7,8 @@ import { format } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 
 const TeamSelection = () => {
-    const { selectTeam, selectOrganization, savedGames, loadGame, deleteGame } = useTeam();
-    const organizations = getTeamOrganizations();
+    const { selectTeam, selectOrganization, savedGames, loadGame, deleteGame, teams } = useTeam(); // Destructure teams
+    const organizations = getTeamOrganizations(teams); // Pass teams here
 
     const handleSelectTeam = (teamName: string) => {
         selectTeam(teamName);

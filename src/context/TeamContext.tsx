@@ -203,7 +203,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const managedTeams = useMemo(() => {
         if (!managedOrganization) return [];
-        const organizations = getTeamOrganizations();
+        const organizations = getTeamOrganizations(teams); // Pass current teams state
         const org = organizations.find(o => o.name === managedOrganization);
         if (!org) return [];
         const orgTeamNames = org.teams.map(t => t.name);
@@ -275,7 +275,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const selectOrganization = (orgName: string | null) => {
         if (orgName) {
-            const organizations = getTeamOrganizations();
+            const organizations = getTeamOrganizations(teams); // Pass current teams state
             const org = organizations.find(o => o.name === orgName);
             if (org && org.teams.length > 0) {
                 const mainTeam = org.teams[0];
@@ -451,7 +451,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         });
 
         // AI Organization Roster Rebalancing
-        const allOrgs = getTeamOrganizations();
+        const allOrgs = getTeamOrganizations(tempTeams); // Pass tempTeams here
         const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
 
         aiOrgs.forEach(org => {
@@ -664,7 +664,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     const newAttrValue = Math.min(20, currentAttrValue + improvement);
                                     (player.attributes[attrToImprove as keyof typeof player.attributes] as number) = newAttrValue;
                                     playerChanged = true;
-                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: improvement, newRating: newAttrValue, date: currentDate });
+                                    if (isUserManagedTeam) newDevelopmentLogs.push({ playerId: player.id, playerName: player.name, attribute: attrToImprove.toString(), change: -improvement, newRating: newAttrValue, date: currentDate });
                                 }
                             }
                         }
@@ -1036,7 +1036,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     // AI teams sign players from the transfer pool
                     let availableForSigning = [...newTransferPoolPlayers];
                     
-                    const allOrgs = getTeamOrganizations();
+                    const allOrgs = getTeamOrganizations(tempTeams); // Pass tempTeams here
                     const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
 
                     if (aiOrgs.length > 0) {
@@ -1076,7 +1076,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     }
 
                     // AI Recruitment Logic (for new recruits, not transfers)
-                    const allOrgsList = getTeamOrganizations();
+                    const allOrgsList = getTeamOrganizations(tempTeams); // Pass tempTeams here
                     const aiOrgsList = allOrgsList.filter(org => org.name !== managedOrganization);
                     const allTeamNames = tempTeams.map(t => t.name);
                     let recruitmentOccurred = false;
