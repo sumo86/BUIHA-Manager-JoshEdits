@@ -15,6 +15,7 @@ import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
 import { processNationalsRound } from '@/lib/nationalsSimulator';
 import { getAggregatedCurrentStats } from '@/lib/statsUtils';
+import { getPromotionTarget, getRelegationTarget, getDivisionRank, getTierName } from '@/lib/leagueUtils';
 
 const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July"];
 const moraleLevels: Player['morale'][] = ["Angry", "Unhappy", "Content", "Happy"];
@@ -753,6 +754,93 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     
                     const seasonThatEnded = `${prevDate.year}-${prevDate.year + 1}`;
                     
+                    // --- PROMOTION AND RELEGATION LOGIC ---
+                    const promotionRelegationChanges: { teamName: string, newDivision: string }[] = [];
+                    const leagueDivisions = [...new Set(tempTeams.map(t => t.leagueDivision))];
+
+                    leagueDivisions.forEach(division => {
+                        const teamsInDivision = tempTeams
+                            .filter(t => t.leagueDivision === division)
+                            .sort((a, b) => {
+                                if (b.points !== a.points) return b.points - a.points;
+                                const goalDiffA = a.goalsFor - a.goalsAgainst;
+                                const goalDiffB = b.goalsFor - b.goalsAgainst;
+                                if (goalDiffB !== goalDiffA) return goalDiffB - goalDiffA;
+                                return b.goalsFor - a.goalsFor;
+                            });
+
+                        if (teamsInDivision.length < 2) return;
+
+                        // --- Promotion Logic ---
+                        for (const promotionCandidate of teamsInDivision) {
+                            const promotionTarget = getPromotionTarget(promotionCandidate.leagueDivision);
+                            if (!promotionTarget) break;
+
+                            let isEligible = true;
+                            const candidateOrg = getOrganizationName(promotionCandidate.name);
+                            const promotionTargetRank = getDivisionRank(promotionTarget);
+                            const seniorTeams = tempTeams.filter(t => 
+                                getOrganizationName(t.name) === candidateOrg && t.name < promotionCandidate.name
+                            );
+
+                            for (const seniorTeam of seniorTeams) {
+                                const seniorTeamRank = getDivisionRank(seniorTeam.leagueDivision);
+                                if (seniorTeamRank > promotionTargetRank) {
+                                    isEligible = false;
+                                    break;
+                                }
+                            }
+
+                            if (isEligible) {
+                                promotionRelegationChanges.push({
+                                    teamName: promotionCandidate.name,
+                                    newDivision: promotionTarget,
+                                });
+                                break;
+                            }
+                        }
+
+                        // --- Relegation Logic ---
+                        const relegationCandidate = teamsInDivision[teamsInDivision.length - 1];
+                        const relegationTarget = getRelegationTarget(relegationCandidate.leagueDivision);
+                        if (relegationTarget && !promotionRelegationChanges.some(c => c.teamName === relegationCandidate.name)) {
+                            promotionRelegationChanges.push({
+                                teamName: relegationCandidate.name,
+                                newDivision: relegationTarget,
+                            });
+                        }
+                    });
+
+                    // --- Apply Changes ---
+                    if (promotionRelegationChanges.length > 0) {
+                        toast.info("Off-season promotions and relegations are being processed...");
+                        promotionRelegationChanges.forEach(({ teamName, newDivision }) => {
+                            const teamIndex = tempTeams.findIndex(t => t.name === teamName);
+                            if (teamIndex !== -1) {
+                                const originalDivision = tempTeams[teamIndex].leagueDivision;
+                                const isPromotion = getDivisionRank(newDivision) < getDivisionRank(originalDivision);
+
+                                tempTeams[teamIndex].leagueDivision = newDivision;
+                                tempTeams[teamIndex].nationalsDivision = getTierName(newDivision);
+
+                                tempTeams[teamIndex].roster = tempTeams[teamIndex].roster.map(player => {
+                                    const isSkater = !player.positions.includes('G');
+                                    return {
+                                        ...player,
+                                        starRating: calculateStarRating(player.currentAbility, isSkater, newDivision),
+                                    };
+                                });
+
+                                if (managedOrganization && getOrganizationName(teamName) === managedOrganization) {
+                                    toast.success(isPromotion
+                                        ? `Congratulations! ${teamName} has been promoted to ${newDivision}!`
+                                        : `Unfortunately, ${teamName} has been relegated to ${newDivision}.`
+                                    );
+                                }
+                            }
+                        });
+                    }
+
                     // Archive player stats for the season that just ended
                     tempTeams = tempTeams.map(team => {
                         const updatedRoster = team.roster.map(player => {
@@ -827,10 +915,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     });
 
                     const seasonString = `${prevDate.year}-${prevDate.year + 1}`;
-                    const leagueDivisions = [...new Set(tempTeams.map(t => t.leagueDivision))];
+                    const newLeagueDivisions = [...new Set(tempTeams.map(t => t.leagueDivision))];
                     const newAchievements: { teamName: string, achievement: Achievement }[] = [];
 
-                    leagueDivisions.forEach(division => {
+                    newLeagueDivisions.forEach(division => {
                         const teamsInDivision = tempTeams.filter(t => t.leagueDivision === division);
                         if (teamsInDivision.length > 0) {
                             const winner = teamsInDivision.sort((a, b) => {

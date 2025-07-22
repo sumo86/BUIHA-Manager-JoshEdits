@@ -35,3 +35,61 @@ export const getTierStats = (leagueDivision: string) => {
     // Fallback to the lowest tier if no match is found, to prevent errors.
     return tier || divisionTierStats[5];
 };
+
+// --- Promotion & Relegation System ---
+
+// Defines the numerical rank of each tier, where a lower number is a higher rank.
+export const tierRanks: { [key: string]: number } = {
+    "Checking 1": 1,
+    "Checking 2": 2,
+    "Non-Checking 1": 3,
+    "Non-Checking 2": 4,
+    "Non-Checking 3": 5,
+};
+
+/**
+ * Gets the numerical rank of a league division for easy comparison.
+ * @param leagueDivision The full name of the league division.
+ * @returns The numerical rank of the division's tier.
+ */
+export const getDivisionRank = (leagueDivision: string): number => {
+    const tierName = getTierName(leagueDivision);
+    return tierRanks[tierName] || 99; // Return a high number for unknown/invalid tiers
+};
+
+// A definitive map of the league structure for promotions and relegations.
+const leagueHierarchy: { [key: string]: { promotionTarget: string | null, relegationTarget: string | null } } = {
+    // Checking 1
+    "Checking 1 - North": { promotionTarget: null, relegationTarget: "Checking 2 - North" },
+    "Checking 1 - South": { promotionTarget: null, relegationTarget: "Checking 2 - South" },
+    // Checking 2
+    "Checking 2 - North": { promotionTarget: "Checking 1 - North", relegationTarget: "Non Checking 1 - North" },
+    "Checking 2 - South": { promotionTarget: "Checking 1 - South", relegationTarget: "Non Checking 1 - South" },
+    // Non Checking 1
+    "Non Checking 1 - North": { promotionTarget: "Checking 2 - North", relegationTarget: "Non Checking 2 - North" },
+    "Non Checking 1 - South": { promotionTarget: "Checking 2 - South", relegationTarget: "Non Checking 2 - South" },
+    // Non Checking 2
+    "Non Checking 2 - North": { promotionTarget: "Non Checking 1 - North", relegationTarget: "Non Checking 3 - North" },
+    "Non Checking 2 - South": { promotionTarget: "Non Checking 1 - South", relegationTarget: "Non Checking 3 - South" },
+    // Non Checking 3
+    "Non Checking 3 - North": { promotionTarget: "Non Checking 2 - North", relegationTarget: null },
+    "Non Checking 3 - South": { promotionTarget: "Non Checking 2 - South", relegationTarget: null },
+};
+
+/**
+ * Gets the division a team would be promoted to from their current division.
+ * @param leagueDivision The team's current full league division name.
+ * @returns The target division name, or null if no promotion is possible.
+ */
+export const getPromotionTarget = (leagueDivision: string): string | null => {
+    return leagueHierarchy[leagueDivision]?.promotionTarget || null;
+};
+
+/**
+ * Gets the division a team would be relegated to from their current division.
+ * @param leagueDivision The team's current full league division name.
+ * @returns The target division name, or null if no relegation is possible.
+ */
+export const getRelegationTarget = (leagueDivision: string): string | null => {
+    return leagueHierarchy[leagueDivision]?.relegationTarget || null;
+};
