@@ -14,7 +14,7 @@ const teamData = [
     { name: "Leeds Gryphons", leagueDivision: "Checking 1 - North" },
     { name: "Nottingham Mavericks B", leagueDivision: "Checking 1 - North" },
     // Checking 1 - South
-    { name: "Oxford University Blues", leagueDivision: "Checking 1 - South" },
+    { name: "Oxford Blues", leagueDivision: "Checking 1 - South" }, // Renamed from Oxford University Blues
     { name: "London Dragons", leagueDivision: "Checking 1 - South" },
     { name: "Cambridge Blues", leagueDivision: "Checking 1 - South" },
     { name: "Southampton Spitfires", leagueDivision: "Checking 1 - South" },
@@ -27,7 +27,7 @@ const teamData = [
     // Checking 2 - South
     { name: "Imperial Devils", leagueDivision: "Checking 2 - South" },
     { name: "Birmingham Lions", leagueDivision: "Checking 2 - South" },
-    { name: "Oxford Vikings", leagueDivision: "Checking 2 - South" },
+    { name: "Oxford Blues B", leagueDivision: "Checking 2 - South" }, // Renamed from Oxford Vikings
     { name: "Cardiff Redhawks", leagueDivision: "Checking 2 - South" },
     // Non Checking 1 - North
     { name: "Nottingham Mavericks C", leagueDivision: "Non Checking 1 - North" },
@@ -37,9 +37,9 @@ const teamData = [
     { name: "Newcastle Wildcats", leagueDivision: "Non Checking 1 - North" },
     { name: "Northumbria Kings B", leagueDivision: "Non Checking 1 - North" },
     // Non Checking 1 - South
-    { name: "Oxford Vikings B", leagueDivision: "Non Checking 1 - South" },
+    { name: "Oxford Blues C", leagueDivision: "Non Checking 1 - South" }, // Renamed from Oxford Vikings B
     { name: "Southampton Spitfires B", leagueDivision: "Non Checking 1 - South" },
-    { name: "Cambridge Huskies", leagueDivision: "Non Checking 1 - South" },
+    { name: "Cambridge Blues B", leagueDivision: "Non Checking 1 - South" }, // Renamed from Cambridge Huskies
     { name: "Birmingham Lions B", leagueDivision: "Non Checking 1 - South" },
     { name: "UEA Avalanche", leagueDivision: "Non Checking 1 - South" },
     // Non Checking 2 - North
@@ -52,7 +52,7 @@ const teamData = [
     { name: "Warwick and Coventry Panthers", leagueDivision: "Non Checking 2 - South" },
     { name: "Southampton Spitfires C", leagueDivision: "Non Checking 2 - South" },
     { name: "Cardiff Redhawks B", leagueDivision: "Non Checking 2 - South" },
-    { name: "Oxford Vikings C", leagueDivision: "Non Checking 2 - South" },
+    { name: "Oxford Blues D", leagueDivision: "Non Checking 2 - South" }, // Renamed from Oxford Vikings C
     { name: "Imperial Devils B", leagueDivision: "Non Checking 2 - South" },
     { name: "UCL Yetis B", leagueDivision: "Non Checking 2 - South" },
     // Non Checking 3 - North
@@ -83,11 +83,10 @@ const defaultTactics: TacticsSelection = {
     "Defensive Zone Coverage": "Strict Zonal",
 };
 
+// Updated orgMap to reflect new naming conventions
 const orgMap: { [key: string]: string } = {
-    'Oxford University Blues': 'Oxford University',
-    'Oxford Vikings': 'Oxford University',
+    'Oxford Blues': 'Oxford University',
     'Cambridge Blues': 'Cambridge University',
-    'Cambridge Huskies': 'Cambridge University',
 };
 
 export const getOrganizationName = (teamName: string): string => {
@@ -97,19 +96,13 @@ export const getOrganizationName = (teamName: string): string => {
 };
 
 export const getTeamOrganizationalTier = (teamName: string): number => {
-    // Specific cases for known A/B team naming conventions
-    if (teamName === "Oxford University Blues") return 0; // A team
-    if (teamName === "Oxford Vikings") return 1; // B team
-    if (teamName === "Cambridge Blues") return 0; // A team
-    if (teamName === "Cambridge Huskies") return 1; // B team
-
-    // General cases for teams with B, C, D, E suffixes
+    // Simplified logic: rely purely on suffixes for tiering
     if (teamName.endsWith(" B")) return 1;
     if (teamName.endsWith(" C")) return 2;
     if (teamName.endsWith(" D")) return 3;
     if (teamName.endsWith(" E")) return 4;
 
-    return 0; // Default to A team (tier 0) if no specific suffix or mapping
+    return 0; // Default to A team (tier 0) if no suffix
 };
 
 const organizations: { [key: string]: { name: string, teamsData: any[] } } = {};
@@ -170,7 +163,8 @@ export const getTeamOrganizations = () => {
     });
 
     Object.values(organizations).forEach(org => {
-        org.teams.sort((a, b) => a.name.localeCompare(b.name));
+        // Sort teams within an organization by their organizational tier (A, B, C...)
+        org.teams.sort((a, b) => getTeamOrganizationalTier(a.name) - getTeamOrganizationalTier(b.name));
     });
 
     return Object.values(organizations).sort((a, b) => a.name.localeCompare(b.name));
