@@ -10,7 +10,8 @@ import { CreateClubDialog } from '@/components/dialogs/CreateClubDialog';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 
-const ROSTER_TEMPLATE_CSV = `Team,Name,Number,Age,Nationality,Position(s),Year,Archetype,Estimated Player Quality
+const ROSTER_TEMPLATE_CSV = `Team,Name,Number,Age,Nationality,Position(s),Year,Archetype,Estimated Player Stars (1-5)
+Edinburgh Eagles,Drew Meyer,11,28,American,"LW, C",Masters (2 Years Left),Goalscorer,4.5
 `;
 
 const TeamSelection = () => {
@@ -60,7 +61,7 @@ const TeamSelection = () => {
                     return;
                 }
                 // Basic validation
-                const requiredHeaders = ['Team', 'Name', 'Number', 'Age', 'Nationality', 'Position(s)', 'Year', 'Archetype', 'Estimated Player Quality'];
+                const requiredHeaders = ['Team', 'Name', 'Number', 'Age', 'Nationality', 'Position(s)', 'Year', 'Archetype', 'Estimated Player Stars (1-5)'];
                 const actualHeaders = Object.keys(results.data[0] as object);
                 const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
 

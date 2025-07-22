@@ -412,7 +412,9 @@ export const createPlayerFromCustomData = (customData: any, leagueDivision: stri
         const positions = parsePositions(customData['Position(s)']);
         const eligibility = parseEligibility(customData['Year'] || 'UG1');
         const archetypeStr = customData['Archetype']?.trim();
-        const estimatedQuality = customData['Estimated Player Quality']?.trim() as Player['estimatedQuality'] || 'Moderate';
+        
+        const inputStarRating = parseFloat(customData['Estimated Player Stars (1-5)']);
+        const starRating = isNaN(inputStarRating) ? 1 : Math.max(1, Math.min(5, inputStarRating));
 
         const position = positions[0];
         const isSkater = position !== 'G';
@@ -424,17 +426,11 @@ export const createPlayerFromCustomData = (customData: any, leagueDivision: stri
         
         const archetype = archetypes.find(a => a.type === archetypeStr && a.position === positionGroup) || getArchetypeForPosition(position);
 
-        let targetCurrentAbilityMin: number, targetCurrentAbilityMax: number;
-        if (estimatedQuality === 'Beginner') { targetCurrentAbilityMin = isSkater ? divisionTierStats[5].skater : divisionTierStats[5].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie; }
-        else if (estimatedQuality === 'Moderate') { targetCurrentAbilityMin = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie; }
-        else if (estimatedQuality === 'Intermediate') { targetCurrentAbilityMin = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie; }
-        else if (estimatedQuality === 'Experienced') { targetCurrentAbilityMin = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[1].skater : divisionTierStats[1].goalie; }
-        else { const tier1 = divisionTierStats[1]; targetCurrentAbilityMin = isSkater ? tier1.skater + (tier1.step.skater * 0.25) : tier1.goalie + (tier1.step.goalie * 0.25); targetCurrentAbilityMax = isSkater ? tier1.skater + (tier1.step.skater * 2.0) : tier1.goalie + (tier1.step.goalie * 2.0); }
-
-        const targetAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);
+        const { min, max } = getTargetAbilityRange(starRating, isSkater, leagueDivision);
+        const targetAbility = getRandomValueInRange(min, max);
+        
         const attributes = generateAttributesForAbility(archetype, targetAbility, isSkater);
         const currentAbility = calculateCurrentAbility(attributes, isSkater);
-        const starRating = calculateStarRating(currentAbility, isSkater, leagueDivision);
 
         const potentialBonus = Math.floor(Math.random() * (isSkater ? 100 : 50)) * ((30 - age) / 12);
         const maxAbility = isSkater ? 560 : 260;
@@ -454,7 +450,8 @@ export const createPlayerFromCustomData = (customData: any, leagueDivision: stri
 
         return {
             id: crypto.randomUUID(),
-            jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, history: [], trainingFocus: null, activeInstructions: [], currentStats: []
+            jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, history: [], trainingFocus: null, activeInstructions: [], currentStats: [],
+            estimatedQuality: 'Experienced', // Default for custom players
         };
     } catch (error) {
         console.error("Failed to create player from custom data:", error, customData);
