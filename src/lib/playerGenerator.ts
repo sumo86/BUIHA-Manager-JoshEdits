@@ -378,3 +378,86 @@ export const generateRecruits = (userLeagueDivision: string, allTeamNames: strin
     }
     return recruits;
 };
+
+const parsePositions = (posStr: string): Position[] => {
+    if (!posStr) return ['C']; // Default position
+    return posStr.split('/').map(p => p.trim().toUpperCase() as Position).filter(p => ["C", "LW", "RW", "LD", "RD", "G"].includes(p));
+};
+
+const parseEligibility = (yearStr: string): Player['eligibility'] => {
+    const map: { [key: string]: Player['eligibility'] } = {
+        'UG1': 'UG Year 1', 'UG 1': 'UG Year 1',
+        'UG2': 'UG Year 2', 'UG 2': 'UG Year 2',
+        'UG3': 'UG Year 3', 'UG 3': 'UG Year 3',
+        'UG4': 'UG Year 4', 'UG 4': 'UG Year 4',
+        'MASTERS': 'Masters',
+        'PHD': 'PhD',
+        'STAFF': 'Staff'
+    };
+    return map[yearStr.toUpperCase().replace(/\s+/g, '')] || 'UG Year 1';
+};
+
+export const createPlayerFromCustomData = (customData: any, leagueDivision: string, usedJerseyNumbers: Set<number>): Player | null => {
+    try {
+        const name = customData['Name']?.trim();
+        if (!name) return null;
+
+        const jerseyNumber = parseInt(customData['Number'], 10) || 0;
+        if (jerseyNumber > 0 && !usedJerseyNumbers.has(jerseyNumber)) {
+            usedJerseyNumbers.add(jerseyNumber);
+        }
+
+        const age = parseInt(customData['Age'], 10);
+        const nationality = customData['Nationality']?.trim() || 'English';
+        const positions = parsePositions(customData['Position(s)']);
+        const eligibility = parseEligibility(customData['Year'] || 'UG1');
+        const archetypeStr = customData['Archetype']?.trim();
+        const estimatedQuality = customData['Estimated Player Quality']?.trim() as Player['estimatedQuality'] || 'Moderate';
+
+        const position = positions[0];
+        const isSkater = position !== 'G';
+
+        let positionGroup: PlayerArchetype['position'] = 'Winger';
+        if (['LD', 'RD'].includes(position)) positionGroup = 'Defenceman';
+        else if (position === 'C') positionGroup = 'Centre';
+        else if (position === 'G') positionGroup = 'Goaltender';
+        
+        const archetype = archetypes.find(a => a.type === archetypeStr && a.position === positionGroup) || getArchetypeForPosition(position);
+
+        let targetCurrentAbilityMin: number, targetCurrentAbilityMax: number;
+        if (estimatedQuality === 'Beginner') { targetCurrentAbilityMin = isSkater ? divisionTierStats[5].skater : divisionTierStats[5].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie; }
+        else if (estimatedQuality === 'Moderate') { targetCurrentAbilityMin = isSkater ? divisionTierStats[4].skater : divisionTierStats[4].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie; }
+        else if (estimatedQuality === 'Intermediate') { targetCurrentAbilityMin = isSkater ? divisionTierStats[3].skater : divisionTierStats[3].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie; }
+        else if (estimatedQuality === 'Experienced') { targetCurrentAbilityMin = isSkater ? divisionTierStats[2].skater : divisionTierStats[2].goalie; targetCurrentAbilityMax = isSkater ? divisionTierStats[1].skater : divisionTierStats[1].goalie; }
+        else { const tier1 = divisionTierStats[1]; targetCurrentAbilityMin = isSkater ? tier1.skater + (tier1.step.skater * 0.25) : tier1.goalie + (tier1.step.goalie * 0.25); targetCurrentAbilityMax = isSkater ? tier1.skater + (tier1.step.skater * 2.0) : tier1.goalie + (tier1.step.goalie * 2.0); }
+
+        const targetAbility = getRandomValueInRange(targetCurrentAbilityMin, targetCurrentAbilityMax);
+        const attributes = generateAttributesForAbility(archetype, targetAbility, isSkater);
+        const currentAbility = calculateCurrentAbility(attributes, isSkater);
+        const starRating = calculateStarRating(currentAbility, isSkater, leagueDivision);
+
+        const potentialBonus = Math.floor(Math.random() * (isSkater ? 100 : 50)) * ((30 - age) / 12);
+        const maxAbility = isSkater ? 560 : 260;
+        let potentialAbility = Math.min(maxAbility, Math.round(currentAbility + potentialBonus));
+        if (potentialAbility < currentAbility) potentialAbility = currentAbility;
+
+        let role: string | undefined, roleSuitability: { [key: string]: number } = {};
+        if (isSkater) {
+            const skaterAttributes = attributes as SkaterAttributes;
+            const isForward = (['C', 'LW', 'RW'] as Position[]).some(p => positions.includes(p));
+            const isDefenceman = (['LD', 'RD'] as Position[]).some(p => positions.includes(p));
+            let finalSuitabilities: { [key: string]: number } = {}, bestRoleOverall = '', highestSuitabilityOverall = -1;
+            if (isForward) { const { suitabilities, bestRole, highestSuitability } = calculateRoleSuitability(skaterAttributes, 'Forward'); finalSuitabilities = { ...finalSuitabilities, ...suitabilities }; if (highestSuitability > highestSuitabilityOverall) { highestSuitabilityOverall = highestSuitability; bestRoleOverall = bestRole; } }
+            if (isDefenceman) { const { suitabilities, bestRole, highestSuitability } = calculateRoleSuitability(skaterAttributes, 'Defenceman'); finalSuitabilities = { ...finalSuitabilities, ...suitabilities }; if (highestSuitability > highestSuitabilityOverall) { highestSuitabilityOverall = highestSuitability; bestRoleOverall = bestRole; } }
+            roleSuitability = finalSuitabilities; role = bestRoleOverall;
+        }
+
+        return {
+            id: crypto.randomUUID(),
+            jerseyNumber, name, age, nationality, positions, starRating, morale: "Content", healthStatus: "Healthy", injury: null, eligibility, archetype, attributes, currentAbility, potentialAbility, role, roleSuitability, captaincy: null, history: [], trainingFocus: null, activeInstructions: [], currentStats: []
+        };
+    } catch (error) {
+        console.error("Failed to create player from custom data:", error, customData);
+        return null;
+    }
+};

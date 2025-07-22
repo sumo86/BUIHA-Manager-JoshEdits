@@ -4,14 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { format } from 'date-fns';
-import { Trash2, PlusCircle } from 'lucide-react';
-import { useState } from 'react';
+import { Trash2, PlusCircle, Download, Upload } from 'lucide-react';
+import { useState, useRef } from 'react';
 import { CreateClubDialog } from '@/components/dialogs/CreateClubDialog';
+import Papa from 'papaparse';
+import { toast } from 'sonner';
+
+const ROSTER_TEMPLATE_CSV = `Team,Name,Number,Age,Nationality,Position(s),Year,Archetype,Estimated Player Quality
+`;
 
 const TeamSelection = () => {
-    const { selectTeam, selectOrganization, savedGames, loadGame, deleteGame, teams } = useTeam(); // Destructure teams
-    const organizations = getTeamOrganizations(teams); // Pass teams here
+    const { selectTeam, selectOrganization, savedGames, loadGame, deleteGame, teams } = useTeam();
+    const organizations = getTeamOrganizations(teams);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSelectTeam = (teamName: string) => {
         selectTeam(teamName);
@@ -19,6 +25,69 @@ const TeamSelection = () => {
 
     const handleSelectOrganization = (orgName: string) => {
         selectOrganization(orgName);
+    };
+
+    const handleDownloadTemplate = () => {
+        const blob = new Blob([ROSTER_TEMPLATE_CSV], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'Custom-Roster-Template.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            toast.error("No file selected.");
+            return;
+        }
+
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            transformHeader: header => header.trim(),
+            complete: (results) => {
+                if (results.errors.length) {
+                    toast.error("Error parsing CSV", { description: results.errors[0].message });
+                    return;
+                }
+                // Basic validation
+                const requiredHeaders = ['Team', 'Name', 'Number', 'Age', 'Nationality', 'Position(s)', 'Year', 'Archetype', 'Estimated Player Quality'];
+                const actualHeaders = Object.keys(results.data[0] as object);
+                const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
+
+                if (missingHeaders.length > 0) {
+                    toast.error("Invalid CSV format", { description: `Missing required columns: ${missingHeaders.join(', ')}` });
+                    return;
+                }
+
+                localStorage.setItem('customRoster', JSON.stringify(results.data));
+                toast.success("Custom Roster Uploaded!", {
+                    description: `${results.data.length} players loaded. Please refresh the page and select a team to start a new game.`,
+                    duration: 8000,
+                    action: {
+                        label: 'Refresh Now',
+                        onClick: () => window.location.reload(),
+                    },
+                });
+            },
+            error: (error) => {
+                toast.error("Failed to read file", { description: error.message });
+            }
+        });
+        
+        // Reset file input
+        if(fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
     };
 
     return (
@@ -61,10 +130,29 @@ const TeamSelection = () => {
                         <CardDescription>Select an existing team or create your own club from scratch.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <Button className="w-full" size="lg" onClick={() => setIsCreateDialogOpen(true)}>
-                            <PlusCircle className="mr-2 h-5 w-5" />
-                            Create Your Own Club
-                        </Button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Button className="w-full" size="lg" onClick={() => setIsCreateDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-5 w-5" />
+                                Create Your Own Club
+                            </Button>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button variant="outline" onClick={handleDownloadTemplate}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Template
+                                </Button>
+                                <Button variant="outline" onClick={handleUploadClick}>
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Upload Roster
+                                </Button>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                    accept=".csv"
+                                />
+                            </div>
+                        </div>
                         <div className="relative flex justify-center">
                             <div className="absolute inset-0 flex items-center">
                                 <span className="w-full border-t" />

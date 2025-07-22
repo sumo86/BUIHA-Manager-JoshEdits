@@ -1,7 +1,7 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
-import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament, TacticsSelection, SimSpeed } from '@/types';
+import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament, TacticsSelection, SimSpeed, Position } from '@/types';
 import { teams as initialTeams, getTeamOrganizations, getOrganizationName, getTeamOrganizationalTier } from '@/data/teams';
-import { generateRecruits, calculateStarRating, getGamesPlayedForDivision, generateRoster } from '@/lib/playerGenerator'; 
+import { generateRecruits, calculateStarRating, getGamesPlayedForDivision, generateRoster, createPlayerFromCustomData, generatePlayer } from '@/lib/playerGenerator'; 
 import { toast } from 'sonner';
 import { calculateCurrentAbility } from '@/lib/playerGenerator';
 import { trainingFocusesMap } from '@/data/trainingFocuses';
@@ -120,13 +120,56 @@ export const useTeam = () => {
 export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element => {
     const [teams, setTeams] = useState<Team[]>(() => {
         try {
+            const customRosterJSON = localStorage.getItem('customRoster');
+            if (customRosterJSON) {
+                const customRosterData: any[] = JSON.parse(customRosterJSON);
+                
+                if (customRosterData.length > 0) {
+                    console.log("Applying custom roster...");
+                    let teamsWithCustomRosters = JSON.parse(JSON.stringify(initialTeams)) as Team[];
+                    
+                    teamsWithCustomRosters = teamsWithCustomRosters.map(team => {
+                        const customPlayersForTeam = customRosterData.filter(p => p.Team === team.name);
+                        if (customPlayersForTeam.length > 0) {
+                            const usedJerseyNumbers = new Set<number>();
+                            const newRoster: Player[] = customPlayersForTeam
+                                .map(p => createPlayerFromCustomData(p, team.leagueDivision, usedJerseyNumbers))
+                                .filter((p): p is Player => p !== null);
+
+                            const rosterSize = 23;
+                            const playersToGenerate = rosterSize - newRoster.length;
+                            
+                            if (playersToGenerate > 0) {
+                                const skaterPositions: Position[] = ["C", "LW", "RW", "LD", "RD"];
+                                for (let i = 0; i < playersToGenerate; i++) {
+                                    const randomPosition = skaterPositions[Math.floor(Math.random() * skaterPositions.length)];
+                                    const newPlayer = generatePlayer(usedJerseyNumbers, randomPosition, team.leagueDivision, team.name);
+                                    newRoster.push(newPlayer);
+                                }
+                            }
+                            
+                            team.roster = newRoster.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+                            team.lineup = populateLineup(team.roster);
+                        }
+                        return team;
+                    });
+                    
+                    localStorage.removeItem('customRoster'); // Clear after applying
+                    toast.success("Custom roster applied successfully!");
+                    return teamsWithCustomRosters;
+                }
+            }
+
             const savedTeams = localStorage.getItem('teams');
             if (savedTeams) {
                 return JSON.parse(savedTeams);
             }
         } catch (error) {
             console.error("Failed to load teams from localStorage:", error);
+            localStorage.removeItem('customRoster'); // Clean up on error
         }
+        
+        // Fallback to default initial teams
         localStorage.setItem('teams', JSON.stringify(initialTeams));
         return initialTeams;
     });
@@ -965,7 +1008,18 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             ...team,
                             financials: {
                                 ...team.financials,
-                                discretionaryBudget: newDiscretionaryBudget,
+                                discretionaryBudget: newDiscretionaryBudget,<think>Deciding which files are relevant...
+
+{
+  "complexity": "high",
+  "relevantFiles": [
+    "src/pages/TeamSelection.tsx",
+    "src/context/TeamContext.tsx",
+    "src/lib/playerGenerator.ts",
+    "src/types/index.ts",
+    "src/data/archetypes.ts"
+  ]
+}</think><dyad-codebase-context files="src/pages/TeamSelection.tsx,src/context/TeamContext.tsx,src/lib/playerGenerator.ts,src/types/index.ts,src/data/archetypes.ts">Complexity: high</dyad-codebase-context>
                             }
                         };
                     });
