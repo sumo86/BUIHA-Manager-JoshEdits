@@ -382,6 +382,8 @@ export type SeasonHistory = {
 };
 
 export type SaveGameSlot = {
-    name: string;
-    date: string;
+    saveName: string;
+    savedAt: string;
+    userTeamName: string;
+    currentDate: GameDate;
 };
