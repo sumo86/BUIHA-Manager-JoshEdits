@@ -748,13 +748,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const newDate = ((prevDate) => {
             let { month, week, year } = prevDate;
             const monthIndex = months.indexOf(month);
-            
+            let nextMonthIndex = monthIndex; // Declare nextMonthIndex here
+
             week += 1; // Always advance by one week
 
             // Handle month rollover
             if (week > 4) { // If week exceeds 4, roll over to next month
                 week = 1;
-                let nextMonthIndex = (monthIndex + 1) % months.length;
+                nextMonthIndex = (monthIndex + 1) % months.length; // Assign new value
                 if (month === "July" && months[nextMonthIndex] === "August") {
                     year += 1;
                     toast.info("Season Ended", { description: `The ${prevDate.year}-${prevDate.year + 1} season has concluded. Stats are being archived.` });
@@ -1133,6 +1134,76 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     });
                 }
                 month = months[nextMonthIndex];
+            }
+            // AI Team Expansion Logic (runs once per year, in July before rolling to August)
+            if (month === "July" && nextMonthIndex === months.indexOf("August")) {
+                let newAITeamsCount = 0;
+                const maxNewAITeams = 2; // Global limit for new AI teams per season
+
+                const aiOrgsForExpansion = shuffleArray(allOrgs.filter(org => org.name !== managedOrganization));
+
+                for (const org of aiOrgsForExpansion) {
+                    if (newAITeamsCount >= maxNewAITeams) break;
+
+                    // 20% chance for an AI organization to form a new squad
+                    if (Math.random() < 0.2) {
+                        const orgTeams = tempTeams.filter(t => getOrganizationName(t.name) === org.name);
+                        const existingTiers = orgTeams.map(t => getTeamOrganizationalTier(t.name));
+                        const nextTier = Math.max(...existingTiers) + 1;
+
+                        const suffixMap: { [key: number]: string } = { 1: 'B', 2: 'C', 3: 'D', 4: 'E' };
+                        const newSuffix = suffixMap[nextTier];
+
+                        if (!newSuffix) {
+                            // Cannot create more teams for this organization (e.g., already have A, B, C, D, E)
+                            continue;
+                        }
+
+                        const baseName = orgTeams.find(t => getTeamOrganizationalTier(t.name) === 0)?.name || org.name;
+                        const newTeamName = `${baseName} ${newSuffix}`;
+
+                        // Determine region for the new team's division based on the main team's region
+                        const sampleTeamInOrg = orgTeams[0]; 
+                        const newLeagueDivision = sampleTeamInOrg.leagueDivision.includes('North') ? 'Non Checking 3 - North' : 'Non Checking 3 - South';
+
+                        const roster = generateRoster(newLeagueDivision, newTeamName); // Generate full roster
+                        const lineup = populateLineup(roster); // Populate lineup based on new roster
+
+                        const equipmentCost = Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500;
+                        const totalGames = getGamesPlayedForDivision(newLeagueDivision);
+                        const numberOfHomeGames = Math.floor(totalGames / 2);
+                        const numberOfAwayGames = Math.ceil(totalGames / 2);
+                        const iceTimeCost = numberOfHomeGames * 350;
+                        const travelCost = numberOfAwayGames * 500;
+                        
+                        const initialFixedCosts = iceTimeCost + travelCost;
+                        const teamBudget = 7500; // Base budget for new lower-tier teams
+
+                        const newTeam: Team = {
+                            id: crypto.randomUUID(),
+                            name: newTeamName,
+                            leagueDivision: newLeagueDivision,
+                            nationalsDivision: getTierName(newLeagueDivision),
+                            roster,
+                            lineup,
+                            tactics: sampleTeamInOrg.tactics, // Inherit tactics from main team
+                            wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0,
+                            points: 0,
+                            logo: teamLogos[org.name], // Use organization's logo
+                            financials: {
+                                totalBudget: teamBudget,
+                                discretionaryBudget: teamBudget - initialFixedCosts,
+                                iceTimeCostPerGame: 350,
+                                equipmentCost: equipmentCost,
+                            },
+                            facilities: initialFacilityProjects.map(p => ({ ...p })), // New facilities for new team
+                        };
+
+                        tempTeams.push(newTeam);
+                        newAITeamsCount++;
+                        toast.info("AI Expansion", { description: `${newTeamName} has been formed by ${org.name}!` });
+                    }
+                }
             }
             return { month, week, year };
         })(currentDate);
