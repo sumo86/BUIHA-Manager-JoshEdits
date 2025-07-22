@@ -2,18 +2,16 @@ import { useMemo } from 'react';
 import { useTeam } from "@/context/TeamContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Plane, Box, Calendar as CalendarIcon, Building2 } from 'lucide-react';
-import { getGamesPlayedForDivision } from '@/lib/playerGenerator';
 
 const Finances = () => {
-  const { userTeam, managedOrganization, organizationFinancials, isManagingOrg, managedTeams } = useTeam();
+  const { userTeam, managedOrganization, organizationFinancials, isManagingOrg, managedTeams, teams } = useTeam();
 
   const gameCounts = useMemo(() => {
     if (!userTeam) return { home: 0, away: 0 };
-    const totalGames = getGamesPlayedForDivision(userTeam.leagueDivision);
-    const home = Math.floor(totalGames / 2);
-    const away = Math.ceil(totalGames / 2);
-    return { home, away };
-  }, [userTeam]);
+    const teamsInDivision = teams.filter(t => t.leagueDivision === userTeam.leagueDivision).length;
+    const games = teamsInDivision > 1 ? teamsInDivision - 1 : 0;
+    return { home: games, away: games };
+  }, [userTeam, teams]);
 
   const travelCostPerGame = 500;
   const iceTimeCostPerGame = 350;

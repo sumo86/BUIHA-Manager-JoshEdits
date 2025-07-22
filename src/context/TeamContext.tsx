@@ -915,6 +915,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         const teamsInDivisionCount = tempTeams.filter(t => t.leagueDivision === team.leagueDivision).length;
                         const numberOfHomeGames = teamsInDivisionCount > 1 ? teamsInDivisionCount - 1 : 0;
                         const numberOfAwayGames = teamsInDivisionCount > 1 ? teamsInDivisionCount - 1 : 0;
+
                         const iceTimeCost = numberOfHomeGames * 350;
                         const travelCost = numberOfAwayGames * 500;
 
@@ -1187,7 +1188,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                         const iceTimeCost = numberOfHomeGames * 350;
                         const travelCost = numberOfAwayGames * 500;
-                        
+
                         const initialFixedCosts = iceTimeCost + travelCost; 
                         const teamBudget = 7500; // Base budget for new lower-tier teams
 

@@ -294,7 +294,14 @@ const getStarCountsForRoster = (tierName: string, rosterSize: number): Record<st
 export const generateRoster = (leagueDivision: string, teamName: string): Player[] => {
   const roster: Player[] = [];
   const usedJerseyNumbers = new Set<number>();
-  const rosterPositions: Position[] = [ "G", "G", "LD", "LD", "LD", "RD", "RD", "RD", "RD", "C", "C", "C", "C", "LW", "LW", "LW", "LW", "RW", "RW", "RW", "RW" ];
+  const rosterPositions: Position[] = [ 
+    "G", "G", 
+    "LD", "LD", "LD", "LD", 
+    "RD", "RD", "RD", "RD",
+    "C", "C", "C", "C", 
+    "LW", "LW", "LW", "LW", "LW",
+    "RW", "RW", "RW", "RW" 
+  ]; // Increased to 23 players (2G, 8D, 13F)
   
   const tier = getTierStats(leagueDivision);
   const starCounts = getStarCountsForRoster(tier.name, rosterPositions.length);
