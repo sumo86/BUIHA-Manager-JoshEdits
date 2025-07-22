@@ -96,6 +96,22 @@ export const getOrganizationName = (teamName: string): string => {
     return teamName.replace(/ (B|C|D|E)$/, '').trim();
 };
 
+export const getTeamOrganizationalTier = (teamName: string): number => {
+    // Specific cases for known A/B team naming conventions
+    if (teamName === "Oxford University Blues") return 0; // A team
+    if (teamName === "Oxford Vikings") return 1; // B team
+    if (teamName === "Cambridge Blues") return 0; // A team
+    if (teamName === "Cambridge Huskies") return 1; // B team
+
+    // General cases for teams with B, C, D, E suffixes
+    if (teamName.endsWith(" B")) return 1;
+    if (teamName.endsWith(" C")) return 2;
+    if (teamName.endsWith(" D")) return 3;
+    if (teamName.endsWith(" E")) return 4;
+
+    return 0; // Default to A team (tier 0) if no specific suffix or mapping
+};
+
 const organizations: { [key: string]: { name: string, teamsData: any[] } } = {};
 teamData.forEach(team => {
     const orgName = getOrganizationName(team.name);

@@ -1,6 +1,6 @@
 import { createContext, useState, useContext, ReactNode, useEffect, useMemo } from 'react';
 import { Team, Player, SkaterAttributes, GoalieAttributes, DevelopmentLog, TrainingFocus, GameState, FacilityProject, Financials, ScheduleEntry, GameDate, PlayerSeasonStats, RecordCategory, TeamRecord, NationalsPlayoffMatch, Achievement, TeamAchievements, SeasonHistory, SaveGameSlot, TeamSeasonHistory, NationalsTournament } from '@/types';
-import { teams as initialTeams, getTeamOrganizations, getOrganizationName } from '@/data/teams';
+import { teams as initialTeams, getTeamOrganizations, getOrganizationName, getTeamOrganizationalTier } from '@/data/teams';
 import { generateRecruits, calculateStarRating, getGamesPlayedForDivision } from '@/lib/playerGenerator'; 
 import { toast } from 'sonner';
 import { calculateCurrentAbility } from '@/lib/playerGenerator';
@@ -779,13 +779,16 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             let isEligible = true;
                             const candidateOrg = getOrganizationName(promotionCandidate.name);
                             const promotionTargetRank = getDivisionRank(promotionTarget);
+                            
+                            // Check for senior teams from the same organization
                             const seniorTeams = tempTeams.filter(t => 
-                                getOrganizationName(t.name) === candidateOrg && t.name < promotionCandidate.name
+                                getOrganizationName(t.name) === candidateOrg &&
+                                getTeamOrganizationalTier(t.name) < getTeamOrganizationalTier(promotionCandidate.name)
                             );
 
                             for (const seniorTeam of seniorTeams) {
                                 const seniorTeamRank = getDivisionRank(seniorTeam.leagueDivision);
-                                if (seniorTeamRank > promotionTargetRank) {
+                                if (seniorTeamRank > promotionTargetRank) { // If senior team is in a lower (higher rank number) division than the promotion target
                                     isEligible = false;
                                     break;
                                 }
@@ -796,7 +799,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     teamName: promotionCandidate.name,
                                     newDivision: promotionTarget,
                                 });
-                                break;
+                                break; // Only one team can be promoted from a division
                             }
                         }
 
@@ -1049,7 +1052,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const signingOrg = shuffledAiOrgs[orgAssignIndex % shuffledAiOrgs.length];
                             
                             // Assign to the lowest-tier team in the org. Teams are sorted A, B, C... so the last one is the lowest tier.
-                            const lowestTierTeamInOrg = signingOrg.teams[signingOrg.teams.length - 1];
+                            const lowestTierTeamInOrg = signingOrg.teams.sort((a, b) => getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name))[0];
                             const teamIndexInTemp = tempTeams.findIndex(t => t.name === lowestTierTeamInOrg.name);
                             
                             if (teamIndexInTemp !== -1) {
@@ -1085,14 +1088,14 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                         if (playersToRecruitCount > 0) {
                             recruitmentOccurred = true;
-                            const primaryTeam = orgTeams.sort((a, b) => b.name.localeCompare(a.name))[0];
-                            const prospects = generateRecruits(primaryTeam.leagueDivision, allTeamNames, playersToRecruitCount * 2, primaryTeam.facilities);
+                            // Recruit for the lowest tier team in the organization
+                            const lowestTierTeam = orgTeams.sort((a, b) => getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name))[0];
+                            const prospects = generateRecruits(lowestTierTeam.leagueDivision, allTeamNames, playersToRecruitCount * 2, lowestTierTeam.facilities);
                             
                             prospects.sort((a, b) => b.potentialAbility - a.potentialAbility);
                             const newRecruits = prospects.slice(0, playersToRecruitCount);
 
-                            const lowestTierTeamName = orgTeams.sort((a, b) => b.name.localeCompare(a.name))[0].name;
-                            const lowestTierTeamIndex = tempTeams.findIndex(t => t.name === lowestTierTeamName);
+                            const lowestTierTeamIndex = tempTeams.findIndex(t => t.name === lowestTierTeam.name);
 
                             if (lowestTierTeamIndex !== -1) {
                                 const teamToUpdate = tempTeams[lowestTierTeamIndex];
