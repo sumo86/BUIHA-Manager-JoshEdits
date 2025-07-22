@@ -113,7 +113,9 @@ export type PlayerSeasonStats = {
   shutouts?: number;
 };
 
-export type TrainingFocus = "Skating" | "Shooting" | "Playmaking" | "Defense" | "Physical" | "Mental" | "Goaltending" | null;
+export type TrainingFocus = keyof typeof trainingFocusesMap;
+
+export type SimSpeed = 'Slow' | 'Normal' | 'Fast';
 
 export type Player = {
   id: string;
