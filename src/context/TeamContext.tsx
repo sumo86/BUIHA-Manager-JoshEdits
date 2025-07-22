@@ -1056,7 +1056,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const signingOrg = shuffledAiOrgs[orgAssignIndex % shuffledAiOrgs.length];
                             
                             // Assign to the lowest-tier team in the org. Teams are sorted A, B, C... so the last one is the lowest tier.
-                            const lowestTierTeamInOrg = orgTeams.sort((a, b) => getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name))[0];
+                            const lowestTierTeamInOrg = signingOrg.teams.sort((a, b) => getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name))[0];
                             const teamIndexInTemp = tempTeams.findIndex(t => t.name === lowestTierTeamInOrg.name);
                             
                             if (teamIndexInTemp !== -1) {
@@ -1352,10 +1352,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
         const allGames = [...tournament.groupStageSchedule, ...tournament.playoffSchedule];
         const game = allGames.find(g => g.id === gameId);
-        if (!game) return;
+        if (!game || typeof game.homeTeam !== 'string' || typeof game.awayTeam !== 'string') return;
 
-        const homeTeamSim = teams.find(t => t.name === (typeof game.homeTeam === 'string' ? game.homeTeam : 'TBD'));
-        const awayTeamSim = teams.find(t => t.name === (typeof game.awayTeam === 'string' ? game.awayTeam : 'TBD'));
+        const homeTeamSim = teams.find(t => t.name === game.homeTeam);
+        const awayTeamSim = teams.find(t => t.name === game.awayTeam);
 
         if (!homeTeamSim || !awayTeamSim) return;
 
