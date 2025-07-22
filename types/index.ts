@@ -144,7 +144,6 @@ export type Player = {
   recruitmentCost?: number;
   alumniStatus?: 'Retired' | 'Active Elsewhere' | 'Transfer Listed';
   isContinuingEducation?: boolean;
-  continuingEducationStartSeason?: string;
 };
 
 export type Lineup = {
@@ -178,7 +177,6 @@ export type Financials = {
   iceTimeCostPerGame: number;
   equipmentCost: number;
   budgetAllocations: BudgetAllocations;
-  discretionaryBudget: number;
 };
 
 export type FacilityProject = {
@@ -188,7 +186,6 @@ export type FacilityProject = {
   cost: number;
   status: 'Not Started' | 'In Progress' | 'Completed';
   benefit: string;
-  durationWeeks: number; // Added this property
   weeksToComplete?: number;
 };
 
@@ -204,7 +201,6 @@ export type Team = {
   draws: number;
   goalsFor: number;
   goalsAgainst: number;
-  points: number; // Added points to Team type
   lineup: Lineup;
   tactics: TacticsSelection;
   financials: Financials;
@@ -336,57 +332,4 @@ export type NationalsTournament = {
   status: 'pending' | 'group-stage' | 'silver-playoffs' | 'gold-playoffs' | 'completed';
   winner?: string;
   currentRound: number | 'Quarter-Final' | 'Semi-Final' | 'Final';
-};
-
-export type TeamSeasonHistory = {
-  teamName: string;
-  leagueDivision: string;
-  nationalsDivision: string;
-  wins: number;
-  losses: number;
-  draws: number;
-  points: number;
-  goalsFor: number;
-  goalsAgainst: number;
-};
-
-export type SeasonHistory = {
-  [season: string]: TeamSeasonHistory[];
-};
-
-export type TeamAchievements = {
-  [teamName: string]: Achievement[];
-};
-
-export type Achievement = {
-  type: 'Division Title' | 'Nationals Champion' | 'Nationals Runner-Up';
-  season: string;
-  division?: string;
-};
-
-export type SavedGameMetadata = {
-  saveName: string;
-  savedAt: string;
-};
-
-export type SaveGameSlot = {
-  saveName: string;
-  savedAt: string;
-  teams: Team[];
-  alumni: Player[];
-  activeTeamName: string | null;
-  managedOrganization: string | null;
-  isManagingOrg: boolean;
-  schedule: ScheduleEntry[];
-  nationalsData: { [year: number]: { [division: string]: NationalsTournament } };
-  seasonRecords: { [key in RecordCategory]?: TeamRecord };
-  careerRecords: { [key in RecordCategory]?: TeamRecord };
-  teamAchievements: TeamAchievements;
-  transferPool: Player[];
-  seasonHistory: SeasonHistory;
-  scoutingPool: Player[];
-  recruitedPool: Player[];
-  fairHosted: boolean;
-  currentDate: GameDate;
-  developmentHistory: DevelopmentLog[];
 };
