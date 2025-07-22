@@ -1143,6 +1143,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         });
                         return { ...team, roster: updatedRoster, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0 };
                     });
+
+                    // After all off-season changes, regenerate lineups for all teams
+                    tempTeams = tempTeams.map(team => {
+                        const newLineup = populateLineup(team.roster);
+                        return { ...team, lineup: newLineup };
+                    });
                 }
                 month = months[nextMonthIndex];
             }
@@ -2049,6 +2055,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         localStorage.removeItem('currentDate');
         localStorage.removeItem('developmentHistory');
         localStorage.removeItem('alumni');
+        // Note: 'savedGames' is intentionally not removed
         window.location.reload(); // Force a full reload to reset all state
     };
 
