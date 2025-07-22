@@ -13,7 +13,7 @@ import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament } from '@/lib/nationalsGenerator';
 import { isRivalryGame } from '@/lib/rivalries';
 import { rebalanceOrganizationRosters } from '@/lib/aiManager';
-import { processNationalsRound } => '@/lib/nationalsSimulator';
+import { processNationalsRound } from '@/lib/nationalsSimulator';
 import { getAggregatedCurrentStats } from '@/lib/statsUtils';
 import { getPromotionTarget, getRelegationTarget, getDivisionRank, getTierName } from '@/lib/leagueUtils';
 import { populateLineup } from '@/lib/lineupUtils';
