@@ -4,7 +4,7 @@ import { AlumniTable } from '@/components/alumni/AlumniTable';
 import { AdditionalDegreesTable } from '@/components/alumni/AdditionalDegreesTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getTeamOrganizations } from '@/lib/leagueUtils';
+import { getTeamOrganizations } from '@/data/teams';
 import { getPlayerLastTeam } from '@/lib/playerUtils';
 import { Player } from '@/types';
 
@@ -13,7 +13,7 @@ const AlumniPage = () => {
   const [filterScope, setFilterScope] = useState<string>('all');
   const [selectedSeason, setSelectedSeason] = useState<string>('all');
 
-  const organizations = useMemo(() => getTeamOrganizations(teams), [teams]);
+  const organizations = useMemo(() => getTeamOrganizations(), []);
 
   const seasons = useMemo(() => {
     return ["all", ...Object.keys(seasonHistory).sort((a, b) => b.localeCompare(a))];
