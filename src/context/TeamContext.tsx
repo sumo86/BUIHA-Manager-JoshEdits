@@ -1623,20 +1623,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const savedState = JSON.parse(savedStateJSON);
             
             setTeams(savedState.teams || initialTeams);
-            setAlumni<think>Deciding which files are relevant...
-
-{
-  "complexity": "high",
-  "relevantFiles": [
-    "src/components/settings/TierManager.tsx",
-    "src/context/TeamContext.tsx",
-    "src/lib/leagueUtils.ts",
-    "src/lib/playerGenerator.ts",
-    "src/pages/Settings.tsx",
-    "src/components/settings/DivisionManager.tsx",
-    "src/components/dialogs/CreateDivisionDialog.tsx"
-  ]
-}</think><dyad-codebase-context files="src/components/settings/TierManager.tsx,src/context/TeamContext.tsx,src/lib/leagueUtils.ts,src/lib/playerGenerator.ts,src/pages/Settings.tsx,src/components/settings/DivisionManager.tsx,src/components/dialogs/CreateDivisionDialog.tsx">Complexity: high</dyad-codebase-context>(savedState.alumni || []);
+            setAlumni(savedState.alumni || []);
             setActiveTeamName(savedState.activeTeamName || null);
             setManagedOrganization(savedState.managedOrganization || null);
             setIsManagingOrg(savedState.isManagingOrg || false);

@@ -1,6 +1,7 @@
 import { Player, Team, SkaterAttributes, GoalieAttributes } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { calculateStarRating } from '@/lib/playerGenerator';
+import { useTeam, TierInfo } from '@/context/TeamContext'; // Import useTeam and TierInfo
 
 interface PlayerScoutingReportProps {
   player: Player;
@@ -26,7 +27,7 @@ const getAttributeDescription = (key: string, value: number): string => {
     return '';
 };
 
-const generateReport = (player: Player, team: Team) => {
+const generateReport = (player: Player, team: Team, tierHierarchy: TierInfo[]) => { // Added tierHierarchy parameter
   const firstName = player.name.split(' ')[0];
   const isSkater = player.positions[0] !== 'G';
   const { attributes, starRating, potentialAbility, currentAbility } = player;
@@ -91,7 +92,7 @@ const generateReport = (player: Player, team: Team) => {
   // Leadership
   if (hidden.leadership >= 18) hiddenHints.push({ text: `is an exceptional leader, inspiring teammates.`, score: 9 });
   else if (hidden.leadership >= 15) hiddenHints.push({ text: `is a natural leader, guiding by example.`, score: 7 });
-  else if (hidden.leadership <= 7) hiddenHints.push({ text: `is not a vocal presence and tends to keep to themself.`, score: 7 });
+  else if (hidden.leadership <= 7) hiddenHints.push({ text: `is not a vocal presence and tends to keep themself.`, score: 7 });
 
   // Injury Proneness
   if (hidden.injuryProneness <= 5) hiddenHints.push({ text: `is remarkably durable, rarely missing games.`, score: 9 });
@@ -121,8 +122,8 @@ const generateReport = (player: Player, team: Team) => {
 
   // Potential Assessment - only if significant potential
   let potentialAssessment = '';
-  if (potentialAbility - currentAbility > 75) { // Only show if potential is significantly higher (changed from 50 to 75)
-    const potentialStarRating = calculateStarRating(potentialAbility, isSkater, leagueDivision);
+  if (potentialAbility - currentAbility > 75) {
+    const potentialStarRating = calculateStarRating(potentialAbility, isSkater, leagueDivision, tierHierarchy); // Pass tierHierarchy
     const potentialSkillDescription = getSkillTierDescription(potentialStarRating);
 
     const potentialPhrases = [
@@ -138,7 +139,8 @@ const generateReport = (player: Player, team: Team) => {
 };
 
 export const PlayerScoutingReport = ({ player, team }: PlayerScoutingReportProps) => {
-  const report = generateReport(player, team);
+  const { tierHierarchy } = useTeam(); // Get tierHierarchy from context
+  const report = generateReport(player, team, tierHierarchy); // Pass tierHierarchy to generateReport
 
   return (
     <Card>
