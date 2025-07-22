@@ -12,7 +12,7 @@ import { simulateFullGame } from '@/lib/gameEngine';
 import { validateLineup } from '@/lib/lineupValidation';
 import { createNationalsTournament } from '@/lib/nationalsGenerator';
 import { isRivalryGame } from '@/lib/rivalries';
-import { rebalanceOrganizationRosters } from '@/lib/aiManager';
+import { rebalanceOrganizationRosters, validateAndFixAIRoster } from '@/lib/aiManager';
 import { processNationalsRound as processNationalsRoundEngine } from '@/lib/nationalsSimulator';
 import { getAggregatedCurrentStats } from '@/lib/statsUtils';
 import { getPromotionTarget, getRelegationTarget, getDivisionRank, getTierName } from '@/lib/leagueUtils';
@@ -551,12 +551,23 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             gamesThisWeek.forEach(game => {
                 if (schedule.find(s => s.id === game.id)?.status === 'completed') return;
 
-                const homeTeamIndex = tempTeams.findIndex(t => t.name === game.homeTeam);
-                const awayTeamIndex = tempTeams.findIndex(t => t.name === game.awayTeam);
+                let homeTeamIndex = tempTeams.findIndex(t => t.name === game.homeTeam);
+                let awayTeamIndex = tempTeams.findIndex(t => t.name === game.awayTeam);
                 if (homeTeamIndex === -1 || awayTeamIndex === -1) return;
 
-                const homeTeam = tempTeams[homeTeamIndex];
-                const awayTeam = tempTeams[awayTeamIndex];
+                let homeTeam = tempTeams[homeTeamIndex];
+                let awayTeam = tempTeams[awayTeamIndex];
+
+                // Validate and fix AI rosters before the game
+                if (userTeam && homeTeam.name !== userTeam.name && !managedTeamNames.includes(homeTeam.name)) {
+                    homeTeam = validateAndFixAIRoster(homeTeam);
+                    tempTeams[homeTeamIndex] = homeTeam;
+                }
+                if (userTeam && awayTeam.name !== userTeam.name && !managedTeamNames.includes(awayTeam.name)) {
+                    awayTeam = validateAndFixAIRoster(awayTeam);
+                    tempTeams[awayTeamIndex] = awayTeam;
+                }
+
                 const isBigGame = isRivalryGame(homeTeam.name, awayTeam.name);
 
                 if (isBigGame && (homeTeam.name === userTeam?.name || awayTeam.name === userTeam?.name)) {

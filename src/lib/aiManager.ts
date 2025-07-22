@@ -1,5 +1,7 @@
-import { Team, Player, SkaterAttributes } from '@/types';
+import { Team, Player, SkaterAttributes, Position } from '@/types';
 import { tactics } from '@/data/tactics';
+import { generatePlayer } from '@/lib/playerGenerator';
+import { populateLineup } from '@/lib/lineupUtils';
 
 export const aiMakeAdjustments = (team: Team, opponent: Team, scoreDifference: number): Team => {
     const newTeam = JSON.parse(JSON.stringify(team));
@@ -90,4 +92,58 @@ export const rebalanceOrganizationRosters = (teamsInOrg: Team[]): Team[] => {
     }
 
     return updatedTeams;
+};
+
+export const validateAndFixAIRoster = (team: Team): Team => {
+    const MIN_FORWARDS = 9;
+    const MIN_DEFENCE = 6;
+    const MIN_GOALIES = 2;
+
+    const forwards = team.roster.filter(p => ['C', 'LW', 'RW'].some(pos => p.positions.includes(pos as Position)));
+    const defence = team.roster.filter(p => ['LD', 'RD'].some(pos => p.positions.includes(pos as Position)));
+    const goalies = team.roster.filter(p => p.positions.includes('G'));
+
+    let rosterWasModified = false;
+    const newRoster = [...team.roster];
+    const usedJerseyNumbers = new Set(team.roster.map(p => p.jerseyNumber));
+
+    const addPlayer = (position: Position) => {
+        // Generate low-quality filler players
+        const newPlayer = generatePlayer(usedJerseyNumbers, position, team.leagueDivision, team.name, undefined, { targetStarRating: 1 });
+        newRoster.push(newPlayer);
+        rosterWasModified = true;
+        console.log(`AI EMERGENCY SIGNING: ${team.name} signed ${newPlayer.name} (${position}) to fill roster.`);
+    };
+
+    if (forwards.length < MIN_FORWARDS) {
+        const forwardsNeeded = MIN_FORWARDS - forwards.length;
+        for (let i = 0; i < forwardsNeeded; i++) {
+            const pos: Position = ['C', 'LW', 'RW'][i % 3] as Position;
+            addPlayer(pos);
+        }
+    }
+
+    if (defence.length < MIN_DEFENCE) {
+        const defenceNeeded = MIN_DEFENCE - defence.length;
+        for (let i = 0; i < defenceNeeded; i++) {
+            const pos: Position = ['LD', 'RD'][i % 2] as Position;
+            addPlayer(pos);
+        }
+    }
+
+    if (goalies.length < MIN_GOALIES) {
+        const goaliesNeeded = MIN_GOALIES - goalies.length;
+        for (let i = 0; i < goaliesNeeded; i++) {
+            addPlayer('G');
+        }
+    }
+
+    if (rosterWasModified) {
+        const updatedTeam = { ...team, roster: newRoster };
+        // Regenerate lineup with the fixed roster
+        updatedTeam.lineup = populateLineup(updatedTeam.roster);
+        return updatedTeam;
+    }
+
+    return team;
 };
