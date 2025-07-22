@@ -91,6 +91,7 @@ interface TeamContextType {
     signPlayerFromTransferPool: (playerId: string, toTeamName: string) => void;
     formNewSquad: () => void;
     updateTeamDivision: (teamName: string, newDivision: string) => void;
+    updateTeamNationalsDivision: (teamName: string, newNationalsDivision: string) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -1135,7 +1136,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return { month, week, year };
         })(currentDate);
 
-        if (newDate.month === 'August' && newDate.week === 1 && userTeam) {
+        if (newDate.month === 'August' && newDate.week === 1 && !(currentDate.month === 'August' && currentDate.week === 1)) {
             setFairHosted(false);
             setScoutingPool([]);
             setRecruitedPool([]);
@@ -1871,6 +1872,20 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         });
     };
 
+    const updateTeamNationalsDivision = (teamName: string, newNationalsDivision: string) => {
+        setTeams(currentTeams => {
+            const teamIndex = currentTeams.findIndex(t => t.name === teamName);
+            if (teamIndex === -1) return currentTeams;
+
+            const teamToUpdate = { ...currentTeams[teamIndex] };
+            teamToUpdate.nationalsDivision = newNationalsDivision;
+
+            const newTeams = [...currentTeams];
+            newTeams[teamIndex] = teamToUpdate;
+            return newTeams;
+        });
+    };
+
     return (
         <TeamContext.Provider value={{
             teams, updateTeam, userTeam, organizationFinancials, organizationFacilities, selectTeam,
@@ -1885,7 +1900,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             simulateFullNationalsTournament, simulateSingleNationalsGame, simulateAllNationalsTournaments,
             signPlayerFromTransferPool,
             formNewSquad,
-            updateTeamDivision
+            updateTeamDivision,
+            updateTeamNationalsDivision
         }}>
             {children}
         </TeamContext.Provider>

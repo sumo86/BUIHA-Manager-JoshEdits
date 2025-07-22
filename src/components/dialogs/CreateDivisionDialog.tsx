@@ -15,45 +15,64 @@ interface CreateDivisionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (newDivisionName: string) => void;
+  title?: string;
+  description?: string;
+  label?: string;
+  placeholder?: string;
 }
 
-export const CreateDivisionDialog = ({ isOpen, onClose, onCreate }: CreateDivisionDialogProps) => {
-  const [divisionName, setDivisionName] = useState('');
+export const CreateDivisionDialog = ({ 
+  isOpen, 
+  onClose, 
+  onCreate,
+  title = "Create New Division",
+  description = 'Enter the full name for the new division. e.g., "Non Checking 4 - North".',
+  label = "Division Name",
+  placeholder = "e.g., Non Checking 4 - North"
+}: CreateDivisionDialogProps) => {
+  const [name, setName] = useState('');
 
   const handleCreate = () => {
-    if (divisionName.trim()) {
-      onCreate(divisionName.trim());
+    if (name.trim()) {
+      onCreate(name.trim());
       onClose();
-      setDivisionName('');
+      setName('');
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setName('');
+    }
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Division</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Enter the full name for the new division. e.g., "Non Checking 4 - North".
+            {description}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="name" className="text-right">
-              Division Name
+              {label}
             </Label>
             <Input
               id="name"
-              value={divisionName}
-              onChange={(e) => setDivisionName(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="col-span-3"
-              placeholder="e.g., Non Checking 4 - North"
+              placeholder={placeholder}
             />
           </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit" onClick={handleCreate} disabled={!divisionName.trim()}>Create Division</Button>
+          <Button type="submit" onClick={handleCreate} disabled={!name.trim()}>Create</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
