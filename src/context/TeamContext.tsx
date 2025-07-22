@@ -99,6 +99,7 @@ interface TeamContextType {
     updateTeamNationalsDivision: (teamName: string, newNationalsDivision: string) => void;
     tierHierarchy: TierInfo[];
     updateTierHierarchy: (newHierarchy: TierInfo[]) => void;
+    resetGame: () => void; // Added resetGame to interface
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -1967,6 +1968,64 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         })));
     };
 
+    const resetGame = () => {
+        // Clear all relevant local storage items
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('savegame_')) {
+                localStorage.removeItem(key);
+            }
+        });
+        localStorage.removeItem('teams');
+        localStorage.removeItem('tierHierarchy');
+        localStorage.removeItem('alumni');
+        localStorage.removeItem('activeTeamName');
+        localStorage.removeItem('managedOrganization');
+        localStorage.removeItem('isManagingOrg');
+        localStorage.removeItem('schedule');
+        localStorage.removeItem('nationalsData');
+        localStorage.removeItem('seasonRecords');
+        localStorage.removeItem('careerRecords');
+        localStorage.removeItem('teamAchievements');
+        localStorage.removeItem('transferPool');
+        localStorage.removeItem('seasonHistory');
+        localStorage.removeItem('scoutingPool');
+        localStorage.removeItem('recruitedPool');
+        localStorage.removeItem('fairHosted');
+        localStorage.removeItem('currentDate');
+        localStorage.removeItem('developmentHistory');
+        localStorage.removeItem('savedGames');
+
+        // Reset all state variables to their initial values
+        setTeams(initialTeams);
+        setTierHierarchy([
+            { id: 'c1', name: 'Checking 1' },
+            { id: 'c2', name: 'Checking 2' },
+            { id: 'nc1', name: 'Non-Checking 1' },
+            { id: 'nc2', name: 'Non-Checking 2' },
+            { id: 'nc3', name: 'Non-Checking 3' },
+        ]);
+        setAlumni([]);
+        setActiveTeamName(null);
+        setManagedOrganization(null);
+        setIsManagingOrg(false);
+        setSchedule([]);
+        setNationalsData({});
+        setSeasonRecords({});
+        setCareerRecords({});
+        setTeamAchievements({});
+        setTransferPool([]);
+        setSeasonHistory({});
+        setScoutingPool([]);
+        setRecruitedPool([]);
+        setFairHosted(false);
+        setCurrentDate({ month: 'August', week: 1, year: new Date().getFullYear() });
+        setDevelopmentHistory([]);
+        setSavedGames([]);
+
+        toast.success("Game Reset", { description: "All game data has been cleared. You can now start a new game." });
+        selectTeam(null); // Go back to team selection
+    };
+
     return (
         <TeamContext.Provider value={{
             teams, updateTeam, userTeam, organizationFinancials, organizationFacilities, selectTeam,
@@ -1984,7 +2043,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             updateTeamDivision,
             updateTeamNationalsDivision,
             tierHierarchy,
-            updateTierHierarchy
+            updateTierHierarchy,
+            resetGame // Added to context value
         }}>
             {children}
         </TeamContext.Provider>
