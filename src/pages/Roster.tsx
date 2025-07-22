@@ -32,6 +32,8 @@ import { PlayerMovement } from "@/components/roster/PlayerMovement";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getAggregatedCurrentStats } from "@/lib/statsUtils";
 import { JerseyManagement } from "@/components/roster/JerseyManagement";
+import { Link } from "react-router-dom";
+import { Users } from "lucide-react";
 
 const Roster = () => {
   const navigate = useNavigate();
@@ -41,6 +43,31 @@ const Roster = () => {
   const [starRatingFilter, setStarRatingFilter] = useState([0.5]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [viewMode, setViewMode] = useState<'attributes' | 'stats'>('attributes');
+
+  if (!team) return null;
+
+  if (team.roster.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center p-8">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-center gap-2">
+              <Users className="h-6 w-6" />
+              An Empty Locker Room
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              Your roster is currently empty. You can't manage what you don't have! Your first step as a manager is to find some talent.
+            </p>
+            <Button asChild>
+              <Link to="/recruitment">Go to Recruitment</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const roleTypeColors: { [key: string]: string } = {
     Offensive: 'bg-red-500',

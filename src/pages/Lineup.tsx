@@ -12,6 +12,8 @@ import { Star, StarHalf } from 'lucide-react';
 import { useTeam } from '@/context/TeamContext';
 import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
+import { Link } from "react-router-dom";
+import { ClipboardList } from "lucide-react";
 
 const getAttributeColorClass = (value: number) => {
     if (value >= 17) return "text-green-700";
@@ -77,6 +79,32 @@ const PlayerLineupCard = ({ player, onRoleChange, displayName }: { player: Playe
 
 const Lineup = () => {
     const { userTeam: team, updateTeam } = useTeam();
+
+    if (!team) return null;
+
+    if (team.roster.length === 0) {
+        return (
+          <div className="flex flex-col items-center justify-center h-full text-center p-8">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-center gap-2">
+                  <ClipboardList className="h-6 w-6" />
+                  An Empty Lineup Sheet
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  You need players before you can set your lines. Head over to the recruitment page to start building your team.
+                </p>
+                <Button asChild>
+                  <Link to="/recruitment">Go to Recruitment</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
+    }
+
     const playerMap = useMemo(() => new Map(team.roster.map(p => [p.id, p])), [team.roster]);
 
     const assignedPlayerIds = useMemo(() => {

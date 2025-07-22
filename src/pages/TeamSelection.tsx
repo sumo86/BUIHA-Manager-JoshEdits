@@ -4,11 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { format } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Trash2, PlusCircle } from 'lucide-react';
+import { useState } from 'react';
+import { CreateClubDialog } from '@/components/dialogs/CreateClubDialog';
 
 const TeamSelection = () => {
     const { selectTeam, selectOrganization, savedGames, loadGame, deleteGame, teams } = useTeam(); // Destructure teams
     const organizations = getTeamOrganizations(teams); // Pass teams here
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
     const handleSelectTeam = (teamName: string) => {
         selectTeam(teamName);
@@ -55,9 +58,23 @@ const TeamSelection = () => {
                 <Card className="w-full">
                     <CardHeader>
                         <CardTitle className="text-2xl">Start a New Game</CardTitle>
-                        <CardDescription>Select a team or an entire organization to begin your managerial career.</CardDescription>
+                        <CardDescription>Select an existing team or create your own club from scratch.</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
+                        <Button className="w-full" size="lg" onClick={() => setIsCreateDialogOpen(true)}>
+                            <PlusCircle className="mr-2 h-5 w-5" />
+                            Create Your Own Club
+                        </Button>
+                        <div className="relative flex justify-center">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-card px-2 text-muted-foreground">
+                                Or Select an Existing Club
+                                </span>
+                            </div>
+                        </div>
                         <Accordion type="single" collapsible className="w-full">
                             {organizations.map(org => (
                                 <AccordionItem value={org.name} key={org.name}>
@@ -103,6 +120,7 @@ const TeamSelection = () => {
                     </CardContent>
                 </Card>
             </div>
+            <CreateClubDialog isOpen={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
         </div>
     );
 };
