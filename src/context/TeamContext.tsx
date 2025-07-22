@@ -128,7 +128,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
     const [tierHierarchy, setTierHierarchy] = useState<TierInfo[]>(() => {
         try {
             const saved = localStorage.getItem('tierHierarchy');
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) { // Explicitly check if it's an array
+                    return parsed;
+                }
+            }
         } catch (error) { console.error("Failed to load tier hierarchy:", error); }
         return [
             { id: 'c1', name: 'Checking 1' },
@@ -1274,7 +1279,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 player.jerseyNumber = newJerseyNumber;
             }
             
-            const isSkater = player.positions[0] !== 'G';
+            const isSkater = !player.positions.includes('G');
             const updatedPlayer = {
                 ...player,
                 starRating: calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision, tierHierarchy),
@@ -1639,7 +1644,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             setFairHosted(savedState.fairHosted || false);
             setCurrentDate(savedState.currentDate || { month: 'August', week: 1, year: new Date().getFullYear() });
             setDevelopmentHistory(savedState.developmentHistory || []);
-            setTierHierarchy(savedState.tierHierarchy || [
+            setTierHierarchy(Array.isArray(savedState.tierHierarchy) ? savedState.tierHierarchy : [
                 { id: 'c1', name: 'Checking 1' },
                 { id: 'c2', name: 'Checking 2' },
                 { id: 'nc1', name: 'Non-Checking 1' },
