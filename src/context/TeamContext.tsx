@@ -90,6 +90,7 @@ interface TeamContextType {
     simulateAllNationalsTournaments: () => void;
     signPlayerFromTransferPool: (playerId: string, toTeamName: string) => void;
     formNewSquad: () => void;
+    updateTeamDivision: (teamName: string, newDivision: string) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -758,8 +759,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     
                     const seasonThatEnded = `${prevDate.year}-${prevDate.year + 1}`;
                     
-                    // --- PROMOTION AND RELEGATION LOGIC ---
-                    const promotionRelegationChanges: { teamName: string, newDivision: string }[] = [];
+                    // --- DYNAMIC DIVISION SPLITTING & PROMOTION/RELEGATION LOGIC ---
+                    let promotionRelegationChanges: { teamName: string, newDivision: string }[] = [];
+
+                    // --- Standard Promotion & Relegation Logic ---
                     const leagueDivisions = [...new Set(tempTeams.map(t => t.leagueDivision))];
 
                     leagueDivisions.forEach(division => {
@@ -773,48 +776,51 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 return b.goalsFor - a.goalsFor;
                             });
 
-                        if (teamsInDivision.length < 2) return;
+                        if (teamsInDivision.length < 1) return;
 
                         // --- Promotion Logic ---
-                        for (const promotionCandidate of teamsInDivision) {
-                            const promotionTarget = getPromotionTarget(promotionCandidate.leagueDivision);
-                            if (!promotionTarget) break;
+                        const promotionTarget = getPromotionTarget(division);
+                        if (promotionTarget) {
+                            for (const promotionCandidate of teamsInDivision) {
+                                if (promotionRelegationChanges.some(c => c.teamName === promotionCandidate.name)) continue;
 
-                            let isEligible = true;
-                            const candidateOrg = getOrganizationName(promotionCandidate.name);
-                            const promotionTargetRank = getDivisionRank(promotionTarget);
-                            
-                            // Check for senior teams from the same organization
-                            const seniorTeams = tempTeams.filter(t => 
-                                getOrganizationName(t.name) === candidateOrg &&
-                                getTeamOrganizationalTier(t.name) < getTeamOrganizationalTier(promotionCandidate.name)
-                            );
+                                let isEligible = true;
+                                const candidateOrg = getOrganizationName(promotionCandidate.name);
+                                const promotionTargetRank = getDivisionRank(promotionTarget);
+                                
+                                const seniorTeams = tempTeams.filter(t => 
+                                    getOrganizationName(t.name) === candidateOrg &&
+                                    getTeamOrganizationalTier(t.name) < getTeamOrganizationalTier(promotionCandidate.name)
+                                );
 
-                            for (const seniorTeam of seniorTeams) {
-                                const seniorTeamRank = getDivisionRank(seniorTeam.leagueDivision);
-                                if (seniorTeamRank > promotionTargetRank) { // If senior team is in a lower (higher rank number) division than the promotion target
-                                    isEligible = false;
-                                    break;
+                                for (const seniorTeam of seniorTeams) {
+                                    const seniorTeamRank = getDivisionRank(seniorTeam.leagueDivision);
+                                    if (seniorTeamRank > promotionTargetRank) {
+                                        isEligible = false;
+                                        break;
+                                    }
                                 }
-                            }
 
-                            if (isEligible) {
-                                promotionRelegationChanges.push({
-                                    teamName: promotionCandidate.name,
-                                    newDivision: promotionTarget,
-                                });
-                                break; // Only one team can be promoted from a division
+                                if (isEligible) {
+                                    promotionRelegationChanges.push({
+                                        teamName: promotionCandidate.name,
+                                        newDivision: promotionTarget,
+                                    });
+                                    break; 
+                                }
                             }
                         }
 
                         // --- Relegation Logic ---
-                        const relegationCandidate = teamsInDivision[teamsInDivision.length - 1];
-                        const relegationTarget = getRelegationTarget(relegationCandidate.leagueDivision);
-                        if (relegationTarget && !promotionRelegationChanges.some(c => c.teamName === relegationCandidate.name)) {
-                            promotionRelegationChanges.push({
-                                teamName: relegationCandidate.name,
-                                newDivision: relegationTarget,
-                            });
+                        const relegationTarget = getRelegationTarget(division);
+                        if (relegationTarget && teamsInDivision.length > 0) {
+                            const relegationCandidate = teamsInDivision[teamsInDivision.length - 1];
+                            if (relegationCandidate && !promotionRelegationChanges.some(c => c.teamName === relegationCandidate.name)) {
+                                promotionRelegationChanges.push({
+                                    teamName: relegationCandidate.name,
+                                    newDivision: relegationTarget,
+                                });
+                            }
                         }
                     });
 
@@ -851,12 +857,10 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     // Archive player stats for the season that just ended
                     tempTeams = tempTeams.map(team => {
                         const updatedRoster = team.roster.map(player => {
-                            // If player has stats for the season, archive them.
                             if (player.currentStats && player.currentStats.length > 0) {
                                 const newHistory = player.history ? [...player.history, ...player.currentStats] : [...player.currentStats];
                                 return { ...player, history: newHistory, currentStats: [] };
                             } 
-                            // If player has no stats but was on the roster, create a blank history entry to track their tenure.
                             else if (!player.history.some(h => h.season === seasonThatEnded)) {
                                 const newHistoryEntry: PlayerSeasonStats = {
                                     season: seasonThatEnded,
@@ -952,16 +956,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             const updated = JSON.parse(JSON.stringify(prev));
                             newAchievements.forEach(({ teamName, achievement }) => {
                                 if (!updated[teamName]) updated[teamName] = [];
-                                // Avoid duplicates
                                 if (!updated[teamName].some((ach: Achievement) => ach.type === achievement.type && ach.season === achievement.season && ach.division === achievement.division)) {
                                     updated[teamName].push(achievement);
                                 }
                             });
-                            return updated; // Return the updated state
+                            return updated;
                         });
                     }
                     
-                    tempSeasonRecords = {}; // Reset season records
+                    tempSeasonRecords = {};
                     
                     const newAlumni: Player[] = [];
                     const newTransferPoolPlayers: Player[] = [];
@@ -975,13 +978,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             };
                             const nextEligibility = eligibilityMap[player.eligibility];
                             
-                            // Only consider for graduation if yearsLeftInProgram is 0 or eligibility is UG Year 4
                             const isGraduating = (player.eligibility === 'UG Year 4' && !player.isContinuingEducation) || 
                                                  ((player.eligibility === 'Masters' || player.eligibility === 'PhD') && (player.yearsLeftInProgram || 0) <= 0);
 
                             if (isGraduating) {
                                 graduatingPlayers.push(player);
-                                return false; // Remove from current roster
+                                return false;
                             } else if (nextEligibility) {
                                 player.eligibility = nextEligibility;
                                 player.age += 1;
@@ -989,31 +991,31 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                     player.yearsLeftInProgram = (player.yearsLeftInProgram || 1) - 1;
                                 }
                                 return true;
-                            } else if (player.eligibility !== 'Staff') { // If not staff and no next eligibility, they should graduate
+                            } else if (player.eligibility !== 'Staff') {
                                 graduatingPlayers.push(player);
                                 return false;
                             }
-                            return true; // Staff remain
+                            return true;
                         });
 
                         graduatingPlayers.forEach(player => {
                             const isManaged = managedTeamNames.includes(team.name);
                             const roll = Math.random();
                             
-                            if (roll < 0.85) { // Retire (85% chance)
+                            if (roll < 0.85) {
                                 player.alumniStatus = 'Retired';
                                 newAlumni.push(player);
                                 if (isManaged) {
                                     toast.info(`${player.name} has retired from university hockey.`);
                                 }
-                            } else if (roll < 0.95) { // Transfer (10% chance)
+                            } else if (roll < 0.95) {
                                 player.alumniStatus = 'Transfer Listed';
                                 newTransferPoolPlayers.push(player);
-                                newAlumni.push(player); // Also add to alumni to track them
+                                newAlumni.push(player);
                                 if (isManaged) {
                                     toast.info(`${player.name} has graduated and entered the transfer portal.`);
                                 }
-                            } else { // New Degree (5% chance)
+                            } else {
                                 player.eligibility = player.eligibility === 'UG Year 4' ? 'Masters' : 'PhD';
                                 player.yearsLeftInProgram = player.eligibility === 'Masters' ? 2 : 4;
                                 player.isContinuingEducation = true;
@@ -1033,29 +1035,25 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         setAlumni(prev => [...prev, ...newAlumni]);
                     }
 
-                    // AI teams sign players from the transfer pool
                     let availableForSigning = [...newTransferPoolPlayers];
                     
-                    const allOrgs = getTeamOrganizations(tempTeams); // Pass tempTeams here
+                    const allOrgs = getTeamOrganizations(tempTeams);
                     const aiOrgs = allOrgs.filter(org => org.name !== managedOrganization);
 
                     if (aiOrgs.length > 0) {
                         const shuffledAiOrgs = shuffleArray(aiOrgs);
                         const playersForAISigning: Player[] = [];
                         
-                        // Determine which players AI will sign (80%)
                         availableForSigning.forEach(player => {
                             if (Math.random() < 0.8) { 
                                 playersForAISigning.push(player);
                             }
                         });
 
-                        // Assign players to AI organizations in a round-robin fashion
                         let orgAssignIndex = 0;
                         playersForAISigning.forEach(player => {
                             const signingOrg = shuffledAiOrgs[orgAssignIndex % shuffledAiOrgs.length];
                             
-                            // Assign to the lowest-tier team in the org. Teams are sorted A, B, C... so the last one is the lowest tier.
                             const lowestTierTeamInOrg = signingOrg.teams.sort((a, b) => getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name))[0];
                             const teamIndexInTemp = tempTeams.findIndex(t => t.name === lowestTierTeamInOrg.name);
                             
@@ -1065,7 +1063,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             orgAssignIndex++;
                         });
                         
-                        // Filter out players signed by AI from the availableForSigning pool
                         const signedPlayerIds = new Set(playersForAISigning.map(p => p.id));
                         availableForSigning = availableForSigning.filter(p => !signedPlayerIds.has(p.id));
                     }
@@ -1075,8 +1072,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         toast.info(`${availableForSigning.length} new players have entered the transfer portal.`);
                     }
 
-                    // AI Recruitment Logic (for new recruits, not transfers)
-                    const allOrgsList = getTeamOrganizations(tempTeams); // Pass tempTeams here
+                    const allOrgsList = getTeamOrganizations(tempTeams);
                     const aiOrgsList = allOrgsList.filter(org => org.name !== managedOrganization);
                     const allTeamNames = tempTeams.map(t => t.name);
                     let recruitmentOccurred = false;
@@ -1086,13 +1082,12 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         const orgTeams = tempTeams.filter(t => orgTeamNames.includes(t.name));
                         if (orgTeams.length === 0) return;
 
-                        const targetRosterSize = orgTeams.length * 21; // Standard roster size
+                        const targetRosterSize = orgTeams.length * 21;
                         const currentRosterSize = orgTeams.reduce((sum, t) => sum + t.roster.length, 0);
                         const playersToRecruitCount = Math.max(0, targetRosterSize - currentRosterSize);
 
                         if (playersToRecruitCount > 0) {
                             recruitmentOccurred = true;
-                            // Recruit for the lowest tier team in the organization
                             const lowestTierTeam = orgTeams.sort((a, b) => getTeamOrganizationalTier(b.name) - getTeamOrganizationalTier(a.name))[0];
                             const prospects = generateRecruits(lowestTierTeam.leagueDivision, allTeamNames, playersToRecruitCount * 2, lowestTierTeam.facilities);
                             
@@ -1140,7 +1135,6 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return { month, week, year };
         })(currentDate);
 
-        // This block ensures fairHosted is reset when the new date is August, Week 1
         if (newDate.month === 'August' && newDate.week === 1 && userTeam) {
             setFairHosted(false);
             setScoutingPool([]);
@@ -1165,8 +1159,36 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
             });
 
+            const sortedTiers = Object.keys(teamsByNationalsDivision).sort((a, b) => {
+                const rankA = getDivisionRank(a + " - North");
+                const rankB = getDivisionRank(b + " - North");
+                return rankB - rankA;
+            });
+
+            sortedTiers.forEach(tierName => {
+                const teamsInTier = teamsByNationalsDivision[tierName];
+                if (!teamsInTier || teamsInTier.length === 0) return;
+
+                const regions = new Set(teamsInTier.map(t => t.leagueDivision.includes('North') ? 'North' : 'South'));
+
+                if (regions.size === 1) {
+                    const sampleLeagueDiv = teamsInTier[0].leagueDivision;
+                    const promotionTargetDiv = getPromotionTarget(sampleLeagueDiv);
+                    if (promotionTargetDiv) {
+                        const promotionTierName = getTierName(promotionTargetDiv);
+                        if (teamsByNationalsDivision[promotionTierName]) {
+                            teamsByNationalsDivision[promotionTierName].push(...teamsInTier);
+                            toast.info(`Nationals Qualification Update`, { description: `${tierName} teams will compete in the ${promotionTierName} Nationals tournament as their tier is not national.`});
+                        } else {
+                            teamsByNationalsDivision[promotionTierName] = teamsInTier;
+                        }
+                        delete teamsByNationalsDivision[tierName];
+                    }
+                }
+            });
+
             Object.entries(teamsByNationalsDivision).forEach(([division, teamsInDivision]) => {
-                if (teamsInDivision.length >= 4) { // Minimum teams for a tournament
+                if (teamsInDivision.length >= 4) {
                     newNationalsDataForYear[division] = createNationalsTournament(division, teamsInDivision, nationalsYear, 1);
                 }
             });
@@ -1230,7 +1252,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             const updatedPlayer = {
                 ...player,
                 starRating: calculateStarRating(player.currentAbility, isSkater, toTeam.leagueDivision),
-                captaincy: null, // Reset captaincy when player moves teams
+                captaincy: null,
             };
 
             const newToRoster = [...toTeam.roster, updatedPlayer].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
@@ -1267,8 +1289,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         }
 
         const baseSuccessChance = 0.3;
-        const loyaltyModifier = (player.attributes.loyalty - 10) / 25; // +/- 40%
-        const ambitionModifier = (player.attributes.ambition - 10) / 25; // +/- 40%
+        const loyaltyModifier = (player.attributes.loyalty - 10) / 25;
+        const ambitionModifier = (player.attributes.ambition - 10) / 25;
         
         const successChance = baseSuccessChance - loyaltyModifier + ambitionModifier;
 
@@ -1322,7 +1344,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                 awayScore: gameState.opponentScore,
             };
             playNationalsRound(nationalsDivision, completedGame);
-        } else if (gameId) { // Handle regular season game completion
+        } else if (gameId) {
             markGameAsCompleted(gameId, gameState.userScore, gameState.opponentScore);
         }
     };
@@ -1341,7 +1363,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                         toast.success(`${teamName} has won the ${achievement.division} ${achievement.type === 'Nationals Gold' ? 'Gold' : 'Silver'} Championship!`);
                     }
                 });
-                return updated; // Return the updated state
+                return updated;
             });
         }
     };
@@ -1760,13 +1782,11 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const baseName = orgTeams.find(t => getTeamOrganizationalTier(t.name) === 0)?.name || orgName;
         const newTeamName = `${baseName} ${newSuffix}`;
 
-        // Determine the region (North/South) from the user's current team's league division
         const userTeamRegion = userTeam.leagueDivision.includes('North') ? 'North' : 'South';
         const newLeagueDivision = `Non Checking 3 - ${userTeamRegion}`; 
 
-        // New squads start with an empty roster
         const roster: Player[] = [];
-        const lineup = populateLineup(roster); // populateLineup will return an empty lineup for an empty roster
+        const lineup = populateLineup(roster);
 
         const equipmentCost = Math.floor(Math.random() * (2500 - 1500 + 1)) + 1500;
         const totalGames = getGamesPlayedForDivision(newLeagueDivision);
@@ -1775,9 +1795,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
         const iceTimeCost = numberOfHomeGames * 350;
         const travelCost = numberOfAwayGames * 500;
         
-        // Initial fixed costs for the first season, excluding equipment (covered by the £1000 formation cost)
         const initialFixedCosts = iceTimeCost + travelCost; 
-        const teamBudget = 7500; // Base budget for a new squad
+        const teamBudget = 7500;
 
         const newTeam: Team = {
             id: crypto.randomUUID(),
@@ -1792,9 +1811,9 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             logo: teamLogos[orgName],
             financials: {
                 totalBudget: teamBudget,
-                discretionaryBudget: teamBudget - initialFixedCosts, // Deduct only ice time and travel for first season
+                discretionaryBudget: teamBudget - initialFixedCosts,
                 iceTimeCostPerGame: 350,
-                equipmentCost: equipmentCost, // Equipment cost will apply from next season
+                equipmentCost: equipmentCost,
             },
             facilities: initialFacilityProjects.map(p => ({ ...p })),
         };
@@ -1818,14 +1837,37 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             return newTeamsList;
         });
 
-        // If the user was managing a single team, now they are managing an organization
         if (!isManagingOrg && managedTeams.length === 1) {
             setIsManagingOrg(true);
-            setManagedOrganization(orgName); // Ensure managedOrganization is correctly set to the base organization name
+            setManagedOrganization(orgName);
         }
 
         toast.success("New Squad Formed!", {
             description: `${newTeamName} has been formed and will compete in the ${newLeagueDivision} next season.`
+        });
+    };
+
+    const updateTeamDivision = (teamName: string, newDivision: string) => {
+        setTeams(currentTeams => {
+            const teamIndex = currentTeams.findIndex(t => t.name === teamName);
+            if (teamIndex === -1) return currentTeams;
+
+            const teamToUpdate = { ...currentTeams[teamIndex] };
+
+            teamToUpdate.leagueDivision = newDivision;
+            teamToUpdate.nationalsDivision = getTierName(newDivision);
+
+            teamToUpdate.roster = teamToUpdate.roster.map(player => {
+                const isSkater = !player.positions.includes('G');
+                return {
+                    ...player,
+                    starRating: calculateStarRating(player.currentAbility, isSkater, newDivision),
+                };
+            });
+
+            const newTeams = [...currentTeams];
+            newTeams[teamIndex] = teamToUpdate;
+            return newTeams;
         });
     };
 
@@ -1842,7 +1884,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
             exitToMainMenu, transferPool, seasonHistory, savedGames, loadGame, deleteGame,
             simulateFullNationalsTournament, simulateSingleNationalsGame, simulateAllNationalsTournaments,
             signPlayerFromTransferPool,
-            formNewSquad
+            formNewSquad,
+            updateTeamDivision
         }}>
             {children}
         </TeamContext.Provider>

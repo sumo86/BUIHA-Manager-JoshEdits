@@ -47,6 +47,7 @@ const navItems = [
   { href: "/alumni", label: "Alumni", icon: Users },
   { href: "/nationals", label: "Nationals", icon: NationalsIcon },
   { href: "/buiha-overview", label: "BUIHA", icon: Swords },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 const Sidebar = () => {

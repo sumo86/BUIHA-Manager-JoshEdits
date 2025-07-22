@@ -26,6 +26,7 @@ import TeamHistory from "./pages/TeamHistory";
 import NationalsPage from "./pages/Nationals";
 import AlumniPage from "./pages/Alumni";
 import NationalsGame from "./pages/NationalsGame";
+import Settings from "./pages/Settings"; // Added settings import
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const router = createBrowserRouter(
       <Route path="/play-game" element={<PlayGame />} />
       <Route path="/game/:opponentName" element={<Game />} />
       <Route path="/game/nationals/play/:division/:gameId" element={<NationalsGame />} />
+      <Route path="/settings" element={<Settings />} />
       <Route path="*" element={<NotFound />} />
     </Route>
   )
