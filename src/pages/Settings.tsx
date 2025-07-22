@@ -1,7 +1,9 @@
 import { useTeam } from "@/context/TeamContext";
 import DivisionManager from "@/components/settings/DivisionManager";
+import TierManager from "@/components/settings/TierManager";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const Settings = () => {
   const { currentDate } = useTeam();
@@ -13,7 +15,11 @@ const Settings = () => {
       <h1 className="text-3xl font-bold mb-4">League Settings</h1>
       
       {canEdit ? (
-        <DivisionManager />
+        <div>
+          <TierManager />
+          <Separator className="my-8" />
+          <DivisionManager />
+        </div>
       ) : (
         <Card className="mt-8">
           <CardHeader>
