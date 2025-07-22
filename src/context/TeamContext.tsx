@@ -801,6 +801,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                     const leagueDivisionsForPAndR = [...new Set(tempTeams.map(t => t.leagueDivision))];
                     const promotionRelegationChanges: { teamName: string, newDivision: string, type: 'promotion' | 'relegation' }[] = [];
 
+                    console.log(`--- Promotion/Relegation for ${currentYear} Season ---`);
+
                     leagueDivisionsForPAndR.forEach(division => {
                         const teamsInDivision = tempTeams
                             .filter(t => t.leagueDivision === division)
@@ -812,18 +814,35 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 return b.goalsFor - a.goalsFor;
                             });
 
+                        console.log(`Division: ${division}`);
+                        teamsInDivision.forEach((t, i) => {
+                            console.log(`  ${i + 1}. ${t.name} - Pts: ${t.points}, GD: ${t.goalsFor - t.goalsAgainst}, GF: ${t.goalsFor}`);
+                        });
+
                         if (teamsInDivision.length > 1) {
                             const winner = teamsInDivision[0];
+                            const loser = teamsInDivision[teamsInDivision.length - 1];
+
+                            console.log(`  Winner: ${winner.name}`);
+                            console.log(`  Loser: ${loser.name}`);
+
                             const divisionUp = getAdjacentDivision(division, 'up');
                             if (divisionUp) {
                                 promotionRelegationChanges.push({ teamName: winner.name, newDivision: divisionUp, type: 'promotion' });
+                                console.log(`  Proposed Promotion: ${winner.name} to ${divisionUp}`);
+                            } else {
+                                console.log(`  No Promotion for ${winner.name} (already in highest tier or invalid division).`);
                             }
 
-                            const loser = teamsInDivision[teamsInDivision.length - 1];
                             const divisionDown = getAdjacentDivision(division, 'down');
                             if (divisionDown) {
                                 promotionRelegationChanges.push({ teamName: loser.name, newDivision: divisionDown, type: 'relegation' });
+                                console.log(`  Proposed Relegation: ${loser.name} to ${divisionDown}`);
+                            } else {
+                                console.log(`  No Relegation for ${loser.name} (already in lowest tier or invalid division).`);
                             }
+                        } else {
+                            console.log(`  Not enough teams in division for P/R.`);
                         }
                     });
 
@@ -834,15 +853,25 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
 
                     const validChanges = promotionRelegationChanges.filter(change => {
                         const teamToChange = tempTeams.find(t => t.name === change.teamName);
-                        if (!teamToChange) return false;
+                        if (!teamToChange) {
+                            console.log(`  Change for ${change.teamName} invalid: team not found.`);
+                            return false;
+                        }
 
                         const orgName = getOrganizationName(teamToChange.name);
                         const organizations = getTeamOrganizations(tempTeams);
                         const org = organizations.find(o => o.name === orgName);
-                        if (!org || org.teams.length <= 1) return true;
+                        
+                        if (!org || org.teams.length <= 1) {
+                            console.log(`  Change for ${teamToChange.name} (${change.type}) is valid (single-team org or org not found).`);
+                            return true; // Single-team orgs or orgs not found are always valid
+                        }
 
                         const orgTeams = org.teams.sort((a, b) => a.name.localeCompare(b.name));
                         const teamIndex = orgTeams.findIndex(t => t.name === teamToChange.name);
+
+                        let isBlocked = false;
+                        let blockReason = "";
 
                         if (change.type === 'promotion') {
                             if (teamIndex > 0) {
@@ -852,10 +881,8 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 const proposedTierIndex = divisionHierarchy.indexOf(getTierName(change.newDivision));
 
                                 if (proposedTierIndex < teamAboveTierIndex) {
-                                    if (managedTeamNames.includes(teamToChange.name)) {
-                                        toast.warning("Promotion Blocked", { description: `${teamToChange.name} cannot be promoted into a higher division than ${teamAbove.name}.` });
-                                    }
-                                    return false;
+                                    isBlocked = true;
+                                    blockReason = `${teamToChange.name} cannot be promoted into a higher division than ${teamAbove.name} (${teamAboveDivision}).`;
                                 }
                             }
                         } else { // Relegation
@@ -866,13 +893,20 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                                 const proposedTierIndex = divisionHierarchy.indexOf(getTierName(change.newDivision));
 
                                 if (proposedTierIndex > teamBelowTierIndex) {
-                                     if (managedTeamNames.includes(teamToChange.name)) {
-                                        toast.warning("Relegation Blocked", { description: `${teamToChange.name} cannot be relegated into a lower division than ${teamBelow.name}.` });
-                                    }
-                                    return false;
+                                    isBlocked = true;
+                                    blockReason = `${teamToChange.name} cannot be relegated into a lower division than ${teamBelow.name} (${teamBelowDivision}).`;
                                 }
                             }
                         }
+
+                        if (isBlocked) {
+                            console.log(`  Change for ${teamToChange.name} (${change.type}) BLOCKED: ${blockReason}`);
+                            if (managedTeamNames.includes(teamToChange.name)) {
+                                toast.warning(change.type === 'promotion' ? "Promotion Blocked" : "Relegation Blocked", { description: blockReason });
+                            }
+                            return false;
+                        }
+                        console.log(`  Change for ${teamToChange.name} (${change.type}) is valid.`);
                         return true;
                     });
 
@@ -883,11 +917,13 @@ export const TeamProvider = ({ children }: { children: ReactNode }): JSX.Element
                             teamToUpdate.leagueDivision = change.newDivision;
                             teamToUpdate.nationalsDivision = getNationalsDivision(change.newDivision);
                             
+                            console.log(`  APPLYING CHANGE: ${teamToUpdate.name} moved from ${oldDivision} to ${change.newDivision}.`);
                             if (managedTeamNames.includes(teamToUpdate.name)) {
                                 toast.success(change.type === 'promotion' ? "Promoted!" : "Relegated!", { description: `${teamToUpdate.name} moved from ${oldDivision} to ${change.newDivision}.` });
                             }
                         }
                     });
+                    console.log(`--- End Promotion/Relegation ---`);
                     // --- END P/R LOGIC ---
 
                     // New season budget calculations
